@@ -1,0 +1,214 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  /* Fintra brand tokens */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-line: var(--line);
+  --color-moss: var(--moss);
+  --color-moss-deep: var(--moss-deep);
+  --color-moss-soft: var(--moss-soft);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Fintra palette — warm paper, stone ink, deep moss green */
+  --background: #fafaf9;
+  --foreground: #141311;
+  --paper: #fafaf9;
+  --paper-soft: #f4f4f2;
+  --ink: #141311;
+  --ink-soft: #57534e;
+  --line: #e7e5e0;
+  --moss: #0e6245;
+  --moss-deep: #0a3d2c;
+  --moss-soft: #e8f2ec;
+
+  --card: #ffffff;
+  --card-foreground: #141311;
+  --popover: #ffffff;
+  --popover-foreground: #141311;
+  --primary: #141311;
+  --primary-foreground: #fafaf9;
+  --secondary: #f4f4f2;
+  --secondary-foreground: #141311;
+  --muted: #f4f4f2;
+  --muted-foreground: #6f6a63;
+  --accent: #f4f4f2;
+  --accent-foreground: #141311;
+  --destructive: #b3392b;
+  --border: #e7e5e0;
+  --input: #e7e5e0;
+  --ring: #0e6245;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #141311;
+  --sidebar-primary: #141311;
+  --sidebar-primary-foreground: #fafaf9;
+  --sidebar-accent: #f4f4f2;
+  --sidebar-accent-foreground: #141311;
+  --sidebar-border: #e7e5e0;
+  --sidebar-ring: #0e6245;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01" on, "cv11" on;
+    letter-spacing: -0.011em;
+  }
+  ::selection {
+    background: #d7e8de;
+    color: #0a3d2c;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Big editorial display type */
+  .display {
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+    font-weight: 500;
+  }
+  .font-serif-accent {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-style: italic;
+    letter-spacing: -0.02em;
+  }
+
+  /* Faint blueprint grid used behind hero / CTA */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(20, 19, 17, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(20, 19, 17, 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .bg-grid-dark {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  }
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
+  }
+
+  /* Marquee */
+  @keyframes marquee-x {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .animate-marquee {
+    animation: marquee-x 36s linear infinite;
+  }
+
+  /* Cursor blink for mock chat */
+  @keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    50% {
+      opacity: 0;
+    }
+  }
+  .caret-blink {
+    animation: caret-blink 1.2s ease-in-out infinite;
+  }
+
+  /* Subtle elevation used across cards */
+  .shadow-card {
+    box-shadow:
+      0 1px 2px rgba(20, 19, 17, 0.04),
+      0 8px 24px -16px rgba(20, 19, 17, 0.12);
+  }
+  .shadow-float {
+    box-shadow:
+      0 1px 2px rgba(20, 19, 17, 0.05),
+      0 16px 48px -16px rgba(20, 19, 17, 0.18),
+      0 48px 120px -48px rgba(20, 19, 17, 0.22);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

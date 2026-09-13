@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+<title id="t">Fintra — Deployment Architecture</title>
+<desc id="d">Production deployment: GitHub and CI/CD, Vercel hosting, Neon PostgreSQL, AI providers via OpenRouter, observability and ops.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7d8c85"/></marker><marker id="arrb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c48225"/></marker><marker id="arrg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#006548"/></marker></defs>
+<rect x="0" y="0" width="1440" height="900" rx="10" fill="#fbfaf8" stroke="none" stroke-width="0"/>
+<text x="48" y="54" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="23" fill="#131915" font-weight="700" text-anchor="start">Deployment Architecture</text>
+<text x="48" y="80" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13.5" fill="#4a544e" font-weight="400" text-anchor="start">Primary production path — Vercel + Neon, with the containerized alternative documented as an escape hatch. See 03-system-architecture/deployment-architecture.md.</text>
+<line x1="48" y1="94" x2="1392" y2="94" stroke="#e3e2dd" stroke-width="1"/>
+<rect x="48" y="120" width="300" height="520" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="150" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">SOURCE &amp; CI</text>
+<rect x="72" y="180" width="252" height="64" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="198.0" y="204" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">GitHub repository</text>
+<text x="198.0" y="224" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">main + PR branches</text>
+<rect x="72" y="268" width="252" height="150" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="198" y="292" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">GitHub Actions</text>
+<text x="96" y="316" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">typecheck · lint</text>
+<text x="96" y="333" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">unit · integration</text>
+<text x="96" y="350" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">build</text>
+<text x="96" y="367" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">e2e (preview deploy)</text>
+<text x="96" y="384" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">migration gate</text>
+<rect x="72" y="442" width="252" height="64" rx="10" fill="#fbfaf8" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="198.0" y="466" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Preview deploy</text>
+<text x="198.0" y="486" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">Neon branch DB per PR</text>
+<polyline points="198,244 198,264" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<polyline points="198,418 198,438" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="72" y="530" width="252" height="40" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="198.0" y="553.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">protected main · required checks</text>
+<rect x="388" y="120" width="330" height="520" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="412" y="150" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">HOSTING · VERCEL</text>
+<rect x="412" y="180" width="282" height="64" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="553.0" y="204" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Edge middleware</text>
+<text x="553.0" y="224" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">auth gate · security headers</text>
+<rect x="412" y="268" width="282" height="88" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="553.0" y="292" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Node functions — SSE</text>
+<text x="553.0" y="312" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">streaming route handlers</text>
+<text x="553.0" y="327" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">maxDuration tuned for streams</text>
+<rect x="412" y="380" width="282" height="64" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="553.0" y="404" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Static / RSC assets</text>
+<text x="553.0" y="424" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">edge-cached marketing</text>
+<rect x="412" y="468" width="282" height="64" rx="10" fill="#f4ead9" stroke="#c48225" stroke-width="1.5"/>
+<text x="553" y="492" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="12.5" fill="#131915" font-weight="600" text-anchor="middle">Env vars — encrypted</text>
+<text x="553" y="512" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">API keys server-only · never client</text>
+<rect x="758" y="120" width="300" height="520" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="782" y="150" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">DATA · NEON</text>
+<rect x="782" y="180" width="252" height="64" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="908.0" y="204" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">PostgreSQL 16</text>
+<text x="908.0" y="224" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">primary branch</text>
+<rect x="782" y="268" width="252" height="56" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="908.0" y="292" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">pgBouncer pooling</text>
+<text x="908.0" y="312" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">connection budget</text>
+<rect x="782" y="348" width="252" height="56" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="908.0" y="372" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Branch DBs</text>
+<text x="908.0" y="392" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">per-preview isolation</text>
+<rect x="782" y="428" width="252" height="64" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="908.0" y="452" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">PITR backup</text>
+<text x="908.0" y="472" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">RPO ≤ 5 min · RTO ≤ 1 h</text>
+<rect x="782" y="516" width="252" height="56" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="908.0" y="540" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Migrations</text>
+<text x="908.0" y="560" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">expand–contract · gated</text>
+<rect x="1098" y="120" width="294" height="520" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="1122" y="150" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">AI PROVIDERS</text>
+<rect x="1122" y="180" width="246" height="64" rx="10" fill="#ffffff" stroke="#006548" stroke-width="1.6"/>
+<text x="1245.0" y="204" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">OpenRouter</text>
+<text x="1245.0" y="224" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">primary model gateway</text>
+<rect x="1122" y="268" width="78" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1161.0" y="283.6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" fill="#4a544e" font-weight="400" text-anchor="middle">OpenAI</text>
+<rect x="1206" y="268" width="78" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1245.0" y="283.6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" fill="#4a544e" font-weight="400" text-anchor="middle">Anthropic</text>
+<rect x="1290" y="268" width="78" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1329.0" y="283.6" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" fill="#4a544e" font-weight="400" text-anchor="middle">Google</text>
+<rect x="1122" y="316" width="246" height="64" rx="10" fill="#fbfaf8" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="1245.0" y="340" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Direct adapters</text>
+<text x="1245.0" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">OpenAI · Anthropic · Google</text>
+<text x="1245.0" y="375" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">interface reserved — on demand</text>
+<rect x="1122" y="396" width="246" height="56" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="1245.0" y="420" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">Key rotation</text>
+<text x="1245.0" y="440" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">runbook · server-side only</text>
+<rect x="1122" y="476" width="246" height="56" rx="10" fill="#fbfaf8" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="1245.0" y="500" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="middle">BYOK — future</text>
+<text x="1245.0" y="520" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">user keys, encrypted at rest</text>
+<polyline points="324,300 384,300" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="368" y="316" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" fill="#4a544e" font-weight="400" text-anchor="middle">deploy</text>
+<polyline points="694,292 754,292" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="738" y="282" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" fill="#4a544e" font-weight="400" text-anchor="middle">SQL</text>
+<polyline points="754,330 698,330" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<polyline points="553,180 553,112 1245,112 1245,176" fill="none" stroke="#006548" stroke-width="1.6"/>
+<polyline points="1245,112 1245,176" fill="none" stroke="#006548" stroke-width="1.6" marker-end="url(#arrg)"/>
+<text x="900" y="104" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#006548" font-weight="600" text-anchor="middle">HTTPS · SSE · key from env only</text>
+<rect x="48" y="680" width="1344" height="120" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="710" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">OBSERVABILITY &amp; OPERATIONS</text>
+<rect x="72" y="728" width="246" height="56" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="195.0" y="759.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Structured JSON logs → drains</text>
+<rect x="334" y="728" width="246" height="56" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="457.0" y="759.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">AIRequest — latency · tokens · cost</text>
+<rect x="596" y="728" width="246" height="56" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="719.0" y="759.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Alerts — error · p95 · fallbacks</text>
+<rect x="858" y="728" width="246" height="56" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="981.0" y="759.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Instant rollback — Vercel revert</text>
+<rect x="1120" y="728" width="246" height="56" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1243.0" y="759.78" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Runbooks — incident · rotate · PITR</text>
+<text x="1392" y="886" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#8a938d" font-weight="400" text-anchor="end">Fintra · Phase 0 — Architecture Package · v1.0</text>
+<text x="48" y="886" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#8a938d" font-weight="400" text-anchor="start">fintra.space-z.ai</text>
+</svg>

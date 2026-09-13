@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="780" viewBox="0 0 1440 780" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+<title id="t">Fintra — User Journey</title>
+<desc id="d">Journey from homepage discovery to habitual monthly use: discover, try, sign in, first value, trust deepening, habit — with touchpoints, KPIs and friction watchlist.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7d8c85"/></marker><marker id="arrb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c48225"/></marker><marker id="arrg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#006548"/></marker></defs>
+<rect x="0" y="0" width="1440" height="780" rx="10" fill="#fbfaf8" stroke="none" stroke-width="0"/>
+<text x="48" y="54" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="23" fill="#131915" font-weight="700" text-anchor="start">User Journey</text>
+<text x="48" y="80" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13.5" fill="#4a544e" font-weight="400" text-anchor="start">From first touch to monthly habit — stages, emotions, Fintra touchpoints and the friction we watch. See 00-product-vision/user-journeys.md.</text>
+<line x1="48" y1="94" x2="1392" y2="94" stroke="#e3e2dd" stroke-width="1"/>
+<polyline points="160,205 384,192 608,228 832,178 1056,200 1280,170" fill="none" stroke="#006548" stroke-width="2"/>
+<circle cx="160" cy="205" r="4.5" fill="#006548"/>
+<text x="160" y="193" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">curious</text>
+<circle cx="384" cy="192" r="4.5" fill="#006548"/>
+<text x="384" y="180" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">impressed</text>
+<circle cx="608" cy="228" r="4.5" fill="#006548"/>
+<text x="608" y="216" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">friction</text>
+<circle cx="832" cy="178" r="4.5" fill="#006548"/>
+<text x="832" y="166" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">first value</text>
+<circle cx="1056" cy="200" r="4.5" fill="#006548"/>
+<text x="1056" y="188" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">assured</text>
+<circle cx="1280" cy="170" r="4.5" fill="#006548"/>
+<text x="1280" y="158" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle" font-style="italic">habitual</text>
+<rect x="60" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="74" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 1</text>
+<text x="74" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">Discover</text>
+<text x="74" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Land from search / referral</text>
+<text x="74" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Scan hero + agent roster</text>
+<text x="74" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Watch the product demo</text>
+<text x="74" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="74" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Homepage hero · surfaces</text>
+<text x="74" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Primary CTA → /agent</text>
+<rect x="72" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="160.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · click-through → /agent</text>
+<polyline points="262,395 286,395" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="284" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="298" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 2</text>
+<text x="298" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">Try</text>
+<text x="298" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Open the Workspace</text>
+<text x="298" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Read empty-state starters</text>
+<text x="298" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Watch a sample run</text>
+<text x="298" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="298" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">/agent gate · empty state</text>
+<text x="298" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Preview run steps</text>
+<rect x="296" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="384.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · first question started</text>
+<polyline points="486,395 510,395" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="508" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="522" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 3</text>
+<text x="522" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">Sign in</text>
+<text x="522" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Create the account</text>
+<text x="522" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Google OAuth or email</text>
+<text x="522" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Return to the thread</text>
+<text x="522" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="522" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">/sign-in · gate screen</text>
+<text x="522" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Session cookie (Auth.js)</text>
+<rect x="520" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="608.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · sign-in completion</text>
+<polyline points="710,395 734,395" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="732" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="746" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 4</text>
+<text x="746" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">First value</text>
+<text x="746" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Ask a variance question</text>
+<text x="746" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Watch streaming run steps</text>
+<text x="746" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Open evidence chips</text>
+<text x="746" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="746" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Thread canvas · SSE stream</text>
+<text x="746" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Evidence + assumptions</text>
+<rect x="744" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="832.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · time-to-value &lt; 2 min</text>
+<polyline points="934,395 958,395" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="956" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="970" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 5</text>
+<text x="970" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">Trust deepening</text>
+<text x="970" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Inspect the calculations</text>
+<text x="970" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Switch models mid-thread</text>
+<text x="970" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Regenerate an answer</text>
+<text x="970" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="970" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Model selector · registry</text>
+<text x="970" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Confidence labels</text>
+<rect x="968" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1056.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · threads / week ≥ 3</text>
+<polyline points="1158,395 1182,395" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="1180" y="270" width="200" height="250" rx="12" fill="#ffffff" stroke="#7d8c85" stroke-width="1.2"/>
+<text x="1194" y="296" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="10" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1">STAGE 6</text>
+<text x="1194" y="318" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="14.5" fill="#131915" font-weight="700" text-anchor="start">Habit</text>
+<text x="1194" y="344" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Return at every close</text>
+<text x="1194" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Reuse thread history</text>
+<text x="1194" y="376" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="start">Push the analysis further</text>
+<text x="1194" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" fill="#8a938d" font-weight="700" text-anchor="start" letter-spacing="1">TOUCHPOINTS</text>
+<text x="1194" y="428" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">History sidebar</text>
+<text x="1194" y="443" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="start">Follow-up suggestions</text>
+<rect x="1192" y="478" width="176" height="26" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1280.0" y="494.42" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="9.5" fill="#4a544e" font-weight="400" text-anchor="middle">KPI · WAU finance pros</text>
+<text x="60" y="566" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.3">FRICTION WATCHLIST</text>
+<rect x="60" y="580" width="1320" height="118" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="160" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">message clarity,</text>
+<text x="160" y="649" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">page weight</text>
+<text x="384" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">value before</text>
+<text x="384" y="649" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">sign-up</text>
+<text x="608" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">OAuth friction</text>
+<text x="832" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">latency</text>
+<text x="832" y="649" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">perception</text>
+<text x="1056" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">hallucination</text>
+<text x="1056" y="649" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">doubt</text>
+<text x="1280" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">reason</text>
+<text x="1280" y="649" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#4a544e" font-weight="400" text-anchor="middle">to return</text>
+<text x="60" y="730" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#4a544e" font-weight="400" text-anchor="start">Design priority: eliminate friction at Sign-in and Trust stages first — see 02-ui-ux/ux-flows.md (F1, F9).</text>
+<text x="1392" y="766" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#8a938d" font-weight="400" text-anchor="end">Fintra · Phase 0 — Architecture Package · v1.0</text>
+<text x="48" y="766" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#8a938d" font-weight="400" text-anchor="start">fintra.space-z.ai</text>
+</svg>

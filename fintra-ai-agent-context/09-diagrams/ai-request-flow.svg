@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1010" viewBox="0 0 1320 1010" role="img" aria-labelledby="t d" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+<title id="t">Fintra — AI Request Flow</title>
+<desc id="d">The 12-stage AI pipeline: request intake, context and routing, AI execution via the gateway and OpenRouter, then streaming, post-processing and persistence.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7d8c85"/></marker><marker id="arrb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c48225"/></marker><marker id="arrg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#006548"/></marker></defs>
+<rect x="0" y="0" width="1320" height="1010" rx="10" fill="#fbfaf8" stroke="none" stroke-width="0"/>
+<text x="48" y="54" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="23" fill="#131915" font-weight="700" text-anchor="start">AI Request Flow</text>
+<text x="48" y="80" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13.5" fill="#4a544e" font-weight="400" text-anchor="start">One assistant turn, end to end — the pipeline implemented by chatService + the AI Gateway. See 03-system-architecture/ai-architecture.md.</text>
+<line x1="48" y1="94" x2="1272" y2="94" stroke="#e3e2dd" stroke-width="1"/>
+<rect x="48" y="108" width="1224" height="170" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="138" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">PHASE 1 · REQUEST INTAKE</text>
+<rect x="72" y="160" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="96" cy="184" r="12" fill="#131915"/>
+<text x="96" y="188" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">01</text>
+<text x="116" y="188" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">User input</text>
+<text x="88" y="210" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">composer submit · thread id</text>
+<text x="88" y="225" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">model choice · answer mode</text>
+<polyline points="334,208 356,208" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="356" y="160" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="380" cy="184" r="12" fill="#131915"/>
+<text x="380" y="188" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">02</text>
+<text x="400" y="188" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Authentication</text>
+<text x="372" y="210" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">Auth.js v5 session cookie</text>
+<text x="372" y="225" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">middleware-protected routes</text>
+<polyline points="618,208 640,208" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="640" y="160" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="664" cy="184" r="12" fill="#131915"/>
+<text x="664" y="188" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">03</text>
+<text x="684" y="188" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Request validation</text>
+<text x="656" y="210" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">Zod schemas at the boundary</text>
+<text x="656" y="225" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">size limits · rate-limit check</text>
+<text x="72" y="268" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#8a938d" font-weight="400" text-anchor="start" font-style="italic">expired session → 401 · redirect to sign-in</text>
+<polyline points="660,278 660,330" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="48" y="330" width="1224" height="170" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">PHASE 2 · CONTEXT &amp; ROUTING</text>
+<rect x="72" y="382" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="96" cy="406" r="12" fill="#131915"/>
+<text x="96" y="410" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">04</text>
+<text x="116" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Conversation context</text>
+<text x="88" y="432" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">load thread · windowing</text>
+<text x="88" y="447" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">older turns → safe summary</text>
+<polyline points="334,430 356,430" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="356" y="382" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="380" cy="406" r="12" fill="#131915"/>
+<text x="380" y="410" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">05</text>
+<text x="400" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Financial context</text>
+<text x="372" y="432" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">workspace profile · period</text>
+<text x="372" y="447" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">currency · sources (Phase 7)</text>
+<polyline points="618,430 640,430" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="640" y="382" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="664" cy="406" r="12" fill="#131915"/>
+<text x="664" y="410" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">06</text>
+<text x="684" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Model selection</text>
+<text x="656" y="432" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">registry lookup · user pick</text>
+<text x="656" y="447" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">or Auto complexity heuristic</text>
+<polyline points="902,430 924,430" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="924" y="382" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="948" cy="406" r="12" fill="#131915"/>
+<text x="948" y="410" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">07</text>
+<text x="968" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Prompt assembly</text>
+<text x="940" y="432" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">versioned /prompts layers:</text>
+<text x="940" y="447" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">persona · safety · capability</text>
+<text x="72" y="490" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#8a938d" font-weight="400" text-anchor="start" font-style="italic">Auto mode classifies intent → tier; never selects retired models</text>
+<polyline points="660,500 660,552" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="48" y="552" width="1224" height="170" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="582" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">PHASE 3 · AI EXECUTION</text>
+<rect x="72" y="604" width="262" height="96" rx="10" fill="#c48225" stroke="#c48225" stroke-width="1.4"/>
+<circle cx="96" cy="628" r="12" fill="#131915"/>
+<text x="96" y="632" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">08</text>
+<text x="116" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">AI Gateway</text>
+<text x="88" y="654" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">policy · budgets · routing</text>
+<text x="88" y="669" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">fallback engine · breaker</text>
+<polyline points="334,652 356,652" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="356" y="604" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="380" cy="628" r="12" fill="#131915"/>
+<text x="380" y="632" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">09</text>
+<text x="400" y="632" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Provider adapter</text>
+<text x="372" y="654" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">OpenRouter — OpenAI-compatible</text>
+<text x="372" y="669" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">normalized SSE chunk union</text>
+<rect x="640" y="604" width="546" height="96" rx="10" fill="#fbfaf8" stroke="#7d8c85" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="913" y="626" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#131915" font-weight="600" text-anchor="middle">Upstream models — one contract, many providers</text>
+<rect x="658" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="698.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">OpenAI</text>
+<rect x="746" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="786.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Anthropic</text>
+<rect x="834" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="874.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Google</text>
+<rect x="922" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="962.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Meta</text>
+<rect x="1010" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1050.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">Qwen</text>
+<rect x="1098" y="648" width="80" height="24" rx="6" fill="#ffffff" stroke="#7d8c85" stroke-width="1"/>
+<text x="1138.0" y="663.78" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#4a544e" font-weight="400" text-anchor="middle">DeepSeek</text>
+<polyline points="640,652 618,652" fill="none" stroke="#006548" stroke-width="1.6" marker-end="url(#arrg)"/>
+<text x="72" y="712" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#8a938d" font-weight="400" text-anchor="start" font-style="italic">provider 5xx → fallback chain · breaker opens after 5 failures / 5 min</text>
+<polyline points="660,722 660,774" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="48" y="774" width="1224" height="170" rx="14" fill="#f1f0ec" stroke="none" stroke-width="0"/>
+<text x="72" y="804" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" fill="#006548" font-weight="700" text-anchor="start" letter-spacing="1.4">PHASE 4 · DELIVERY &amp; PERSISTENCE</text>
+<rect x="72" y="826" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="96" cy="850" r="12" fill="#131915"/>
+<text x="96" y="854" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">10</text>
+<text x="116" y="854" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Streaming response</text>
+<text x="88" y="876" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">SSE events to client:</text>
+<text x="88" y="891" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">step · text-delta · usage · done</text>
+<polyline points="334,874 356,874" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="356" y="826" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="380" cy="850" r="12" fill="#131915"/>
+<text x="380" y="854" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">11</text>
+<text x="400" y="854" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Post-processing</text>
+<text x="372" y="876" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">guardrail hooks · usage write</text>
+<text x="372" y="891" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">prompt-version tagging</text>
+<polyline points="618,874 640,874" fill="none" stroke="#7d8c85" stroke-width="1.6" marker-end="url(#arr)"/>
+<rect x="640" y="826" width="262" height="96" rx="10" fill="#ffffff" stroke="#7d8c85" stroke-width="1.4"/>
+<circle cx="664" cy="850" r="12" fill="#131915"/>
+<text x="664" y="854" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#ffffff" font-weight="700" text-anchor="middle">12</text>
+<text x="684" y="854" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="13" fill="#131915" font-weight="600" text-anchor="start">Persistence + UI</text>
+<text x="656" y="876" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">Message + AIRequest in one tx</text>
+<text x="656" y="891" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.8" fill="#4a544e" font-weight="400" text-anchor="start">progressive render in canvas</text>
+<text x="72" y="934" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="#8a938d" font-weight="400" text-anchor="start" font-style="italic">persist-then-render: the UI never shows an unpersisted answer</text>
+<text x="1272" y="996" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" fill="#8a938d" font-weight="400" text-anchor="end">Fintra · Phase 0 — Architecture Package · v1.0</text>
+<text x="48" y="996" font-family="ui-monospace,'SF Mono','Cascadia Mono',Consolas,Menlo,monospace" font-size="11" fill="#8a938d" font-weight="400" text-anchor="start">fintra.space-z.ai</text>
+</svg>

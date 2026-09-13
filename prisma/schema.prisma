@@ -1,0 +1,271 @@
+// Fintra AI Financial Intelligence Platform Prisma Schema
+// Authoritative D3 Data Model per 04-data-model/entities.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AnswerMode {
+  QUICK_ANSWER
+  DEEP_ANALYSIS
+}
+
+enum AIRequestStatus {
+  PENDING
+  STREAMING
+  SUCCEEDED
+  FAILED
+  ABORTED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  DEGRADED
+  RETIRED
+}
+
+enum LatencyClass {
+  FAST
+  BALANCED
+  REASONING
+}
+
+enum AuditAction {
+  SIGN_UP
+  SIGN_IN
+  SIGN_OUT
+  SIGN_IN_FAILED
+  CONVERSATION_CREATED
+  CONVERSATION_RENAMED
+  CONVERSATION_DELETED
+  AI_REQUEST_COMPLETED
+  AI_REQUEST_FAILED
+  ADMIN_ACTION
+}
+
+// ---------------------------------------------------------------------------
+// 1. User & Auth.js Entities
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  role          Role            @default(USER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[]
+  aiRequests    AIRequest[]
+  usageRecords  UsageRecord[]
+  auditLogs     AuditLog[]      @relation("UserAuditLogs")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// 2. Core Workspace Entities: Conversation & Message
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id            String             @id @default(cuid())
+  userId        String             @map("user_id")
+  title         String?
+  status        ConversationStatus @default(ACTIVE)
+  lastMessageAt DateTime?          @map("last_message_at")
+  deletedAt     DateTime?          @map("deleted_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  aiRequests AIRequest[]
+
+  @@index([userId, updatedAt])
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String      @map("conversation_id")
+  role           MessageRole
+  parts          Json        // Json array of Part: text, step, tool, evidence
+  aiRequestId    String?     @unique @map("ai_request_id")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  aiRequest    AIRequest?   @relation(fields: [aiRequestId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ---------------------------------------------------------------------------
+// 3. AI Gateway & Model Registry Entities
+// ---------------------------------------------------------------------------
+
+model ModelCatalog {
+  id                 String             @id @default(cuid())
+  modelId            String             @unique @map("model_id")
+  provider           String
+  family             String
+  displayName        String             @map("display_name")
+  contextWindow      Int                @map("context_window")
+  maxOutput          Int                @map("max_output")
+  capabilities       Json               // { reasoning: boolean, vision: boolean, tools: boolean }
+  latencyClass       LatencyClass       @map("latency_class")
+  pricingTier        Int                @map("pricing_tier")
+  pricingInputPer1M  Decimal            @map("pricing_input_per_1m") @db.Decimal(12, 6)
+  pricingOutputPer1M Decimal            @map("pricing_output_per_1m") @db.Decimal(12, 6)
+  availability       AvailabilityStatus @default(AVAILABLE)
+  releaseDate        DateTime?          @map("release_date")
+  notes              String?
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  @@index([availability])
+  @@map("model_catalog")
+}
+
+model AIRequest {
+  id               String          @id @default(cuid())
+  userId           String          @map("user_id")
+  conversationId   String?         @map("conversation_id")
+  modelId          String          @map("model_id")
+  provider         String
+  status           AIRequestStatus
+  latencyMs        Int?            @map("latency_ms")
+  firstTokenMs     Int?            @map("first_token_ms")
+  promptTokens     Int?            @map("prompt_tokens")
+  completionTokens Int?            @map("completion_tokens")
+  costUsd          Decimal?        @map("cost_usd") @db.Decimal(12, 6)
+  estimated        Boolean         @default(false)
+  fallbackFrom     String?         @map("fallback_from")
+  fallbackReason   String?         @map("fallback_reason")
+  promptVersion    String?         @map("prompt_version")
+  answerMode       AnswerMode?     @map("answer_mode")
+  requestId        String          @map("request_id")
+  errorCode        String?         @map("error_code")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  message      Message?
+
+  @@index([userId])
+  @@index([conversationId])
+  @@index([modelId])
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("ai_requests")
+}
+
+model UsageRecord {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  day              DateTime @db.Date
+  requests         Int      @default(0)
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  costUsd          Decimal  @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([userId])
+  @@map("usage_records")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?     @map("actor_id")
+  action     AuditAction
+  targetType String?     @map("target_type")
+  targetId   String?     @map("target_id")
+  metadata   Json?
+  requestId  String?     @map("request_id")
+  ipHash     String?     @map("ip_hash")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  actor User? @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}

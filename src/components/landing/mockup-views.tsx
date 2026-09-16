@@ -95,42 +95,44 @@ export function ChatView({ activeModel }: { activeModel: string }) {
 
             {done && (
               <div className="mt-4 overflow-hidden rounded-xl border border-line bg-white">
-                <table className="w-full text-left text-[12px]">
-                  <caption className="sr-only">
-                    Operating expense variance versus budget
-                  </caption>
-                  <thead>
-                    <tr className="border-b border-line bg-paper-soft/70 font-mono text-[10.5px] uppercase tracking-wider text-stone-500">
-                      <th scope="col" className="px-3 py-2 font-medium">Opex line</th>
-                      <th scope="col" className="px-3 py-2 text-right font-medium">Budget</th>
-                      <th scope="col" className="px-3 py-2 text-right font-medium">Actual</th>
-                      <th scope="col" className="px-3 py-2 text-right font-medium">Var</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {opexRows.map((r) => (
-                      <tr key={r.line} className="border-b border-line/60 last:border-0">
-                        <td className="px-3 py-2 font-medium text-stone-800">
-                          {r.line}
-                          {r.flag && (
-                            <span className="ml-2 rounded-full bg-amber-50 px-1.5 py-0.5 font-mono text-[9.5px] font-medium text-amber-700 ring-1 ring-amber-200">
-                              REVIEW
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-stone-500">{r.budget}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-stone-800">{r.actual}</td>
-                        <td
-                          className={`px-3 py-2 text-right font-mono tabular-nums ${
-                            r.flag ? "font-semibold text-amber-700" : "text-stone-600"
-                          }`}
-                        >
-                          {r.var}
-                        </td>
+                <div className="overflow-x-auto [scrollbar-width:thin] touch-pan-x">
+                  <table className="w-full min-w-[320px] text-left text-[12px]">
+                    <caption className="sr-only">
+                      Operating expense variance versus budget
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-line bg-paper-soft/70 font-mono text-[10.5px] uppercase tracking-wider text-stone-500">
+                        <th scope="col" className="px-3 py-2 font-medium">Opex line</th>
+                        <th scope="col" className="px-3 py-2 text-right font-medium">Budget</th>
+                        <th scope="col" className="px-3 py-2 text-right font-medium">Actual</th>
+                        <th scope="col" className="px-3 py-2 text-right font-medium">Var</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {opexRows.map((r) => (
+                        <tr key={r.line} className="border-b border-line/60 last:border-0">
+                          <td className="px-3 py-2 font-medium text-stone-800">
+                            {r.line}
+                            {r.flag && (
+                              <span className="ml-2 rounded-full bg-amber-50 px-1.5 py-0.5 font-mono text-[9.5px] font-medium text-amber-700 ring-1 ring-amber-200">
+                                REVIEW
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-stone-500">{r.budget}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-stone-800">{r.actual}</td>
+                          <td
+                            className={`px-3 py-2 text-right font-mono tabular-nums ${
+                              r.flag ? "font-semibold text-amber-700" : "text-stone-600"
+                            }`}
+                          >
+                            {r.var}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

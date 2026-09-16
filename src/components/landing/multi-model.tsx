@@ -59,7 +59,7 @@ export function MultiModel() {
         </div>
 
         {/* Model cards */}
-        <Stagger className="mt-12 grid grid-cols-2 gap-4 md:mt-14 lg:grid-cols-4">
+        <Stagger className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4 md:mt-14 lg:grid-cols-4">
           {aiModels.map((m) => (
             <StaggerItem key={m.id}>
               <article className="group flex h-full flex-col rounded-2xl border border-line bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-card md:p-6">

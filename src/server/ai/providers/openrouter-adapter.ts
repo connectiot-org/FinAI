@@ -37,8 +37,8 @@ export class OpenRouterAdapter implements ProviderAdapter {
         errorCode = "UPSTREAM_AUTH";
         retryable = false;
       } else if (response.status === 402) {
-        errorCode = "MODEL_UNAVAILABLE";
-        retryable = false;
+        errorCode = "INSUFFICIENT_CREDITS";
+        retryable = true;
       } else if (response.status === 408 || response.status === 504) {
         errorCode = "UPSTREAM_TIMEOUT";
         retryable = true;

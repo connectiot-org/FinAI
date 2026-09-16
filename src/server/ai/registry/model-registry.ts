@@ -33,7 +33,7 @@ export class ModelRegistry {
   }
 
   getFallbackChain(modelId: string): string[] {
-    return fallbackChainMap[modelId] || ["inclusionai/ling-3.0-flash-fin:free", "google/gemma-4-31b-it:free"];
+    return fallbackChainMap[modelId] || ["openrouter/free", "inclusionai/ling-3.0-flash-fin:free", "google/gemma-4-31b-it:free"];
   }
 }
 

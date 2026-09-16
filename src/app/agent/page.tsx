@@ -103,6 +103,7 @@ export default function WorkspacePage() {
   const [answerMode, setAnswerMode] = useState<"quick" | "deep">("deep");
   const [threads, setThreads] = useState<ThreadData[]>(initialThreads);
   const [activeThreadId, setActiveThreadId] = useState<string>("th-1");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || {
     id: "th-empty",
@@ -129,6 +130,7 @@ export default function WorkspacePage() {
     setActiveThreadId(id);
     setActiveView("chat");
     setActiveTabLabel("Chat");
+    setIsMobileSidebarOpen(false);
   };
 
   const handleNewThread = () => {
@@ -143,6 +145,7 @@ export default function WorkspacePage() {
     setActiveThreadId(newId);
     setActiveView("chat");
     setActiveTabLabel("Chat");
+    setIsMobileSidebarOpen(false);
   };
 
   const handleDeleteThread = (id: string) => {
@@ -280,24 +283,29 @@ export default function WorkspacePage() {
       onSelectModel={setSelectedModel}
       answerMode={answerMode}
       onChangeAnswerMode={setAnswerMode}
+      onToggleMobileSidebar={() => setIsMobileSidebarOpen((v) => !v)}
+      onNewThread={handleNewThread}
       sidebar={
         <ThreadSidebar
           activeView={activeView}
           onChangeView={(v, lbl) => {
             setActiveView(v);
             setActiveTabLabel(lbl);
+            setIsMobileSidebarOpen(false);
           }}
           onNewThread={handleNewThread}
           threads={threads}
           activeThreadId={activeThreadId}
           onSelectThread={handleSelectThread}
           onDeleteThread={handleDeleteThread}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
       }
     >
       {/* View: Chat */}
       {activeView === "chat" && (
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col bg-[#0d0d0d]">
           <ThreadCanvas
             messages={messages}
             isStreaming={isStreaming}
@@ -306,15 +314,18 @@ export default function WorkspacePage() {
             activeModelName={selectedModel.displayName}
             isStopped={isStopped}
             onSelectPrompt={(p) => handleSendMessage(p)}
+            onSendMessage={(p) => handleSendMessage(p)}
           />
-          <Composer
-            selectedModel={selectedModel}
-            answerMode={answerMode}
-            onChangeAnswerMode={setAnswerMode}
-            isStreaming={isStreaming}
-            onSend={handleSendMessage}
-            onStop={stopStream}
-          />
+          {(messages.length > 0 || isStreaming) && (
+            <Composer
+              selectedModel={selectedModel}
+              answerMode={answerMode}
+              onChangeAnswerMode={setAnswerMode}
+              isStreaming={isStreaming}
+              onSend={handleSendMessage}
+              onStop={stopStream}
+            />
+          )}
         </div>
       )}
 

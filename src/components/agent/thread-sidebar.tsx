@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 
 export type ViewId = "chat" | "analysis" | "reports" | "templates" | "runs";
@@ -29,6 +30,8 @@ export interface ThreadSidebarProps {
   activeThreadId?: string;
   onSelectThread?: (id: string) => void;
   onDeleteThread?: (id: string) => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export function ThreadSidebar({
@@ -39,6 +42,8 @@ export function ThreadSidebar({
   activeThreadId,
   onSelectThread,
   onDeleteThread,
+  isMobileOpen = false,
+  onCloseMobile,
 }: ThreadSidebarProps) {
   const navItems: { id: ViewId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "chat", label: "Chat", icon: MessageSquare },
@@ -48,31 +53,45 @@ export function ThreadSidebar({
     { id: "runs", label: "History", icon: History },
   ];
 
-  return (
-    <aside className="flex w-16 shrink-0 flex-col border-r border-line bg-paper-soft/60 p-3 sm:w-[240px]">
-      {/* Org Switcher */}
-      <div className="mb-3 hidden items-center justify-between rounded-xl border border-line bg-white p-2 shadow-xs sm:flex">
-        <div className="flex items-center gap-2">
-          <div className="grid size-7 place-items-center rounded-lg bg-moss text-white">
+  const renderSidebarContent = (isMobileDrawer = false) => (
+    <>
+      {/* Org Switcher / Drawer Header */}
+      <div className="mb-3 flex items-center justify-between rounded-xl border border-stone-800 bg-[#212121] p-2.5 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="grid size-7 place-items-center rounded-lg bg-emerald-700 text-white">
             <Building className="size-3.5" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[12px] font-semibold text-stone-900">Acme Corp</p>
+            <p className="truncate text-[12px] font-semibold text-white">Acme Corp</p>
             <p className="text-[10px] text-stone-400">Enterprise Pilot</p>
           </div>
         </div>
-        <ChevronDown className="size-3.5 text-stone-400" />
+        {isMobileDrawer && onCloseMobile ? (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Close sidebar drawer"
+            className="rounded-lg p-1 text-stone-400 hover:bg-stone-800 hover:text-white"
+          >
+            <X className="size-4" />
+          </button>
+        ) : (
+          <ChevronDown className="size-3.5 text-stone-400" />
+        )}
       </div>
 
       {/* New Thread Button */}
       <button
         type="button"
-        onClick={onNewThread}
+        onClick={() => {
+          onNewThread();
+          if (isMobileDrawer) onCloseMobile?.();
+        }}
         aria-label="Start new thread"
-        className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-stone-950 py-2.5 text-[13px] font-semibold text-white shadow-xs transition-all hover:bg-moss-deep active:scale-[0.98]"
+        className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-stone-800 bg-[#212121] py-2.5 text-[13px] font-semibold text-white shadow-xs transition-all hover:bg-[#2a2a2a] active:scale-[0.98]"
       >
         <Plus className="size-4" />
-        <span className="hidden sm:inline">New Thread</span>
+        <span>New Thread</span>
       </button>
 
       {/* Nav Views */}
@@ -84,56 +103,65 @@ export function ThreadSidebar({
             <button
               key={item.id}
               type="button"
-              onClick={() => onChangeView(item.id, item.label)}
+              onClick={() => {
+                onChangeView(item.id, item.label);
+                if (isMobileDrawer) onCloseMobile?.();
+              }}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                 active
-                  ? "bg-white font-semibold text-stone-950 shadow-card ring-1 ring-line"
-                  : "text-stone-500 hover:bg-white/70 hover:text-stone-900"
+                  ? "bg-[#282828] font-semibold text-white shadow-sm ring-1 ring-stone-700"
+                  : "text-stone-400 hover:bg-[#212121] hover:text-white"
               }`}
             >
               <Icon className="size-4 shrink-0" />
-              <span className="hidden sm:inline">{item.label}</span>
+              <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
       {/* Thread History List */}
-      {threads.length > 0 && (
-        <div className="mt-4 hidden sm:block">
-          <div className="flex items-center justify-between px-2">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-400">
-              Recent Threads
-            </p>
-            <span className="font-mono text-[10px] text-stone-400">
-              {threads.length}
-            </span>
-          </div>
+      <div className="mt-4 flex flex-1 flex-col min-h-0">
+        <div className="flex items-center justify-between px-2">
+          <p className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
+            Recent Threads
+          </p>
+          <span className="font-mono text-[10px] text-stone-500">
+            {threads.length}
+          </span>
+        </div>
 
-          <div className="mt-1.5 max-h-[260px] space-y-1 overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {threads.map((t) => {
+        <div className="mt-2 flex-1 space-y-1 overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-h-[300px] md:max-h-[260px]">
+          {threads.length === 0 ? (
+            <p className="px-2 py-3 text-[11.5px] text-stone-500">No active threads</p>
+          ) : (
+            threads.map((t) => {
               const isActive = activeThreadId === t.id && activeView === "chat";
               return (
                 <div
                   key={t.id}
-                  onClick={() => onSelectThread?.(t.id)}
+                  onClick={() => {
+                    onSelectThread?.(t.id);
+                    if (isMobileDrawer) onCloseMobile?.();
+                  }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       onSelectThread?.(t.id);
+                      if (isMobileDrawer) onCloseMobile?.();
                     }
                   }}
                   className={`group relative flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-[12px] transition-all ${
                     isActive
-                      ? "bg-white font-semibold text-stone-950 shadow-card ring-1 ring-line"
-                      : "text-stone-600 hover:bg-white/70 hover:text-stone-900"
+                      ? "bg-[#282828] font-semibold text-white shadow-sm ring-1 ring-stone-700"
+                      : "text-stone-300 hover:bg-[#212121] hover:text-white"
                   }`}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     {isActive && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-moss" />
+                      <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
                     )}
                     <span className="truncate text-left" title={t.title}>
                       {t.title}
@@ -149,38 +177,64 @@ export function ThreadSidebar({
                       }}
                       title={`Delete "${t.title}"`}
                       aria-label={`Delete "${t.title}"`}
-                      className="ml-1 shrink-0 rounded-md p-1 text-stone-400 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
+                      className="ml-1 shrink-0 rounded-md p-1 text-stone-500 transition-all hover:bg-rose-950/80 hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
                   )}
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
         </div>
-      )}
+      </div>
 
       {/* Credits & Security Footer */}
-      <div className="mt-auto hidden space-y-3 pt-4 sm:block">
-        <div className="rounded-xl border border-line bg-white p-3 shadow-xs">
-          <div className="flex items-center justify-between text-[11px] text-stone-500">
+      <div className="mt-auto space-y-3 pt-4">
+        <div className="rounded-xl border border-stone-800 bg-[#212121] p-3 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] text-stone-400">
             <span className="font-mono uppercase tracking-wider">Credits</span>
-            <span className="font-mono font-semibold text-stone-900">72%</span>
+            <span className="font-mono font-semibold text-white">72%</span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100">
-            <div className="h-full w-[72%] rounded-full bg-moss transition-all duration-500" />
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-800">
+            <div className="h-full w-[72%] rounded-full bg-emerald-500 transition-all duration-500" />
           </div>
-          <p className="mt-1.5 text-[10px] leading-snug text-stone-400">
+          <p className="mt-1.5 text-[10px] leading-snug text-stone-500">
             Smart routing optimizes token spend
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
-          <ShieldCheck className="size-3.5 text-moss" />
+        <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
+          <ShieldCheck className="size-3.5 text-emerald-400" />
           <span>SOC 2-aligned audit trail</span>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (md and up) */}
+      <aside className="hidden md:flex w-[240px] shrink-0 flex-col border-r border-[#212121] bg-[#171717] p-3 text-stone-200">
+        {renderSidebarContent(false)}
+      </aside>
+
+      {/* Mobile Drawer (screens under md) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+
+          {/* Slide-out Drawer Panel */}
+          <aside className="relative z-10 flex h-full w-[300px] max-w-[85vw] flex-col border-r border-stone-800 bg-[#171717] p-4 shadow-2xl animate-in slide-in-from-left duration-200 text-stone-200">
+            {renderSidebarContent(true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

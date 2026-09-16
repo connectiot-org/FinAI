@@ -134,42 +134,42 @@ export function AssistantMessageRenderer({
 
         {/* Rich ChatGPT-style Markdown Text Content */}
         {content && (
-          <div className="select-text text-[14.5px] leading-relaxed text-stone-850 selection:bg-moss/20 selection:text-stone-950">
+          <div className="select-text text-[14.5px] leading-relaxed text-stone-100 selection:bg-stone-700 selection:text-white">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 h1: ({ children }) => (
-                  <h1 className="mt-5 mb-2.5 text-[18px] font-bold tracking-tight text-stone-950">
+                  <h1 className="mt-5 mb-2.5 text-[19px] font-bold tracking-tight text-white">
                     {children}
                   </h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="mt-4 mb-2 text-[16px] font-semibold text-stone-950">
+                  <h2 className="mt-4 mb-2 text-[17px] font-semibold text-white">
                     {children}
                   </h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="mt-3.5 mb-1.5 text-[15px] font-semibold text-stone-900">
+                  <h3 className="mt-3.5 mb-1.5 text-[15.5px] font-semibold text-stone-100">
                     {children}
                   </h3>
                 ),
                 p: ({ children }) => (
-                  <p className="mb-3.5 last:mb-0 leading-relaxed text-stone-800">
+                  <p className="mb-3.5 last:mb-0 leading-relaxed text-stone-200">
                     {children}
                   </p>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-semibold text-stone-950">
+                  <strong className="font-semibold text-white">
                     {children}
                   </strong>
                 ),
                 ul: ({ children }) => (
-                  <ul className="my-3 space-y-1.5 pl-5 list-disc text-stone-800 marker:text-stone-400">
+                  <ul className="my-3 space-y-1.5 pl-5 list-disc text-stone-200 marker:text-stone-500">
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="my-3 space-y-1.5 pl-5 list-decimal text-stone-800 marker:font-semibold marker:text-stone-500">
+                  <ol className="my-3 space-y-1.5 pl-5 list-decimal text-stone-200 marker:font-semibold marker:text-stone-400">
                     {children}
                   </ol>
                 ),
@@ -179,7 +179,7 @@ export function AssistantMessageRenderer({
                   </li>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="my-3 rounded-r-lg border-l-3 border-moss/60 bg-paper-soft/80 py-2 pl-3.5 italic text-stone-700">
+                  <blockquote className="my-3 rounded-r-lg border-l-3 border-emerald-500 bg-stone-900/80 py-2 pl-3.5 italic text-stone-300">
                     {children}
                   </blockquote>
                 ),
@@ -197,7 +197,7 @@ export function AssistantMessageRenderer({
                   }
                   return (
                     <code
-                      className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-[12.5px] font-medium text-stone-800 ring-1 ring-stone-200/70"
+                      className="rounded-md bg-stone-800/80 px-1.5 py-0.5 font-mono text-[12.5px] font-medium text-stone-200 ring-1 ring-stone-700"
                       {...props}
                     >
                       {children}
@@ -205,42 +205,42 @@ export function AssistantMessageRenderer({
                   );
                 },
                 table: ({ children }) => (
-                  <div className="my-3 overflow-x-auto rounded-xl border border-line bg-white shadow-xs">
+                  <div className="my-3 overflow-x-auto [scrollbar-width:thin] touch-pan-x rounded-xl border border-stone-800 bg-[#171717] shadow-md">
                     <table className="w-full border-collapse text-left text-[12.5px]">
                       {children}
                     </table>
                   </div>
                 ),
                 thead: ({ children }) => (
-                  <thead className="border-b border-line bg-stone-50/90 font-mono text-[10.5px] uppercase tracking-wider text-stone-600">
+                  <thead className="border-b border-stone-800 bg-stone-900/90 font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
                     {children}
                   </thead>
                 ),
                 th: ({ children }) => (
-                  <th className="px-3 py-2 font-semibold text-stone-700">
+                  <th className="px-3.5 py-2.5 font-semibold text-stone-300">
                     {children}
                   </th>
                 ),
                 tbody: ({ children }) => (
-                  <tbody className="divide-y divide-line/60">{children}</tbody>
+                  <tbody className="divide-y divide-stone-800/60">{children}</tbody>
                 ),
                 tr: ({ children }) => (
-                  <tr className="transition-colors hover:bg-stone-50/50">{children}</tr>
+                  <tr className="transition-colors hover:bg-stone-800/30">{children}</tr>
                 ),
                 td: ({ children }) => (
-                  <td className="px-3 py-2 text-stone-800">{children}</td>
+                  <td className="px-3.5 py-2.5 text-stone-200">{children}</td>
                 ),
                 a: ({ href, children }) => (
                   <a
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-moss-deep underline underline-offset-2 transition-colors hover:text-moss"
+                    className="font-medium text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
                   >
                     {children}
                   </a>
                 ),
-                hr: () => <hr className="my-4 border-t border-stone-200" />,
+                hr: () => <hr className="my-4 border-t border-stone-800" />,
               }}
             >
               {content}
@@ -259,21 +259,21 @@ export function AssistantMessageRenderer({
         {tableData && tableData.length > 0 && <FinancialTable rows={tableData} />}
 
         {/* Evidence & Action Chips */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11.5px] text-stone-500">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-moss-soft px-3 py-1 font-medium text-moss-deep">
-            <span className="size-1.5 rounded-full bg-moss" />
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11.5px] text-stone-400">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/80 px-3 py-1 font-medium text-stone-200 border border-stone-700/60">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
             Answered by {modelName}
           </span>
 
           {rerouted && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 font-mono text-[10.5px] text-amber-700 ring-1 ring-amber-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-950/80 px-2.5 py-1 font-mono text-[10.5px] text-amber-300 ring-1 ring-amber-700/40">
               <Route className="size-3" /> Auto-Rerouted
             </span>
           )}
 
           {evidence && evidence.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-stone-600">
-              <FileText className="size-3" /> {evidence.length} sources referenced
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 text-stone-300 border border-stone-700/50">
+              <FileText className="size-3 text-stone-400" /> {evidence.length} sources referenced
             </span>
           )}
 
@@ -282,7 +282,7 @@ export function AssistantMessageRenderer({
           <button
             type="button"
             onClick={() => alert("Deck export generated for board distribution")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 font-medium text-stone-300 border border-stone-700/50 transition-colors hover:bg-stone-700 hover:text-white"
           >
             <Presentation className="size-3" />
             Turn into deck
@@ -321,14 +321,14 @@ export interface UserMessageProps {
 export function UserMessageRenderer({ content, files }: UserMessageProps) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-br-md bg-stone-950 px-5 py-3.5 text-[14px] leading-relaxed text-white shadow-card">
+      <div className="max-w-[85%] md:max-w-[75%] rounded-3xl bg-[#212121] border border-stone-800 px-5 py-3 text-[14.5px] leading-relaxed text-white shadow-sm">
         <p className="whitespace-pre-wrap">{content}</p>
         {files && files.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-white/15 pt-2.5">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-stone-700 pt-2.5">
             {files.map((f) => (
               <span
                 key={f}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-[11.5px] font-medium text-white/90 shadow-2xs backdrop-blur-xs ring-1 ring-white/15"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-stone-800/80 px-2.5 py-1 text-[11.5px] font-medium text-stone-200 border border-stone-700"
               >
                 {getFileIcon(f)}
                 <span className="max-w-[200px] truncate" title={f}>

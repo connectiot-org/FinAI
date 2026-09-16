@@ -44,7 +44,10 @@ export function Comparison() {
 
         {/* Matrix */}
         <Reveal className="mt-12 md:mt-14">
-          <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
+          <div className="mb-2 flex items-center justify-end text-[11px] text-stone-400 md:hidden">
+            <span>← Scroll table to compare competitors →</span>
+          </div>
+          <div className="overflow-x-auto touch-pan-x [scrollbar-width:thin] rounded-2xl border border-line bg-white shadow-card">
             <table className="w-full min-w-[880px] border-collapse text-left">
               <caption className="sr-only">
                 Feature comparison between Fintra and five publicly known

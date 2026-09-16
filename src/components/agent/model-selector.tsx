@@ -14,13 +14,24 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("All");
 
+  const freeCount = useMemo(() => modelsConfig.filter((m) => m.isFree).length, []);
+
   const filteredModels = useMemo(() => {
+    const q = search.toLowerCase().trim();
     return modelsConfig.filter((m) => {
       const matchesSearch =
-        m.displayName.toLowerCase().includes(search.toLowerCase()) ||
-        m.provider.toLowerCase().includes(search.toLowerCase()) ||
-        m.desc.toLowerCase().includes(search.toLowerCase());
-      const matchesTier = tierFilter === "All" || m.tier === tierFilter;
+        !q ||
+        m.displayName.toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(q) ||
+        m.desc.toLowerCase().includes(q) ||
+        m.modelId.toLowerCase().includes(q) ||
+        (q === "free" && m.isFree);
+      const matchesTier =
+        tierFilter === "All"
+          ? true
+          : tierFilter === "Free"
+          ? Boolean(m.isFree)
+          : m.tier === tierFilter;
       return matchesSearch && matchesTier;
     });
   }, [search, tierFilter]);
@@ -32,28 +43,29 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-8 items-center gap-2 rounded-full border border-line bg-white px-3 text-[12.5px] font-medium text-stone-800 shadow-xs transition-colors hover:border-stone-300"
+        className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[15px] sm:text-[16px] font-semibold text-white transition-colors hover:bg-[#212121]"
       >
-        <span className="size-1.5 rounded-full bg-moss" aria-hidden="true" />
-        <span className="max-w-[140px] truncate">{selectedModel.displayName}</span>
-        <span className="hidden rounded bg-paper-soft px-1.5 py-0.2 font-mono text-[9px] text-stone-500 md:inline">
-          {Math.round(selectedModel.contextWindow / 1000)}k
-        </span>
+        <span className="truncate max-w-[140px] sm:max-w-[220px]">{selectedModel.displayName}</span>
+        {selectedModel.isFree && (
+          <span className="hidden sm:inline-flex rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-emerald-400 ring-1 ring-emerald-500/30">
+            FREE
+          </span>
+        )}
         <ChevronDown
-          className={`size-3.5 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`size-4 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-full z-50 mt-2 w-[340px] sm:w-[420px] rounded-2xl border border-line bg-white p-3 shadow-float"
+          className="absolute left-1/2 -translate-x-1/2 top-full z-50 mt-2 w-[calc(100vw-24px)] sm:w-[440px] max-w-[440px] rounded-2xl border border-stone-800 bg-[#181818] p-3 shadow-2xl text-stone-200"
         >
-          <div className="mb-2 flex items-center justify-between border-b border-line/60 pb-2">
-            <span className="font-mono text-[10.5px] uppercase tracking-wider text-stone-500">
-              Frontier Model Catalog ({modelsConfig.length})
+          <div className="mb-2.5 flex items-center justify-between border-b border-stone-800 pb-2">
+            <span className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
+              Model Catalog ({modelsConfig.length} total · {freeCount} Free)
             </span>
-            <span className="rounded-full bg-moss-soft px-2 py-0.5 font-mono text-[9.5px] font-medium text-moss-deep">
+            <span className="rounded-full bg-stone-800 px-2 py-0.5 font-mono text-[9.5px] font-medium text-stone-300">
               OpenRouter Gateway
             </span>
           </div>
@@ -65,14 +77,14 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search frontier & specialist models..."
-              className="w-full rounded-xl border border-line bg-paper-soft/60 py-1.5 pl-8 pr-3 text-[12px] text-stone-800 outline-none placeholder:text-stone-400 focus:border-moss"
+              placeholder="Search by name, provider, free, or ID..."
+              className="w-full rounded-xl border border-stone-700 bg-[#242424] py-1.5 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-stone-400 focus:border-stone-500"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-600"
+                className="absolute right-2.5 top-2.5 text-stone-400 hover:text-white"
               >
                 <X className="size-3" />
               </button>
@@ -81,18 +93,22 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
 
           {/* Tier Filter Tabs */}
           <div className="mb-2.5 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {["All", "Reasoning", "Balanced", "Fast", "Finance Specialist", "Open"].map((t) => (
+            {["All", "Free", "Reasoning", "Balanced", "Fast", "Finance Specialist", "Open"].map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTierFilter(t)}
                 className={`shrink-0 rounded-lg px-2 py-1 text-[10.5px] font-medium transition-colors ${
                   tierFilter === t
-                    ? "bg-stone-950 text-white"
-                    : "bg-paper-soft text-stone-600 hover:bg-stone-200"
+                    ? t === "Free"
+                      ? "bg-emerald-500 text-black font-semibold"
+                      : "bg-white text-black font-semibold"
+                    : t === "Free"
+                    ? "bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-900/80"
+                    : "bg-[#242424] text-stone-400 hover:bg-[#2f2f2f] hover:text-white"
                 }`}
               >
-                {t}
+                {t === "Free" ? `⚡ Free (${freeCount})` : t}
               </button>
             ))}
           </div>
@@ -118,27 +134,32 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                     }}
                     className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all ${
                       isSelected
-                        ? "bg-moss-soft/80 ring-1 ring-moss/30"
-                        : "hover:bg-paper-soft"
+                        ? "bg-[#282828] text-white ring-1 ring-stone-700"
+                        : "text-stone-300 hover:bg-[#222222] hover:text-white"
                     }`}
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[13px] font-semibold text-stone-900">
+                        <span className="text-[13px] font-semibold text-white">
                           {opt.displayName}
                         </span>
-                        <span className="rounded bg-paper px-1.5 py-0.2 font-mono text-[9px] text-stone-500">
+                        {opt.isFree && (
+                          <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 font-mono text-[9px] font-semibold text-emerald-300 ring-1 ring-emerald-500/40">
+                            FREE
+                          </span>
+                        )}
+                        <span className="rounded bg-[#2a2a2a] px-1.5 py-0.2 font-mono text-[9px] text-stone-400">
                           {opt.provider}
                         </span>
                         <span
                           className={`rounded px-1.5 py-0.2 font-mono text-[9px] font-medium ${
                             opt.tier === "Reasoning"
-                              ? "bg-purple-100 text-purple-800"
+                              ? "bg-purple-950/80 text-purple-300 ring-1 ring-purple-800/40"
                               : opt.tier === "Finance Specialist"
-                              ? "bg-emerald-100 text-emerald-800"
+                              ? "bg-emerald-950/80 text-emerald-300 ring-1 ring-emerald-800/40"
                               : opt.tier === "Fast"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-stone-100 text-stone-700"
+                              ? "bg-amber-950/80 text-amber-300 ring-1 ring-amber-800/40"
+                              : "bg-stone-800 text-stone-300"
                           }`}
                         >
                           {opt.tier}
@@ -147,11 +168,11 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                           {Math.round(opt.contextWindow / 1000)}k ctx
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-stone-500">
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-stone-400">
                         {opt.desc}
                       </p>
                     </div>
-                    {isSelected && <Check className="mt-1 size-4 text-moss shrink-0" />}
+                    {isSelected && <Check className="mt-1 size-4 text-emerald-400 shrink-0" />}
                   </button>
                 );
               })

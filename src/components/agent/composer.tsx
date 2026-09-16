@@ -212,18 +212,18 @@ export function Composer({
   };
 
   return (
-    <div className="border-t border-line bg-white/95 p-4 backdrop-blur md:p-6">
+    <div className="border-t border-[#1f1f1f] bg-[#0d0d0d] p-3 sm:p-4">
       <div className="mx-auto max-w-3xl">
         {/* Top Controls: Answer Mode Toggle */}
-        <div className="mb-2 flex items-center justify-between text-[11.5px] text-stone-500">
-          <div className="flex items-center gap-1 rounded-full border border-line bg-paper-soft p-0.5">
+        <div className="mb-2 flex items-center justify-between text-[11.5px] text-stone-400">
+          <div className="flex items-center gap-1 rounded-full border border-stone-800 bg-[#1a1a1a] p-0.5">
             <button
               type="button"
               onClick={() => onChangeAnswerMode("quick")}
               className={`rounded-full px-2.5 py-0.5 font-medium transition-colors ${
                 answerMode === "quick"
-                  ? "bg-white text-stone-900 shadow-xs"
-                  : "text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-black font-semibold shadow-xs"
+                  : "text-stone-400 hover:text-white"
               }`}
             >
               Quick Answer
@@ -233,14 +233,14 @@ export function Composer({
               onClick={() => onChangeAnswerMode("deep")}
               className={`rounded-full px-2.5 py-0.5 font-medium transition-colors ${
                 answerMode === "deep"
-                  ? "bg-white text-stone-900 shadow-xs"
-                  : "text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-black font-semibold shadow-xs"
+                  : "text-stone-400 hover:text-white"
               }`}
             >
               Deep Analysis
             </button>
           </div>
-          <span className="font-mono text-[10.5px] text-stone-400">
+          <span className="hidden font-mono text-[10.5px] text-stone-400 sm:inline">
             Enter to send · Shift+Enter newline
           </span>
         </div>
@@ -251,23 +251,23 @@ export function Composer({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`relative rounded-2xl border bg-white p-2 shadow-card transition-all ${
+          className={`relative rounded-3xl sm:rounded-full border bg-[#212121] p-2 sm:p-2.5 shadow-2xl transition-all ${
             isDragging
-              ? "border-dashed border-moss ring-2 ring-moss/30 bg-moss-soft/20"
-              : "border-line focus-within:border-stone-400 focus-within:ring-2 focus-within:ring-moss/20"
+              ? "border-dashed border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-950/20"
+              : "border-stone-800 focus-within:border-stone-700"
           }`}
         >
           {/* Attached Files Preview Shelf */}
           {attachedFiles.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-2 border-b border-stone-100 px-1 pb-2">
+            <div className="mb-2 flex flex-wrap gap-2 border-b border-stone-800 px-1 pb-2">
               {attachedFiles.map((file) => (
                 <div
                   key={file.id}
-                  className="group flex items-center gap-2 rounded-xl border border-stone-200 bg-paper-soft/90 px-2.5 py-1.5 text-[12px] shadow-2xs transition-all hover:border-stone-300"
+                  className="group flex items-center gap-2 rounded-xl border border-stone-700 bg-[#2b2b2b] px-2.5 py-1.5 text-[12px] shadow-sm text-stone-200"
                 >
                   {getFileChipIcon(file.name)}
                   <div className="flex flex-col min-w-0">
-                    <span className="max-w-[180px] truncate font-medium text-stone-800" title={file.name}>
+                    <span className="max-w-[180px] truncate font-medium text-white" title={file.name}>
                       {file.name}
                     </span>
                     <span className="font-mono text-[10px] text-stone-400">
@@ -278,7 +278,7 @@ export function Composer({
                     type="button"
                     onClick={() => handleRemoveFile(file.id)}
                     aria-label={`Remove ${file.name}`}
-                    className="ml-1 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+                    className="ml-1 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -303,17 +303,12 @@ export function Composer({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach any file (Excel, CSV, PDF, images, docs)"
-              title="Attach any file (Excel, CSV, PDF, images, docs, etc.)"
-              className="mb-0.5 grid size-8.5 shrink-0 place-items-center rounded-xl text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 active:scale-95"
+              aria-label="Attach documents or spreadsheets"
+              title="Attach documents, spreadsheets, policies"
+              className="mb-0.5 grid size-8.5 shrink-0 place-items-center rounded-full text-stone-300 transition-colors hover:bg-[#2f2f2f] hover:text-white active:scale-95"
             >
               <Paperclip className="size-4.5" />
             </button>
-
-            {/* Model Badge */}
-            <span className="mb-0.5 grid size-8.5 shrink-0 place-items-center rounded-xl bg-moss-soft font-mono text-[11px] font-bold text-moss-deep">
-              {selectedModel.badge.slice(0, 2).toUpperCase()}
-            </span>
 
             {/* Textarea */}
             <textarea
@@ -325,12 +320,12 @@ export function Composer({
               onPaste={handlePaste}
               placeholder={
                 attachedFiles.length > 0
-                  ? `Add instructions for ${attachedFiles.length} file${attachedFiles.length > 1 ? "s" : ""} or press Enter…`
-                  : `Ask a financial question or attach any file with ${selectedModel.displayName}…`
+                  ? `Add instructions (${attachedFiles.length} file${attachedFiles.length > 1 ? "s" : ""})…`
+                  : `Ask ${selectedModel.displayName}…`
               }
               aria-label="Ask a financial question or attach any file"
               disabled={isStreaming}
-              className="min-h-[36px] max-h-[160px] min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-relaxed text-stone-900 outline-none placeholder:text-stone-400"
+              className="min-h-[34px] max-h-[160px] min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14.5px] leading-relaxed text-white outline-none placeholder:text-stone-400"
             />
 
             {/* Send / Stop Button */}
@@ -338,36 +333,41 @@ export function Composer({
               type="submit"
               disabled={!canSubmit && !isStreaming}
               aria-label={isStreaming ? "Stop generating" : "Send message"}
-              className={`mb-0.5 grid size-9 shrink-0 place-items-center rounded-xl transition-all ${
+              className={`mb-0.5 grid size-9 shrink-0 place-items-center rounded-full transition-all ${
                 isStreaming
                   ? "bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                   : canSubmit
-                  ? "bg-stone-950 text-white hover:bg-moss-deep shadow-xs cursor-pointer"
-                  : "bg-stone-100 text-stone-400 cursor-not-allowed"
+                  ? "bg-white text-black hover:opacity-90 shadow-xs cursor-pointer"
+                  : "bg-[#383838] text-stone-400 cursor-not-allowed"
               }`}
             >
               {isStreaming ? (
                 <Square className="size-4 fill-white" />
               ) : (
-                <ArrowUp className="size-4.5" />
+                <ArrowUp className="size-4.5 stroke-[2.5]" />
               )}
             </button>
           </div>
         </form>
 
         {/* Quick Suggestion Chips */}
-        <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
           {defaultSuggestions.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => onSend(s)}
-              className="shrink-0 rounded-full border border-line bg-white px-3.5 py-1 text-[12px] text-stone-600 shadow-xs transition-colors hover:border-stone-400 hover:text-stone-900"
+              className="shrink-0 rounded-full border border-stone-800 bg-[#1e1e1e] px-3.5 py-1 text-[12px] text-stone-300 shadow-xs transition-colors hover:bg-[#282828] hover:text-white"
             >
               {s}
             </button>
           ))}
         </div>
+
+        {/* Disclaimer Footer Note */}
+        <p className="mt-2 text-center text-[11px] text-stone-400">
+          Fintra can make mistakes. Verify important financial numbers and sources.
+        </p>
       </div>
     </div>
   );

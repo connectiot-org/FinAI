@@ -228,7 +228,7 @@ export function ProductMockup() {
                   );
                 })}
               </div>
-              <p className="truncate font-mono text-[11px] text-stone-400">
+              <p className="hidden sm:block truncate font-mono text-[11px] text-stone-400">
                 Workspace / {navItems.find((n) => n.id === view)?.label}
               </p>
             </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import {
   MessageSquare,
   ChartNoAxesCombined,
@@ -15,6 +17,8 @@ import {
   X,
   Pencil,
   Check,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 
 export type ViewId = "chat" | "analysis" | "reports" | "templates" | "runs";
@@ -50,8 +54,16 @@ export function ThreadSidebar({
   isMobileOpen = false,
   onCloseMobile,
 }: ThreadSidebarProps) {
+  const { data: session } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const userDisplayName = session?.user?.name || "Acme Corp (Pilot)";
+  const userEmail = session?.user?.email || "cfo@northline.example";
+  const userSubtext = session?.user?.email || "Enterprise Pilot";
+  const userInitial = (userDisplayName[0] || "A").toUpperCase();
+  const userRole = (session?.user as unknown as { role?: string })?.role || "PILOT";
 
   const handleStartRename = (id: string, currentTitle: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -75,6 +87,7 @@ export function ThreadSidebar({
     setEditingId(null);
     setEditingTitle("");
   };
+
   const navItems: { id: ViewId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "chat", label: "Chat", icon: MessageSquare },
     { id: "analysis", label: "Analysis", icon: ChartNoAxesCombined },
@@ -85,28 +98,91 @@ export function ThreadSidebar({
 
   const renderSidebarContent = (isMobileDrawer = false) => (
     <>
-      {/* Org Switcher / Drawer Header */}
-      <div className="mb-3 flex items-center justify-between rounded-xl border border-stone-800 bg-[#212121] p-2.5 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="grid size-7 place-items-center rounded-lg bg-emerald-700 text-white">
-            <Building className="size-3.5" />
+      {/* Dynamic User Profile / Drawer Header */}
+      <div className="relative mb-3">
+        <div
+          onClick={() => setIsUserMenuOpen((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsUserMenuOpen((v) => !v);
+            }
+          }}
+          className="flex cursor-pointer items-center justify-between rounded-xl border border-stone-800 bg-[#212121] p-2.5 shadow-xs transition-colors hover:border-stone-700 hover:bg-[#262626]"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="grid size-7.5 shrink-0 place-items-center rounded-lg bg-emerald-800 text-white font-semibold text-[12px]">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-semibold text-white">
+                {userDisplayName}
+              </p>
+              <p className="truncate text-[10px] text-stone-400">
+                {userSubtext}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-[12px] font-semibold text-white">Acme Corp</p>
-            <p className="text-[10px] text-stone-400">Enterprise Pilot</p>
+          <div className="flex items-center gap-1 shrink-0">
+            {isMobileDrawer && onCloseMobile ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCloseMobile();
+                }}
+                aria-label="Close sidebar drawer"
+                className="rounded-lg p-1 text-stone-400 hover:bg-stone-800 hover:text-white"
+              >
+                <X className="size-4" />
+              </button>
+            ) : (
+              <ChevronDown
+                className={`size-3.5 text-stone-400 transition-transform duration-200 ${
+                  isUserMenuOpen ? "rotate-180 text-white" : ""
+                }`}
+              />
+            )}
           </div>
         </div>
-        {isMobileDrawer && onCloseMobile ? (
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            aria-label="Close sidebar drawer"
-            className="rounded-lg p-1 text-stone-400 hover:bg-stone-800 hover:text-white"
-          >
-            <X className="size-4" />
-          </button>
-        ) : (
-          <ChevronDown className="size-3.5 text-stone-400" />
+
+        {/* User Account Popover Dropdown */}
+        {isUserMenuOpen && (
+          <div className="absolute left-0 right-0 top-full z-40 mt-1.5 rounded-xl border border-stone-700 bg-[#1c1c1c] p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-2 py-1.5 border-b border-stone-800">
+              <p className="truncate text-[12px] font-medium text-white">{userDisplayName}</p>
+              <p className="truncate text-[10.5px] text-stone-400">{userEmail}</p>
+              <span className="mt-1 inline-block rounded-md bg-emerald-950/80 px-2 py-0.5 text-[9.5px] font-mono font-medium text-emerald-400 border border-emerald-800/40">
+                Role: {userRole}
+              </span>
+            </div>
+            <div className="mt-1 space-y-0.5">
+              {session?.user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    void signOut({ callbackUrl: "/sign-in" });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors cursor-pointer"
+                >
+                  <LogOut className="size-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <Link
+                  href="/sign-in"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] text-emerald-400 hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                >
+                  <UserIcon className="size-3.5" />
+                  <span>Sign In</span>
+                </Link>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

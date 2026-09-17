@@ -9,6 +9,8 @@ import { Composer, AttachedFile, formatFileSize } from "@/components/agent/compo
 import { FinancialContextCard } from "@/components/agent/financial-context-card";
 import { EvidencePanel } from "@/components/agent/evidence-panel";
 import { useThreadStream } from "@/lib/use-thread-stream";
+import { useSession } from "next-auth/react";
+import { datasetStore } from "@/lib/storage/dataset-store";
 import {
   parseFinancialCsv,
   validateFinancialQueryGrounding,
@@ -130,6 +132,7 @@ const initialEmptyThread: ThreadData = {
 };
 
 export default function WorkspacePage() {
+  const { data: session } = useSession();
   const [activeView, setActiveView] = useState<ViewId>("chat");
   const [activeTabLabel, setActiveTabLabel] = useState("Chat");
   const [selectedModel, setSelectedModel] = useState<ModelConfig>(modelsConfig[0]);
@@ -163,7 +166,18 @@ export default function WorkspacePage() {
               }
             }
 
-            setThreads([initialEmptyThread, ...deduped]);
+            // Rehydrate stored datasets and files from datasetStore
+            const rehydrated = deduped.map((t) => {
+              const storedDs = datasetStore.getDatasetByThread(t.id);
+              const storedFiles = datasetStore.getThreadFiles(t.id);
+              return {
+                ...t,
+                dataset: storedDs || t.dataset,
+                attachedFiles: storedFiles.length > 0 ? storedFiles : t.attachedFiles,
+              };
+            });
+
+            setThreads([initialEmptyThread, ...rehydrated]);
           }
         }
       } catch {}
@@ -208,6 +222,23 @@ export default function WorkspacePage() {
     setActiveView("chat");
     setActiveTabLabel("Chat");
     setIsMobileSidebarOpen(false);
+
+    // Rehydrate stored dataset and files if present in datasetStore
+    const storedDs = datasetStore.getDatasetByThread(id);
+    const storedFiles = datasetStore.getThreadFiles(id);
+    if (storedDs || storedFiles.length > 0) {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                dataset: storedDs || t.dataset,
+                attachedFiles: storedFiles.length > 0 ? storedFiles : t.attachedFiles,
+              }
+            : t
+        )
+      );
+    }
   };
 
   // Issue 1: Rename Thread Title
@@ -291,16 +322,28 @@ export default function WorkspacePage() {
       }
     }
 
+    const currentFiles = activeThread.attachedFiles || [];
+    const uniqueNew = newFiles.filter(
+      (nf) => !currentFiles.some((cf) => cf.id === nf.id)
+    );
+    const allFilesCombined = [...currentFiles, ...uniqueNew];
+
+    // Persist dataset and file attachments to datasetStore
+    if (parsedDataset) {
+      void datasetStore.saveDataset(
+        parsedDataset,
+        activeThreadId,
+        session?.user?.email || "pilot-user"
+      );
+    }
+    datasetStore.saveThreadFiles(activeThreadId, allFilesCombined);
+
     setThreads((prev) =>
       prev.map((t) => {
         if (t.id === activeThreadId) {
-          const currentFiles = t.attachedFiles || [];
-          const uniqueNew = newFiles.filter(
-            (nf) => !currentFiles.some((cf) => cf.id === nf.id)
-          );
           return {
             ...t,
-            attachedFiles: [...currentFiles, ...uniqueNew],
+            attachedFiles: allFilesCombined,
             dataset: parsedDataset || t.dataset,
           };
         }
@@ -314,6 +357,10 @@ export default function WorkspacePage() {
       prev.map((t) => {
         if (t.id === activeThreadId) {
           const updated = (t.attachedFiles || []).filter((f) => f.id !== fileId);
+          datasetStore.saveThreadFiles(activeThreadId, updated);
+          if (updated.length === 0) {
+            datasetStore.removeDataset(activeThreadId);
+          }
           return {
             ...t,
             attachedFiles: updated,
@@ -326,6 +373,8 @@ export default function WorkspacePage() {
   };
 
   const handleRemoveDataset = () => {
+    datasetStore.removeDataset(activeThreadId);
+    datasetStore.saveThreadFiles(activeThreadId, []);
     setThreads((prev) =>
       prev.map((t) => {
         if (t.id === activeThreadId) {

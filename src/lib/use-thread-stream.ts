@@ -86,11 +86,19 @@ export function useThreadStream(options: UseThreadStreamOptions) {
           });
 
           if (!res.ok || !res.body) {
-            console.warn("Real stream endpoint returned non-ok, engaging fallback stream");
-            stream = createMockStream(prompt, { modelId: options.modelId });
-          } else {
-            stream = res.body;
+            // Surface real API failures instead of silently swapping in demo data —
+            // users were seeing fabricated financial numbers on gateway errors.
+            const errorText = await res.text().catch(() => "");
+            let errorMessage = `Chat stream request failed (HTTP ${res.status})`;
+            try {
+              const parsed = JSON.parse(errorText);
+              if (parsed?.error?.message) errorMessage = parsed.error.message;
+            } catch {
+              // not JSON — keep default message
+            }
+            throw Object.assign(new Error(errorMessage), { httpStatus: res.status });
           }
+          stream = res.body;
         }
 
         await consumeSseStream(

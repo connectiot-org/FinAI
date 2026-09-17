@@ -109,6 +109,30 @@ function CopyResponseButton({ text }: { text: string }) {
   );
 }
 
+const NO_RESPONSE_PLACEHOLDER = "(No response generated)";
+const GATEWAY_ERROR_PREFIX = "\u26a0\ufe0f Gateway notice:";
+
+/** Extracts a human-readable message from a raw gateway error string */
+function parseGatewayError(content: string): string {
+  // Strip the prefix first
+  const raw = content.replace(GATEWAY_ERROR_PREFIX, "").trim();
+  // Try to extract the message field from JSON-like error text
+  const msgMatch = raw.match(/"message"\s*:\s*"([^"]+)"/);
+  if (msgMatch) return msgMatch[1];
+  // Try to extract status code
+  const statusMatch = raw.match(/status\s+(\d+)/);
+  if (statusMatch) {
+    const code = parseInt(statusMatch[1], 10);
+    if (code === 401 || code === 403) return "API key is invalid or expired. Please update your OPENROUTER_API_KEY in .env.";
+    if (code === 402) return "Insufficient credits on OpenRouter. Please add credits or switch to a different model.";
+    if (code === 429) return "Rate limit reached. Please wait a moment and try again.";
+    if (code === 408 || code === 504) return "The AI gateway timed out. Please try again.";
+    return `Provider error (HTTP ${code}). Please try again or switch models.`;
+  }
+  // Fallback — return raw but capped
+  return raw.slice(0, 200);
+}
+
 export function AssistantMessageRenderer({
   content,
   modelName,
@@ -119,11 +143,28 @@ export function AssistantMessageRenderer({
   isStreaming,
   isStopped,
 }: AssistantMessageProps) {
+  // Detect completely empty/failed response
+  const isEmptyResponse =
+    !isStreaming &&
+    !isStopped &&
+    (!content || content.trim() === NO_RESPONSE_PLACEHOLDER || content.trim() === "");
+
+  // Detect gateway/provider error response
+  const isGatewayError =
+    !isStreaming &&
+    !isStopped &&
+    Boolean(content?.startsWith(GATEWAY_ERROR_PREFIX));
+
+  const gatewayErrorMessage = isGatewayError ? parseGatewayError(content) : null;
+  const isErrorState = isEmptyResponse || isGatewayError;
+
   return (
     <div className="flex w-full items-start gap-3.5">
       <span
         aria-hidden="true"
-        className="mt-1 grid size-8 shrink-0 place-items-center rounded-xl bg-stone-950 text-white shadow-xs"
+        className={`mt-1 grid size-8 shrink-0 place-items-center rounded-xl shadow-xs ${
+          isErrorState ? "bg-rose-950/80 text-rose-300" : "bg-stone-950 text-white"
+        }`}
       >
         <Sigma className="size-4" />
       </span>
@@ -132,8 +173,39 @@ export function AssistantMessageRenderer({
         {/* RunSteps */}
         {steps && steps.length > 0 && <RunSteps steps={steps} isStreaming={isStreaming} />}
 
+        {/* Gateway / Provider Error State */}
+        {isGatewayError && (
+          <div className="rounded-xl border border-rose-800/50 bg-rose-950/30 p-4">
+            <p className="text-[13.5px] font-semibold text-rose-300">⛔ Provider Error</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-rose-200">
+              {gatewayErrorMessage}
+            </p>
+            <p className="mt-3 text-[12px] text-rose-400/80">
+              💡 To fix: Open <code className="rounded bg-stone-800 px-1 py-0.5 text-[11px] text-stone-200">.env</code> and update <code className="rounded bg-stone-800 px-1 py-0.5 text-[11px] text-stone-200">OPENROUTER_API_KEY</code>, then restart the server.
+            </p>
+          </div>
+        )}
+
+        {/* Empty / No Response State */}
+        {isEmptyResponse && (
+          <div className="rounded-xl border border-amber-800/50 bg-amber-950/30 p-4">
+            <p className="text-[13.5px] font-semibold text-amber-300">⚠️ No response was generated</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-amber-400/80">
+              The model completed but returned no content. This usually happens when:
+            </p>
+            <ul className="mt-2 space-y-1 pl-4 text-[12px] text-amber-400/70 list-disc">
+              <li>The uploaded file is too large and was truncated before reaching the model</li>
+              <li>The free-tier model hit a rate limit or refused the request</li>
+              <li>The prompt was too long for the selected model&apos;s context window</li>
+            </ul>
+            <p className="mt-3 text-[12px] text-amber-300/80">
+              💡 Try: switching to <strong>Deep Analysis</strong> mode, re-uploading a smaller file, or selecting a different model from the dropdown.
+            </p>
+          </div>
+        )}
+
         {/* Rich ChatGPT-style Markdown Text Content */}
-        {content && (
+        {!isErrorState && content && (
           <div className="select-text text-[14.5px] leading-relaxed text-stone-100 selection:bg-stone-700 selection:text-white">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -258,36 +330,45 @@ export function AssistantMessageRenderer({
         {/* Financial Table */}
         {tableData && tableData.length > 0 && <FinancialTable rows={tableData} />}
 
-        {/* Evidence & Action Chips */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11.5px] text-stone-400">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/80 px-3 py-1 font-medium text-stone-200 border border-stone-700/60">
-            <span className="size-1.5 rounded-full bg-emerald-400" />
-            Answered by {modelName}
-          </span>
-
-          {rerouted && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-950/80 px-2.5 py-1 font-mono text-[10.5px] text-amber-300 ring-1 ring-amber-700/40">
-              <Route className="size-3" /> Auto-Rerouted
+        {/* Evidence & Action Chips — hidden for error/empty responses */}
+        {!isErrorState && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11.5px] text-stone-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/80 px-3 py-1 font-medium text-stone-200 border border-stone-700/60">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              Answered by {modelName}
             </span>
-          )}
 
-          {evidence && evidence.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 text-stone-300 border border-stone-700/50">
-              <FileText className="size-3 text-stone-400" /> {evidence.length} sources referenced
-            </span>
-          )}
+            {rerouted && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-950/80 px-2.5 py-1 font-mono text-[10.5px] text-amber-300 ring-1 ring-amber-700/40">
+                <Route className="size-3" /> Auto-Rerouted
+              </span>
+            )}
 
-          {content && <CopyResponseButton text={content} />}
+            {evidence && evidence.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 text-stone-300 border border-stone-700/50">
+                <FileText className="size-3 text-stone-400" /> {evidence.length} sources referenced
+              </span>
+            )}
 
-          <button
-            type="button"
-            onClick={() => alert("Deck export generated for board distribution")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 font-medium text-stone-300 border border-stone-700/50 transition-colors hover:bg-stone-700 hover:text-white"
-          >
-            <Presentation className="size-3" />
-            Turn into deck
-          </button>
-        </div>
+            {content && <CopyResponseButton text={content} />}
+
+            <button
+              type="button"
+              onClick={() => {
+                // Copy content to clipboard as a deck-ready summary
+                if (content && typeof navigator !== "undefined") {
+                  navigator.clipboard?.writeText(
+                    `=== Fintra AI Board Deck Export ===\n\nGenerated by: ${modelName}\nDate: ${new Date().toLocaleDateString()}\n\n${content}`
+                  );
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-stone-800/60 px-3 py-1 font-medium text-stone-300 border border-stone-700/50 transition-colors hover:bg-stone-700 hover:text-white"
+            >
+              <Presentation className="size-3" />
+              Turn into deck
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

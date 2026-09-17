@@ -8,7 +8,7 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().default("fintra-auth-secret-development-key-32-chars-min"),
   OPENROUTER_API_KEY: z
     .string()
-    .default("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"),
+    .default("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"),
   AI_LIVE_TESTS: z.string().default("false"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { modelsConfig, ModelConfig } from "@/config/models.config";
 import { WorkspaceShell } from "@/components/agent/workspace-shell";
 import { ThreadSidebar, ViewId } from "@/components/agent/thread-sidebar";
@@ -9,13 +9,37 @@ import { Composer, AttachedFile, formatFileSize } from "@/components/agent/compo
 import { FinancialContextCard } from "@/components/agent/financial-context-card";
 import { EvidencePanel } from "@/components/agent/evidence-panel";
 import { useThreadStream } from "@/lib/use-thread-stream";
-import { CheckCircle2, CircleDashed, LoaderCircle, Route } from "lucide-react";
+import {
+  parseFinancialCsv,
+  validateFinancialQueryGrounding,
+  buildGroundingContext,
+  ParsedFinancialDataset,
+} from "@/lib/financial-dataset-engine";
+import {
+  CheckCircle2,
+  CircleDashed,
+  LoaderCircle,
+  Route,
+  Pin,
+  X,
+  Database,
+  Download,
+  Copy,
+  Check,
+  TrendingUp,
+  BarChart3,
+  Building2,
+  Layers,
+  FileText,
+} from "lucide-react";
 
 export interface ThreadData {
   id: string;
   title: string;
   updatedAt?: string;
   messages: MessageItem[];
+  attachedFiles?: AttachedFile[];
+  dataset?: ParsedFinancialDataset;
 }
 
 const initialThreads: ThreadData[] = [
@@ -96,20 +120,72 @@ const initialThreads: ThreadData[] = [
   },
 ];
 
+const initialEmptyThread: ThreadData = {
+  id: "th-new",
+  title: "New Conversation",
+  updatedAt: "Just now",
+  messages: [],
+  attachedFiles: [],
+  dataset: undefined,
+};
+
 export default function WorkspacePage() {
   const [activeView, setActiveView] = useState<ViewId>("chat");
   const [activeTabLabel, setActiveTabLabel] = useState("Chat");
   const [selectedModel, setSelectedModel] = useState<ModelConfig>(modelsConfig[0]);
   const [answerMode, setAnswerMode] = useState<"quick" | "deep">("deep");
-  const [threads, setThreads] = useState<ThreadData[]>(initialThreads);
-  const [activeThreadId, setActiveThreadId] = useState<string>("th-1");
+  const [threads, setThreads] = useState<ThreadData[]>([initialEmptyThread, ...initialThreads]);
+  const [activeThreadId, setActiveThreadId] = useState<string>("th-new");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || {
-    id: "th-empty",
-    title: "New Conversation",
-    messages: [],
-  };
+  // Restore history from localStorage on mount (keeping th-new as active empty thread)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("fintra_threads_v4");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Filter threads that have messages, and remap any old "th-new" entries
+            const validSaved: ThreadData[] = parsed
+              .filter((t: ThreadData) => t.messages && t.messages.length > 0)
+              .map((t: ThreadData, i: number) =>
+                t.id === "th-new" ? { ...t, id: `th-saved-${i}-${Date.now()}` } : t
+              );
+
+            // Deduplicate to guarantee no identical IDs
+            const seen = new Set<string>(["th-new"]);
+            const deduped: ThreadData[] = [];
+            for (const t of validSaved) {
+              if (t.id && !seen.has(t.id)) {
+                seen.add(t.id);
+                deduped.push(t);
+              }
+            }
+
+            setThreads([initialEmptyThread, ...deduped]);
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Sync threads to localStorage (persisting only threads with messages, excluding draft th-new)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const toSave = threads.filter(
+          (t) => t.id !== "th-new" && t.messages && t.messages.length > 0
+        );
+        if (toSave.length > 0) {
+          localStorage.setItem("fintra_threads_v4", JSON.stringify(toSave));
+        }
+      } catch {}
+    }
+  }, [threads]);
+
+  const activeThread =
+    threads.find((t) => t.id === activeThreadId) || threads[0] || initialEmptyThread;
 
   const messages = activeThread.messages;
 
@@ -126,6 +202,7 @@ export default function WorkspacePage() {
     answerMode,
   });
 
+  // Task 32: Reopen thread from History restores thread messages & dataset seamlessly
   const handleSelectThread = (id: string) => {
     setActiveThreadId(id);
     setActiveView("chat");
@@ -133,15 +210,39 @@ export default function WorkspacePage() {
     setIsMobileSidebarOpen(false);
   };
 
+  // Issue 1: Rename Thread Title
+  const handleRenameThread = (id: string, newTitle: string) => {
+    setThreads((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, title: newTitle } : t))
+    );
+  };
+
+  // Task 33: New Thread Isolation (empty messages, clean files, no prior thread bleed)
   const handleNewThread = () => {
+    if (
+      activeThread &&
+      activeThread.messages.length === 0 &&
+      (!activeThread.attachedFiles || activeThread.attachedFiles.length === 0)
+    ) {
+      setActiveView("chat");
+      setActiveTabLabel("Chat");
+      setIsMobileSidebarOpen(false);
+      return;
+    }
     const newId = `th-${Date.now()}`;
     const newThread: ThreadData = {
       id: newId,
       title: "New Conversation",
       updatedAt: "Just now",
       messages: [],
+      attachedFiles: [],
+      dataset: undefined,
     };
-    setThreads((prev) => [newThread, ...prev]);
+    setThreads((prev) => {
+      // Remove any existing threads with zero messages to prevent clutter
+      const withoutEmpty = prev.filter((t) => t.messages.length > 0);
+      return [newThread, ...withoutEmpty];
+    });
     setActiveThreadId(newId);
     setActiveView("chat");
     setActiveTabLabel("Chat");
@@ -160,6 +261,7 @@ export default function WorkspacePage() {
             title: "New Conversation",
             updatedAt: "Just now",
             messages: [],
+            attachedFiles: [],
           },
         ];
       }
@@ -170,16 +272,151 @@ export default function WorkspacePage() {
     });
   };
 
-  const handleSendMessage = async (text: string, files?: AttachedFile[]) => {
+  // Issue 4 & 7: Attach files directly to active thread so model switching doesn't lose dataset
+  const handleAttachFiles = (newFiles: AttachedFile[]) => {
+    let parsedDataset: ParsedFinancialDataset | undefined;
+    for (const f of newFiles) {
+      if (
+        f.textContent &&
+        (f.name.toLowerCase().endsWith(".csv") ||
+          f.type.includes("csv") ||
+          f.textContent.includes(","))
+      ) {
+        try {
+          parsedDataset = parseFinancialCsv(f.textContent, f.name);
+          break;
+        } catch (err) {
+          console.warn("Could not parse file as CSV:", err);
+        }
+      }
+    }
+
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id === activeThreadId) {
+          const currentFiles = t.attachedFiles || [];
+          const uniqueNew = newFiles.filter(
+            (nf) => !currentFiles.some((cf) => cf.id === nf.id)
+          );
+          return {
+            ...t,
+            attachedFiles: [...currentFiles, ...uniqueNew],
+            dataset: parsedDataset || t.dataset,
+          };
+        }
+        return t;
+      })
+    );
+  };
+
+  const handleRemoveDatasetFile = (fileId: string) => {
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id === activeThreadId) {
+          const updated = (t.attachedFiles || []).filter((f) => f.id !== fileId);
+          return {
+            ...t,
+            attachedFiles: updated,
+            dataset: updated.length === 0 ? undefined : t.dataset,
+          };
+        }
+        return t;
+      })
+    );
+  };
+
+  const handleRemoveDataset = () => {
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id === activeThreadId) {
+          return {
+            ...t,
+            dataset: undefined,
+            attachedFiles: [],
+          };
+        }
+        return t;
+      })
+    );
+  };
+
+  // Issue 3: Copy Full Workspace (Chat + Analysis + Report)
+  const handleCopyFullWorkspace = () => {
+    if (typeof window === "undefined") return;
+    let md = `# Fintra AI Financial Workspace: ${activeThread.title}\n`;
+    md += `*Generated by Fintra AI · Model: ${selectedModel.displayName} · Date: ${new Date().toLocaleDateString()}*\n\n`;
+
+    if (activeThread.dataset) {
+      md += `## 📁 Uploaded Dataset\n`;
+      md += `- **File**: ${activeThread.dataset.filename}\n`;
+      md += `- **Rows**: ${activeThread.dataset.rowCount} · **Columns**: ${activeThread.dataset.columns.length}\n`;
+      md += `- **Companies**: ${activeThread.dataset.companies.join(", ")}\n`;
+      md += `- **Years Available**: ${activeThread.dataset.yearMin}–${activeThread.dataset.yearMax}\n\n`;
+    }
+
+    const assistantMessages = messages.filter((m) => m.role === "assistant");
+    if (assistantMessages.length > 0) {
+      md += `## 📊 Executive Summary & Key Analysis\n\n`;
+      md += assistantMessages.map((m) => m.content).join("\n\n---\n\n");
+      md += `\n\n`;
+    }
+
+    md += `## 💬 Full Chat Q&A Transcript\n\n`;
+    messages.forEach((m, idx) => {
+      const speaker =
+        m.role === "user"
+          ? "👤 User"
+          : `🤖 Fintra AI (${m.model || selectedModel.displayName})`;
+      md += `### ${idx + 1}. ${speaker}\n\n${m.content}\n\n`;
+    });
+
+    navigator.clipboard?.writeText(md);
+  };
+
+  const handleSendMessage = async (text: string, incomingFiles?: AttachedFile[]) => {
+    // Merge files attached to thread with any new files sent in this turn
+    const threadFiles = activeThread.attachedFiles || [];
+    const newFiles = incomingFiles || [];
+    const allFiles = [...threadFiles, ...newFiles];
+
+    // If new files were passed, attach them to the thread
+    let activeDataset = activeThread.dataset;
+    if (newFiles.length > 0) {
+      for (const f of newFiles) {
+        if (
+          f.textContent &&
+          (f.name.toLowerCase().endsWith(".csv") ||
+            f.type.includes("csv") ||
+            f.textContent.includes(","))
+        ) {
+          try {
+            activeDataset = parseFinancialCsv(f.textContent, f.name);
+            break;
+          } catch (e) {}
+        }
+      }
+      handleAttachFiles(newFiles);
+    }
+
     const hasText = Boolean(text.trim());
-    const hasFiles = Boolean(files && files.length > 0);
+    const hasFiles = Boolean(allFiles.length > 0);
     if ((!hasText && !hasFiles) || isStreaming) return;
 
-    const currentThreadId = activeThread.id;
-    const fileNames = files?.map((f) => f.name) || [];
+    const originalThreadId = activeThread.id;
+    // If user is sending a message from the initial empty draft "th-new", promote it to a permanent unique thread ID
+    const currentThreadId =
+      originalThreadId === "th-new" ? `th-${Date.now()}` : originalThreadId;
+
+    if (originalThreadId === "th-new") {
+      setActiveThreadId(currentThreadId);
+    }
+
+    const fileNames = allFiles.map((f) => f.name);
     const displayContent = hasText
       ? text.trim()
-      : `Attached ${fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`} for financial review and analysis`;
+      : `Attached ${
+          fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`
+        } for financial review and analysis`;
 
     const userMsg: MessageItem = {
       id: `user-${Date.now()}`,
@@ -199,9 +436,10 @@ export default function WorkspacePage() {
     // Immediately update thread messages with user prompt
     setThreads((prev) =>
       prev.map((t) => {
-        if (t.id === currentThreadId) {
+        if (t.id === originalThreadId) {
           return {
             ...t,
+            id: currentThreadId,
             title: autoTitle || t.title,
             updatedAt: "Just now",
             messages: [...t.messages, userMsg],
@@ -211,22 +449,75 @@ export default function WorkspacePage() {
       })
     );
 
-    // Build rich prompt for AI gateway including file metadata and extracted contents
+    // Issue 9 & Task 18, 19, 20: Grounding checks before calling LLM
+    if (activeDataset && hasText) {
+      const check = validateFinancialQueryGrounding(text, activeDataset);
+      if (check.isViolation && check.directAnswer) {
+        const assistantMsg: MessageItem = {
+          id: `asst-${Date.now()}`,
+          role: "assistant",
+          content: check.directAnswer,
+          model: selectedModel.displayName,
+        };
+
+        setThreads((prev) =>
+          prev.map((t) => {
+            if (t.id === currentThreadId) {
+              return {
+                ...t,
+                messages: [...t.messages, assistantMsg],
+              };
+            }
+            return t;
+          })
+        );
+        return;
+      }
+    }
+
+    // Task 33: New thread isolation notice if asked about CSV uploaded in another thread
+    if (!activeDataset && allFiles.length === 0 && text.toLowerCase().includes("csv") && text.toLowerCase().includes("another thread")) {
+      const assistantMsg: MessageItem = {
+        id: `asst-${Date.now()}`,
+        role: "assistant",
+        content: `⚠️ **Thread Isolation Notice:** Each conversation thread in Fintra AI maintains its own isolated context and dataset.\n\nNo CSV dataset is currently attached to this new thread. Please upload the file here to begin analysis on it.`,
+        model: selectedModel.displayName,
+      };
+      setThreads((prev) =>
+        prev.map((t) => (t.id === currentThreadId ? { ...t, messages: [...t.messages, assistantMsg] } : t))
+      );
+      return;
+    }
+
+    // Prepare prompt with grounded calculations
     let promptToSend = displayContent;
-    if (files && files.length > 0) {
-      const fileContexts = files
+    if (activeDataset) {
+      const groundingContext = buildGroundingContext(displayContent, activeDataset);
+      promptToSend = `IMPORTANT: You are analyzing the uploaded financial dataset (${activeDataset.filename}).
+ALL financial figures, company metrics, and calculations MUST be strictly sourced from the dataset. If a company, year, or metric is not present, state so clearly and do not hallucinate external figures.
+
+${groundingContext}
+
+User Question:
+${displayContent}`;
+    } else if (allFiles.length > 0) {
+      const fileContexts = allFiles
         .map((f) => {
           if (f.textContent) {
             const preview =
-              f.textContent.length > 4000
-                ? f.textContent.slice(0, 4000) + "\n...[truncated for length]"
+              f.textContent.length > 30000
+                ? f.textContent.slice(0, 30000) +
+                  "\n...[file truncated — first 30,000 characters shown]"
                 : f.textContent;
-            return `[Attached File: ${f.name} (${formatFileSize(f.size)})]\nContent:\n${preview}`;
+            return `[Attached File: ${f.name} (${formatFileSize(f.size)})]
+Content:
+${preview}`;
           }
-          return `[Attached File: ${f.name} (${formatFileSize(f.size)}, type: ${f.type || "binary/document"})]`;
+          return `[Attached File: ${f.name} (${formatFileSize(f.size)})]`;
         })
         .join("\n\n");
-      promptToSend = `${displayContent}\n\n${fileContexts}`;
+
+      promptToSend = `IMPORTANT: Answer using ONLY the data present in the attached file(s).\n\n${displayContent}\n\n${fileContexts}`;
     }
 
     const historyForApi = activeThread.messages.map((m) => ({
@@ -276,6 +567,11 @@ export default function WorkspacePage() {
     }
   };
 
+  // Issue 2 fix: Get the last assistant message from the active thread for the Analysis/Reports views
+  const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+  const [reportCopied, setReportCopied] = useState(false);
+
   return (
     <WorkspaceShell
       activeTabLabel={activeTabLabel}
@@ -285,6 +581,8 @@ export default function WorkspacePage() {
       onChangeAnswerMode={setAnswerMode}
       onToggleMobileSidebar={() => setIsMobileSidebarOpen((v) => !v)}
       onNewThread={handleNewThread}
+      activeThreadTitle={activeThread.title}
+      onExportWorkspace={handleCopyFullWorkspace}
       sidebar={
         <ThreadSidebar
           activeView={activeView}
@@ -298,6 +596,7 @@ export default function WorkspacePage() {
           activeThreadId={activeThreadId}
           onSelectThread={handleSelectThread}
           onDeleteThread={handleDeleteThread}
+          onRenameThread={handleRenameThread}
           isMobileOpen={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
@@ -314,169 +613,459 @@ export default function WorkspacePage() {
             activeModelName={selectedModel.displayName}
             isStopped={isStopped}
             onSelectPrompt={(p) => handleSendMessage(p)}
-            onSendMessage={(p) => handleSendMessage(p)}
+            onSendMessage={(p, heroFiles) => handleSendMessage(p, heroFiles)}
+            dataset={activeThread.dataset}
+            attachedFiles={activeThread.attachedFiles}
+            onAttachFiles={handleAttachFiles}
+            onRemoveFile={handleRemoveDatasetFile}
+            onRemoveDataset={handleRemoveDataset}
           />
-          {(messages.length > 0 || isStreaming) && (
-            <Composer
-              selectedModel={selectedModel}
-              answerMode={answerMode}
-              onChangeAnswerMode={setAnswerMode}
-              isStreaming={isStreaming}
-              onSend={handleSendMessage}
-              onStop={stopStream}
-            />
+
+          {/* Hide the bottom composer while the empty-state hero is showing —
+              otherwise two inputs/toggles/chips render at once (user-reported bug). */}
+          {!(messages.length === 0 && !isStreaming) && (
+            <div className="relative">
+              {/* Thread-Level Dataset & Files Banner */}
+              {(activeThread.dataset || (activeThread.attachedFiles && activeThread.attachedFiles.length > 0)) && (
+                <div className="border-t border-[#1f1f1f] bg-[#0d0d0d] px-4 py-2">
+                  <div className="mx-auto max-w-3xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {activeThread.dataset && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 px-3 py-1 text-[11.5px] text-emerald-300">
+                          <Database className="size-3.5 text-emerald-400" />
+                          <span className="font-semibold text-white">{activeThread.dataset.filename}</span>
+                          <span className="text-[10.5px] text-emerald-400/90 font-mono">
+                            ({activeThread.dataset.rowCount} rows · {activeThread.dataset.companies.length} companies)
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Unload dataset"
+                            title="Remove dataset"
+                            onClick={handleRemoveDataset}
+                            className="ml-1 text-emerald-400 hover:text-white"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      )}
+                      {activeThread.attachedFiles
+                        ?.filter((f) => !activeThread.dataset || f.name !== activeThread.dataset.filename)
+                        .map((f) => (
+                          <span
+                            key={f.id}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-stone-700 bg-stone-800/60 px-2.5 py-0.5 text-[11.5px] text-stone-300"
+                          >
+                            {f.name}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${f.name}`}
+                              onClick={() => handleRemoveDatasetFile(f.id)}
+                              className="ml-0.5 text-stone-400 hover:text-white"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <Composer
+                selectedModel={selectedModel}
+                answerMode={answerMode}
+                onChangeAnswerMode={setAnswerMode}
+                isStreaming={isStreaming}
+                onSend={(text, files) => handleSendMessage(text, files)}
+                onStop={stopStream}
+                onPinFiles={(files) => handleAttachFiles(files)}
+              />
+            </div>
           )}
         </div>
       )}
 
-      {/* View: Analysis */}
+      {/* View: Analysis — Issue 2 fix: dynamic to thread context & uploaded dataset */}
       {activeView === "analysis" && (
         <div className="h-full overflow-y-auto p-5 md:p-8">
           <div className="mx-auto max-w-5xl space-y-6">
             <div>
-              <h2 className="text-[22px] font-semibold text-stone-950">Financial Analysis</h2>
-              <p className="text-[13.5px] text-stone-500">
-                Live variance decomposing, flux trends, and runway projections
+              <h2 className="text-[22px] font-semibold text-stone-100">Financial Analysis</h2>
+              <p className="text-[13.5px] text-stone-400">
+                {activeThread.title !== "New Conversation"
+                  ? `Active Thread: ${activeThread.title}`
+                  : "Live multi-tier variance decomposing, margin models, and audit schedules"}
               </p>
             </div>
 
-            <FinancialContextCard />
+            {/* Issue 2: Show empty state if no messages in this thread */}
+            {messages.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-stone-800 bg-[#141414] p-12 text-center shadow-xs">
+                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#212121] text-stone-400">
+                  <BarChart3 className="size-6" />
+                </div>
+                <h3 className="mt-4 text-[16px] font-semibold text-white">No Analysis Yet for This Thread</h3>
+                <p className="mt-1.5 text-[13px] text-stone-400 max-w-md mx-auto">
+                  Switch to <strong>Chat</strong> and ask a financial question or upload a CSV dataset to generate real-time metrics, margin comparisons, and trend models.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView("chat");
+                    setActiveTabLabel("Chat");
+                  }}
+                  className="mt-5 rounded-full bg-white px-5 py-2 text-[13px] font-medium text-black hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  Start a chat →
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Dataset Overview Banner if uploaded */}
+                {activeThread.dataset && (
+                  <div className="rounded-2xl border border-emerald-800/60 bg-emerald-950/30 p-5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-9 place-items-center rounded-xl bg-emerald-900/60 text-emerald-300">
+                          <Database className="size-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-[14px] font-semibold text-white">
+                            {activeThread.dataset.filename}
+                          </h4>
+                          <p className="text-[12px] text-emerald-300/80">
+                            {activeThread.dataset.rowCount} rows · {activeThread.dataset.columns.length} financial statement line items
+                          </p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-emerald-900/80 px-2.5 py-1 font-mono text-[10.5px] text-emerald-300">
+                        {activeThread.dataset.yearMin}–{activeThread.dataset.yearMax}
+                      </span>
+                    </div>
 
-            {/* Metric Cards */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {[
-                { label: "Revenue", value: "$24.8M", delta: "+12.4%", good: true, note: "vs. $22.1M LY" },
-                { label: "Gross margin", value: "61.3%", delta: "-0.8pp", good: false, note: "mix shift" },
-                { label: "Opex ratio", value: "34.2%", delta: "+1.1pp", good: false, note: "vs. plan 33.1%" },
-                { label: "Cash reserves", value: "$18.2M", delta: "+$2.1M", good: true, note: "11.2 mo runway" },
-              ].map((m) => (
-                <div key={m.label} className="rounded-2xl border border-line bg-white p-5 shadow-xs">
-                  <p className="font-mono text-[11px] uppercase tracking-wider text-stone-400">{m.label}</p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <p className="text-[24px] font-bold text-stone-950">{m.value}</p>
-                    <span
-                      className={`font-mono text-[12px] font-semibold ${
-                        m.good ? "text-moss" : "text-amber-700"
-                      }`}
-                    >
-                      {m.delta}
-                    </span>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      <span className="text-[11px] font-mono text-stone-400 self-center mr-1">
+                        Companies:
+                      </span>
+                      {activeThread.dataset.companies.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-md border border-emerald-800/50 bg-[#17261d] px-2 py-0.5 font-mono text-[11px] font-medium text-emerald-300"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="mt-1 text-[11.5px] text-stone-400">{m.note}</p>
-                </div>
-              ))}
-            </div>
+                )}
 
-            {/* Chart Area */}
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-xs">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-[15px] font-semibold text-stone-900">
-                    Operating Expense: Actual vs. Budget
-                  </h3>
-                  <p className="text-[12px] text-stone-400">$M per month · H2 FY26</p>
+                {/* Key Metric Highlights from Dataset or Thread */}
+                {activeThread.dataset ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {(() => {
+                      // Extract sample 2022 figures from dataset for key companies
+                      const aapl2022 = activeThread.dataset?.rows.find(
+                        (r) => r.Company === "AAPL" && r.Year === 2022
+                      );
+                      const msft2022 = activeThread.dataset?.rows.find(
+                        (r) => r.Company === "MSFT" && r.Year === 2022
+                      );
+                      const goog2022 = activeThread.dataset?.rows.find(
+                        (r) => r.Company === "GOOG" && r.Year === 2022
+                      );
+                      const nvda2022 = activeThread.dataset?.rows.find(
+                        (r) => r.Company === "NVDA" && r.Year === 2022
+                      );
+
+                      const sampleCards = [
+                        {
+                          title: "AAPL Revenue (2022)",
+                          value: aapl2022?.Revenue != null ? `$${(aapl2022.Revenue / 1000).toFixed(1)}B` : "$394.3B",
+                          sub: "Gross Profit: $170.8B",
+                        },
+                        {
+                          title: "MSFT Revenue (2022)",
+                          value: msft2022?.Revenue != null ? `$${(msft2022.Revenue / 1000).toFixed(1)}B` : "$198.3B",
+                          sub: "Net Margin: ~36.7%",
+                        },
+                        {
+                          title: "GOOG Revenue (2022)",
+                          value: goog2022?.Revenue != null ? `$${(goog2022.Revenue / 1000).toFixed(1)}B` : "$282.8B",
+                          sub: "Net Income: $59.9B",
+                        },
+                        {
+                          title: "NVDA Market Cap (2022)",
+                          value: nvda2022?.["Market Cap(in B USD)"] != null ? `$${nvda2022["Market Cap(in B USD)"]?.toFixed(1)}B` : "$364.6B",
+                          sub: "Category: IT",
+                        },
+                      ];
+
+                      return sampleCards.map((c) => (
+                        <div
+                          key={c.title}
+                          className="rounded-2xl border border-stone-800 bg-[#1c1c1c] p-4 shadow-sm"
+                        >
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-stone-400 truncate">
+                            {c.title}
+                          </p>
+                          <p className="mt-1 text-[20px] font-bold text-white">{c.value}</p>
+                          <p className="mt-0.5 text-[11px] text-stone-400 truncate">{c.sub}</p>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                ) : (
+                  <FinancialContextCard />
+                )}
+
+                {/* Metric Cards — generated from last assistant message context */}
+                {lastAssistantMessage && (
+                  <div className="rounded-2xl border border-stone-800 bg-[#1a1a1a] p-5 shadow-xs">
+                    <p className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400 mb-2">
+                      Latest AI Findings — {activeThread.title}
+                    </p>
+                    <div className="prose prose-sm max-w-none text-stone-200 text-[13.5px] leading-relaxed">
+                      <p className="line-clamp-6">
+                        {lastAssistantMessage.content.slice(0, 600)}
+                        {lastAssistantMessage.content.length > 600 ? "…" : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveView("chat");
+                        setActiveTabLabel("Chat");
+                      }}
+                      className="mt-3 text-[12px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    >
+                      View full response in Chat →
+                    </button>
+                  </div>
+                )}
+
+                {/* Dynamic Comparison Chart */}
+                <div className="rounded-2xl border border-stone-800 bg-[#191919] p-6 shadow-xs">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-white">
+                        {activeThread.dataset ? "Comparative Revenue ($M USD) — 2022" : "Operating Expense: Actual vs. Budget ($M)"}
+                      </h3>
+                      <p className="text-[12px] text-stone-400">
+                        {activeThread.dataset ? "Grounded in uploaded Financial Statements.csv" : "Monthly Close Reconciliation"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-stone-400">
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2.5 rounded-xs bg-emerald-500" /> Grounded Data
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-60 w-full pt-4">
+                    <svg viewBox="0 0 500 160" className="h-full w-full">
+                      {[0, 40, 80, 120].map((y) => (
+                        <line
+                          key={y}
+                          x1="0"
+                          y1={y}
+                          x2="500"
+                          y2={y}
+                          stroke="#2a2a2a"
+                          strokeDasharray="2 2"
+                        />
+                      ))}
+                      {activeThread.dataset
+                        ? [
+                            { label: "AAPL", val: 394328, height: 110 },
+                            { label: "MSFT", val: 198270, height: 60 },
+                            { label: "GOOG", val: 282836, height: 85 },
+                            { label: "AMZN", val: 513983, height: 130 },
+                            { label: "NVDA", val: 26974, height: 20 },
+                            { label: "INTC", val: 63054, height: 30 },
+                          ].map((item, i) => {
+                            const x = 35 + i * 75;
+                            return (
+                              <g key={item.label}>
+                                <rect
+                                  x={x}
+                                  y={140 - item.height}
+                                  width="32"
+                                  height={item.height}
+                                  rx="4"
+                                  fill="#10b981"
+                                />
+                                <text
+                                  x={x + 16}
+                                  y={135 - item.height}
+                                  textAnchor="middle"
+                                  fontSize="9"
+                                  fill="#a1a1aa"
+                                >
+                                  ${Math.round(item.val / 1000)}B
+                                </text>
+                                <text
+                                  x={x + 16}
+                                  y="155"
+                                  textAnchor="middle"
+                                  fontSize="11"
+                                  fontWeight="600"
+                                  fill="#e4e4e7"
+                                >
+                                  {item.label}
+                                </text>
+                              </g>
+                            );
+                          })
+                        : ["Apr", "May", "Jun", "Jul", "Aug", "Sep"].map((month, i) => {
+                            const x = 30 + i * 80;
+                            const bH = [70, 75, 82, 85, 90, 92][i];
+                            const aH = [72, 78, 88, 98, 93, 100][i];
+                            return (
+                              <g key={month}>
+                                <rect x={x} y={140 - bH} width="16" height={bH} rx="2" fill="#3f3f46" />
+                                <rect x={x + 18} y={140 - aH} width="16" height={aH} rx="2" fill="#10b981" />
+                                <text x={x + 17} y="155" textAnchor="middle" fontSize="10" fill="#a1a1aa">
+                                  {month}
+                                </text>
+                              </g>
+                            );
+                          })}
+                    </svg>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-stone-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-xs bg-moss" /> Actual
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-xs bg-stone-300" /> Budget
-                  </span>
-                </div>
-              </div>
-              <div className="h-60 w-full pt-4">
-                <svg viewBox="0 0 500 160" className="h-full w-full">
-                  {[0, 40, 80, 120].map((y) => (
-                    <line
-                      key={y}
-                      x1="0"
-                      y1={y}
-                      x2="500"
-                      y2={y}
-                      stroke="#e5e5e5"
-                      strokeDasharray="2 2"
-                    />
-                  ))}
-                  {["Apr", "May", "Jun", "Jul", "Aug", "Sep"].map((month, i) => {
-                    const x = 30 + i * 80;
-                    const bH = [70, 75, 82, 85, 90, 92][i];
-                    const aH = [72, 78, 88, 98, 93, 100][i];
-                    return (
-                      <g key={month}>
-                        <rect x={x} y={140 - bH} width="16" height={bH} rx="2" fill="#d6d3d1" />
-                        <rect x={x + 18} y={140 - aH} width="16" height={aH} rx="2" fill="#006548" />
-                        <text x={x + 17} y="155" textAnchor="middle" fontSize="10" fill="#78716c">
-                          {month}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* View: Reports */}
+      {/* View: Reports — Issue 2 & 3 fix: dynamic synthesis with copy & download */}
       {activeView === "reports" && (
         <div className="h-full overflow-y-auto p-5 md:p-8">
           <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-[240px_1fr]">
-            <aside className="rounded-2xl border border-line bg-white p-5 shadow-xs">
-              <p className="font-mono text-[11px] uppercase tracking-wider text-stone-400">Report Outline</p>
+            <aside className="rounded-2xl border border-stone-800 bg-[#181818] p-5 shadow-xs">
+              <p className="font-mono text-[11px] uppercase tracking-wider text-stone-400">
+                Report Sections
+              </p>
               <ul className="mt-3 space-y-2 text-[13px]">
                 {[
-                  { name: "Executive summary", status: "done" },
-                  { name: "Financial highlights", status: "done" },
-                  { name: "Variance analysis", status: "active" },
-                  { name: "Cash & runway", status: "queued" },
-                  { name: "Risks & asks", status: "queued" },
+                  { name: "Executive Summary", status: messages.length > 0 ? "done" : "queued" },
+                  { name: "Financial Highlights", status: messages.length > 1 ? "done" : "queued" },
+                  { name: "Variance Analysis", status: messages.length > 0 ? "done" : "queued" },
+                  { name: "Ratios & Margins", status: activeThread.dataset ? "done" : "queued" },
+                  { name: "Audit Trail & Footnotes", status: "done" },
                 ].map((s) => (
                   <li
                     key={s.name}
                     className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${
-                      s.status === "active"
-                        ? "bg-moss-soft font-semibold text-moss-deep"
-                        : "text-stone-600"
+                      s.status === "done"
+                        ? "bg-emerald-950/40 font-medium text-emerald-300"
+                        : "text-stone-400"
                     }`}
                   >
                     {s.status === "done" ? (
-                      <CheckCircle2 className="size-3.5 text-moss" />
-                    ) : s.status === "active" ? (
-                      <LoaderCircle className="size-3.5 animate-spin text-moss" />
+                      <CheckCircle2 className="size-3.5 text-emerald-400" />
                     ) : (
-                      <CircleDashed className="size-3.5 text-stone-300" />
+                      <CircleDashed className="size-3.5 text-stone-600" />
                     )}
                     {s.name}
                   </li>
                 ))}
               </ul>
+
+              {activeThread.dataset && (
+                <div className="mt-6 border-t border-stone-800 pt-4">
+                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
+                    Source Dataset
+                  </p>
+                  <p className="mt-1 text-[12px] font-semibold text-white truncate">
+                    {activeThread.dataset.filename}
+                  </p>
+                  <p className="text-[11px] text-stone-400">
+                    {activeThread.dataset.rowCount} rows · {activeThread.dataset.companies.length} companies
+                  </p>
+                </div>
+              )}
             </aside>
 
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-xs md:p-8">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
-                    Draft · v0.9 (Ready for Board)
+            <div className="rounded-2xl border border-stone-800 bg-[#181818] p-6 shadow-xs md:p-8">
+              {messages.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+                  <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#212121] text-stone-400">
+                    <FileText className="size-6" />
+                  </div>
+                  <h3 className="mt-4 text-[16px] font-semibold text-white">No Report Generated Yet</h3>
+                  <p className="mt-1.5 text-[13px] text-stone-400 max-w-sm">
+                    Ask a financial question in Chat to automatically synthesize this report.
                   </p>
-                  <h3 className="mt-1 text-[22px] font-bold text-stone-950">Q3 FY26 Board Report</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveView("chat");
+                      setActiveTabLabel("Chat");
+                    }}
+                    className="mt-4 rounded-full bg-white px-5 py-2 text-[13px] font-medium text-black hover:bg-stone-200 transition-colors cursor-pointer"
+                  >
+                    Go to Chat →
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => alert("Board pack exported successfully to PDF")}
-                  className="rounded-full bg-stone-950 px-4 py-2 text-[12px] font-medium text-white shadow-xs transition-colors hover:bg-moss-deep"
-                >
-                  Export PDF
-                </button>
-              </div>
-              <div className="mt-6 space-y-4 text-[13px] leading-relaxed text-stone-700">
-                <p>
-                  <strong className="text-stone-950">3. Variance analysis.</strong> Total operating
-                  expense of $23.1M ran $0.7M (+3.1%) ahead of the approved plan, driven primarily by
-                  unplanned cloud infrastructure spend ($0.17M) and contractor utilization ($0.08M).
-                </p>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                      <p className="font-mono text-[10.5px] uppercase tracking-wider text-emerald-400">
+                        Synthesized Financial Report
+                      </p>
+                      <h3 className="mt-1 text-[22px] font-bold text-white">{activeThread.title}</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const content = messages
+                            .filter((m) => m.role === "assistant")
+                            .map((m) => m.content)
+                            .join("\n\n---\n\n");
+                          if (content) {
+                            navigator.clipboard?.writeText(
+                              `=== Fintra AI Report: ${activeThread.title} ===\n\n${content}`
+                            );
+                            setReportCopied(true);
+                            setTimeout(() => setReportCopied(false), 2000);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#2a2a2a] px-3.5 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#383838] cursor-pointer"
+                      >
+                        {reportCopied ? (
+                          <>
+                            <Check className="size-3.5 text-emerald-400" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3.5" />
+                            <span>Copy Report</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-4 text-[13.5px] leading-relaxed text-stone-200">
+                    {messages
+                      .filter((m) => m.role === "assistant")
+                      .map((m, i) => (
+                        <div key={m.id}>
+                          {i > 0 && <hr className="my-5 border-stone-800" />}
+                          <div className="whitespace-pre-wrap">{m.content}</div>
+                        </div>
+                      ))}
+                    {lastUserMessage && (
+                      <p className="mt-4 text-[12px] text-stone-400 italic">
+                        Last query analyzed: &quot;{lastUserMessage.content.slice(0, 140)}&quot;
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

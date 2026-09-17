@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       modelId,
       answerMode,
       userMessageContent: latestUserMessage,
+      messages,
       requestId,
       signal: req.signal,
     });

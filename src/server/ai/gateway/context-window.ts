@@ -15,8 +15,9 @@ export function assembleContextWindow(
   messages: ChatMessageParam[],
   options: ContextWindowOptions
 ): ChatMessageParam[] {
-  const reservation = options.systemPromptTokensReservation ?? 1200;
+  const reservation = options.systemPromptTokensReservation ?? 2000;
   const availableTokens = options.maxContextTokens - reservation;
+
 
   if (messages.length === 0) {
     return [{ role: "system", content: systemPrompt }];

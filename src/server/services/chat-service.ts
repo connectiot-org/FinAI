@@ -15,6 +15,7 @@ export interface RunChatTurnOptions {
   modelId: string;
   answerMode?: "quick" | "deep";
   userMessageContent: string;
+  messages?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   requestId: string;
   signal?: AbortSignal;
 }
@@ -27,6 +28,7 @@ export class ChatService {
       modelId,
       answerMode = "deep",
       userMessageContent,
+      messages: clientMessages,
       requestId,
       signal,
     } = options;
@@ -53,19 +55,26 @@ export class ChatService {
       modelTier: "Balanced",
     });
 
-    // 3. Assemble Windowed Context
-    const messagesHistory = targetConvId
-      ? (await conversationService.getConversation(targetConvId, userId)).messages.map((m) => ({
-          role: (m.role.toLowerCase() === "user" ? "user" : "assistant") as "user" | "assistant",
-          content: (m.parts as unknown as MessagePart[])
-            .filter((p) => p.type === "text")
-            .map((p) => (p as { content: string }).content)
-            .join("\n"),
-        }))
-      : [{ role: "user" as const, content: userMessageContent }];
+    // 3. Assemble Windowed Context: prefer client messages history if provided (preserves multi-turn state)
+    let messagesHistory: Array<{ role: "user" | "assistant"; content: string }>;
+    if (clientMessages && clientMessages.length > 0) {
+      messagesHistory = clientMessages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    } else if (targetConvId) {
+      messagesHistory = (await conversationService.getConversation(targetConvId, userId)).messages.map((m) => ({
+        role: (m.role.toLowerCase() === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: (m.parts as unknown as MessagePart[])
+          .filter((p) => p.type === "text")
+          .map((p) => (p as { content: string }).content)
+          .join("\n"),
+      }));
+    } else {
+      messagesHistory = [{ role: "user" as const, content: userMessageContent }];
+    }
 
     const windowedMessages = assembleContextWindow(systemPrompt, messagesHistory, {
-      maxContextTokens: 12000,
+      maxContextTokens: 24000,
     });
 
     let accumulatedText = "";

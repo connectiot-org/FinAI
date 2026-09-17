@@ -22,7 +22,7 @@ export class OpenRouterAdapter implements ProviderAdapter {
         model: request.modelId,
         messages: request.messages,
         temperature: request.temperature ?? 0.2,
-        max_tokens: request.maxTokens ?? 1600,
+        max_tokens: request.maxTokens ?? 4096,
         stream: true,
       }),
       signal: request.signal,
@@ -73,6 +73,8 @@ export class OpenRouterAdapter implements ProviderAdapter {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let accumulatedContent = "";
+    let accumulatedReasoning = "";
     let promptTokens = 0;
     let completionTokens = 0;
 
@@ -93,14 +95,25 @@ export class OpenRouterAdapter implements ProviderAdapter {
 
           try {
             const parsed = JSON.parse(dataStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              completionTokens += Math.ceil(delta.length / 4);
+            const choice = parsed.choices?.[0];
+            const deltaContent = choice?.delta?.content;
+            const deltaReasoning =
+              choice?.delta?.reasoning ||
+              choice?.delta?.reasoning_content ||
+              choice?.delta?.thought;
+
+            if (deltaContent) {
+              accumulatedContent += deltaContent;
+              completionTokens += Math.ceil(deltaContent.length / 4);
               yield {
                 event: "text-delta",
-                data: { text: delta },
+                data: { text: deltaContent },
               };
+            } else if (deltaReasoning) {
+              accumulatedReasoning += deltaReasoning;
+              completionTokens += Math.ceil(deltaReasoning.length / 4);
             }
+
             if (parsed.usage) {
               promptTokens = parsed.usage.prompt_tokens ?? promptTokens;
               completionTokens = parsed.usage.completion_tokens ?? completionTokens;
@@ -109,6 +122,14 @@ export class OpenRouterAdapter implements ProviderAdapter {
             // Ignore partial parse
           }
         }
+      }
+
+      // If model only output reasoning (e.g. thinking models before cutoff), emit reasoning as the answer
+      if (!accumulatedContent.trim() && accumulatedReasoning.trim()) {
+        yield {
+          event: "text-delta",
+          data: { text: accumulatedReasoning },
+        };
       }
 
       // Usage frame

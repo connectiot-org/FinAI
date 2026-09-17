@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Share2, Sparkles, FileSpreadsheet, X, SquarePen } from "lucide-react";
+import { ArrowLeft, Share2, Sparkles, FileSpreadsheet, X, SquarePen, Check, ClipboardList } from "lucide-react";
 import { ModelSelector } from "./model-selector";
 import { ModelConfig } from "@/config/models.config";
 
@@ -16,6 +16,10 @@ export interface WorkspaceShellProps {
   children: React.ReactNode;
   onToggleMobileSidebar?: () => void;
   onNewThread?: () => void;
+  /** Pass the active thread title so the share action can include it */
+  activeThreadTitle?: string;
+  /** Copy / Export entire workspace (Chat + Analysis + Report) */
+  onExportWorkspace?: () => void;
 }
 
 export function WorkspaceShell({
@@ -28,9 +32,35 @@ export function WorkspaceShell({
   children,
   onToggleMobileSidebar,
   onNewThread,
+  activeThreadTitle,
+  onExportWorkspace,
 }: WorkspaceShellProps) {
   const [showToastLeft, setShowToastLeft] = useState(false);
   const [showToastRight, setShowToastRight] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [exportCopied, setExportCopied] = useState(false);
+
+  const handleShare = () => {
+    if (typeof window === "undefined") return;
+    const shareText = activeThreadTitle
+      ? `${activeThreadTitle} — Fintra AI Workspace\n${window.location.href}`
+      : window.location.href;
+    navigator.clipboard?.writeText(shareText).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }).catch(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    });
+  };
+
+  const handleExport = () => {
+    if (onExportWorkspace) {
+      onExportWorkspace();
+      setExportCopied(true);
+      setTimeout(() => setExportCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[#0d0d0d] font-sans text-stone-100">
@@ -109,19 +139,40 @@ export function WorkspaceShell({
             </button>
           )}
 
-          {/* Share Button */}
+          {/* Issue 3 Fix: Copy Full Workspace (Chat + Analysis + Report) */}
+          {onExportWorkspace && (
+            <button
+              type="button"
+              onClick={handleExport}
+              aria-label="Copy Full Workspace (Chat + Analysis + Report)"
+              title={exportCopied ? "Full Workspace Copied to Clipboard!" : "Copy Full Workspace (Chat + Analysis + Report)"}
+              className={`relative hidden size-9 place-items-center rounded-full transition-all duration-200 md:grid ${
+                exportCopied
+                  ? "bg-emerald-600/20 text-emerald-400"
+                  : "text-stone-400 hover:text-white hover:bg-[#212121]"
+              }`}
+            >
+              {exportCopied ? <Check className="size-4" /> : <ClipboardList className="size-4" />}
+            </button>
+          )}
+
+          {/* Share Button with in-app copy confirmation (no alert/popup) */}
           <button
             type="button"
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                navigator.clipboard?.writeText(window.location.href);
-                alert("Workspace link copied to clipboard!");
-              }
-            }}
-            aria-label="Share workspace"
-            className="hidden size-9 place-items-center rounded-full text-stone-400 hover:text-white hover:bg-[#212121] transition-colors md:grid"
+            onClick={handleShare}
+            aria-label="Share workspace link"
+            title={shareCopied ? "Copied!" : "Copy workspace link"}
+            className={`relative hidden size-9 place-items-center rounded-full transition-all duration-200 md:grid ${
+              shareCopied
+                ? "bg-emerald-600/20 text-emerald-400"
+                : "text-stone-400 hover:text-white hover:bg-[#212121]"
+            }`}
           >
-            <Share2 className="size-4" />
+            {shareCopied ? (
+              <Check className="size-4" />
+            ) : (
+              <Share2 className="size-4" />
+            )}
           </button>
         </div>
       </header>

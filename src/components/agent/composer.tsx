@@ -6,6 +6,7 @@ import {
   Square,
   Paperclip,
   X,
+  Pin,
   FileSpreadsheet,
   FileText,
   FileCode,
@@ -13,15 +14,11 @@ import {
   File,
 } from "lucide-react";
 import { ModelConfig } from "@/config/models.config";
+import { AttachedFile, formatFileSize, processFilesAsync } from "@/lib/attached-file";
 
-export interface AttachedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  previewUrl?: string;
-  textContent?: string;
-}
+// Re-exported for existing consumers (page.tsx)
+export type { AttachedFile };
+export { formatFileSize };
 
 export interface ComposerProps {
   selectedModel: ModelConfig;
@@ -30,6 +27,8 @@ export interface ComposerProps {
   isStreaming: boolean;
   onSend: (message: string, files?: AttachedFile[]) => void;
   onStop: () => void;
+  /** Optional: callback to pin selected files as persistent context (Issue 7) */
+  onPinFiles?: (files: AttachedFile[]) => void;
 }
 
 export const defaultSuggestions = [
@@ -38,12 +37,6 @@ export const defaultSuggestions = [
   "Explain gross margin variance and calculate EBITDA bridge",
   "Draft the revenue section of the board report",
 ];
-
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function getFileChipIcon(filename: string) {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -72,6 +65,7 @@ export function Composer({
   isStreaming,
   onSend,
   onStop,
+  onPinFiles,
 }: ComposerProps) {
   const [value, setValue] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
@@ -87,60 +81,16 @@ export function Composer({
     }
   }, [value]);
 
-  const processFiles = useCallback((fileList: FileList | File[]) => {
-    const filesArray = Array.from(fileList);
-    filesArray.forEach((file) => {
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      const isTextLike =
-        ["txt", "csv", "tsv", "json", "md", "sql", "xml", "log", "yml", "yaml", "html", "js", "ts"].includes(ext) ||
-        file.type.startsWith("text/");
-
-      if (isTextLike) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setAttachedFiles((prev) => [
-            ...prev,
-            {
-              id,
-              name: file.name,
-              size: file.size,
-              type: file.type || ext,
-              textContent: typeof reader.result === "string" ? reader.result : undefined,
-            },
-          ]);
-        };
-        reader.readAsText(file);
-      } else if (file.type.startsWith("image/")) {
-        const previewUrl = URL.createObjectURL(file);
-        setAttachedFiles((prev) => [
-          ...prev,
-          {
-            id,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            previewUrl,
-          },
-        ]);
-      } else {
-        // Binary files: spreadsheets (.xlsx), documents (.pdf, .docx), archives, etc.
-        setAttachedFiles((prev) => [
-          ...prev,
-          {
-            id,
-            name: file.name,
-            size: file.size,
-            type: file.type || ext,
-          },
-        ]);
-      }
-    });
+  const processFiles = useCallback(async (fileList: FileList | File[]) => {
+    const processed = await processFilesAsync(fileList);
+    if (processed.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...processed]);
+    }
   }, []);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processFiles(e.target.files);
+      void processFiles(e.target.files);
       // Reset input value so re-selecting same file triggers event
       e.target.value = "";
     }
@@ -173,13 +123,13 @@ export function Composer({
     e.stopPropagation();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(e.dataTransfer.files);
+      void processFiles(e.dataTransfer.files);
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-      processFiles(e.clipboardData.files);
+      void processFiles(e.clipboardData.files);
     }
   };
 
@@ -274,11 +224,26 @@ export function Composer({
                       {formatFileSize(file.size)}
                     </span>
                   </div>
+                  {/* Pin button — keeps this file available across model switches */}
+                  {onPinFiles && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onPinFiles([file]);
+                        handleRemoveFile(file.id);
+                      }}
+                      aria-label={`Pin ${file.name} as persistent context`}
+                      title="Pin file — keeps it attached across model switches"
+                      className="rounded-full p-0.5 text-stone-500 transition-colors hover:bg-emerald-950/60 hover:text-emerald-400"
+                    >
+                      <Pin className="size-3" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemoveFile(file.id)}
                     aria-label={`Remove ${file.name}`}
-                    className="ml-1 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
+                    className="ml-0.5 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -321,9 +286,9 @@ export function Composer({
               placeholder={
                 attachedFiles.length > 0
                   ? `Add instructions (${attachedFiles.length} file${attachedFiles.length > 1 ? "s" : ""})…`
-                  : `Ask ${selectedModel.displayName}…`
+                  : "Ask finance questions or analysis…"
               }
-              aria-label="Ask a financial question or attach any file"
+              aria-label="Ask finance questions or analysis"
               disabled={isStreaming}
               className="min-h-[34px] max-h-[160px] min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14.5px] leading-relaxed text-white outline-none placeholder:text-stone-400"
             />

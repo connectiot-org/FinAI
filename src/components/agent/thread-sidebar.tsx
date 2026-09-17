@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import {
   MessageSquare,
   ChartNoAxesCombined,
@@ -12,6 +13,8 @@ import {
   ShieldCheck,
   Trash2,
   X,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 export type ViewId = "chat" | "analysis" | "reports" | "templates" | "runs";
@@ -30,6 +33,7 @@ export interface ThreadSidebarProps {
   activeThreadId?: string;
   onSelectThread?: (id: string) => void;
   onDeleteThread?: (id: string) => void;
+  onRenameThread?: (id: string, newTitle: string) => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -42,9 +46,35 @@ export function ThreadSidebar({
   activeThreadId,
   onSelectThread,
   onDeleteThread,
+  onRenameThread,
   isMobileOpen = false,
   onCloseMobile,
 }: ThreadSidebarProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  const handleStartRename = (id: string, currentTitle: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingId(id);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleSaveRename = (id: string, e?: React.MouseEvent | React.FormEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault?.();
+    const trimmed = editingTitle.trim();
+    if (trimmed && onRenameThread) {
+      onRenameThread(id, trimmed);
+    }
+    setEditingId(null);
+    setEditingTitle("");
+  };
+
+  const handleCancelRename = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingId(null);
+    setEditingTitle("");
+  };
   const navItems: { id: ViewId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "chat", label: "Chat", icon: MessageSquare },
     { id: "analysis", label: "Analysis", icon: ChartNoAxesCombined },
@@ -126,7 +156,7 @@ export function ThreadSidebar({
           <p className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
             Recent Threads
           </p>
-          <span className="font-mono text-[10px] text-stone-500">
+          <span suppressHydrationWarning className="font-mono text-[10px] text-stone-500">
             {threads.length}
           </span>
         </div>
@@ -135,18 +165,22 @@ export function ThreadSidebar({
           {threads.length === 0 ? (
             <p className="px-2 py-3 text-[11.5px] text-stone-500">No active threads</p>
           ) : (
-            threads.map((t) => {
+            threads.map((t, idx) => {
               const isActive = activeThreadId === t.id && activeView === "chat";
               return (
                 <div
-                  key={t.id}
+                  key={`${t.id}-${idx}`}
                   onClick={() => {
-                    onSelectThread?.(t.id);
-                    if (isMobileDrawer) onCloseMobile?.();
+                    if (editingId !== t.id) {
+                      onSelectThread?.(t.id);
+                      if (isMobileDrawer) onCloseMobile?.();
+                    }
                   }}
+                  onDoubleClick={(e) => handleStartRename(t.id, t.title, e)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
+                    if (editingId === t.id) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       onSelectThread?.(t.id);
@@ -159,28 +193,83 @@ export function ThreadSidebar({
                       : "text-stone-300 hover:bg-[#212121] hover:text-white"
                   }`}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    {isActive && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
-                    )}
-                    <span className="truncate text-left" title={t.title}>
-                      {t.title}
-                    </span>
-                  </div>
-
-                  {onDeleteThread && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteThread(t.id);
-                      }}
-                      title={`Delete "${t.title}"`}
-                      aria-label={`Delete "${t.title}"`}
-                      className="ml-1 shrink-0 rounded-md p-1 text-stone-500 transition-all hover:bg-rose-950/80 hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100"
+                  {editingId === t.id ? (
+                    <form
+                      onSubmit={(e) => handleSaveRename(t.id, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex w-full items-center gap-1.5"
                     >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") handleCancelRename();
+                        }}
+                        autoFocus
+                        aria-label="Rename thread title"
+                        className="min-w-0 flex-1 rounded bg-[#191919] px-2 py-1 text-[12px] text-white outline-none ring-1 ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => handleSaveRename(t.id, e)}
+                        title="Save title (Enter)"
+                        aria-label="Save thread title"
+                        className="rounded p-1 text-emerald-400 hover:bg-emerald-950/60 hover:text-emerald-300"
+                      >
+                        <Check className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCancelRename(e)}
+                        title="Cancel (Esc)"
+                        aria-label="Cancel renaming"
+                        className="rounded p-1 text-stone-400 hover:bg-stone-800 hover:text-white"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {isActive && (
+                          <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+                        )}
+                        <span className="truncate text-left" title={t.title}>
+                          {t.title}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-0.5 ml-1 shrink-0">
+                        {/* Pencil Edit Icon */}
+                        {onRenameThread && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleStartRename(t.id, t.title, e)}
+                            title={`Rename "${t.title}"`}
+                            aria-label={`Rename "${t.title}"`}
+                            className="rounded-md p-1 text-stone-500 transition-all hover:bg-stone-700 hover:text-stone-200 md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Pencil className="size-3" />
+                          </button>
+                        )}
+
+                        {onDeleteThread && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteThread(t.id);
+                            }}
+                            title={`Delete "${t.title}"`}
+                            aria-label={`Delete "${t.title}"`}
+                            className="rounded-md p-1 text-stone-500 transition-all hover:bg-rose-950/80 hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               );

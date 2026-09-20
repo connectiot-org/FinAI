@@ -19,6 +19,7 @@ import {
 import { RunSteps } from "./run-steps";
 import { FinancialTable, FinancialTableRow } from "./financial-table";
 import { SseStepPayload } from "@/lib/sse-types";
+import { FileAttachmentCard } from "./file-attachment-card";
 
 export interface AssistantMessageProps {
   content: string;
@@ -405,17 +406,14 @@ export function UserMessageRenderer({ content, files }: UserMessageProps) {
       <div className="max-w-[85%] md:max-w-[75%] rounded-3xl bg-[#212121] border border-stone-800 px-5 py-3 text-[14.5px] leading-relaxed text-white shadow-sm">
         <p className="whitespace-pre-wrap">{content}</p>
         {files && files.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-stone-700 pt-2.5">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-stone-800/80 pt-2.5">
             {files.map((f) => (
-              <span
+              <FileAttachmentCard
                 key={f}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-stone-800/80 px-2.5 py-1 text-[11.5px] font-medium text-stone-200 border border-stone-700"
-              >
-                {getFileIcon(f)}
-                <span className="max-w-[200px] truncate" title={f}>
-                  {f}
-                </span>
-              </span>
+                file={{ name: f }}
+                variant="pill"
+                statusText="Attached"
+              />
             ))}
           </div>
         )}

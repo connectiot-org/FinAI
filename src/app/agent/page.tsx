@@ -11,6 +11,8 @@ import { EvidencePanel } from "@/components/agent/evidence-panel";
 import { useThreadStream } from "@/lib/use-thread-stream";
 import { useSession } from "next-auth/react";
 import { datasetStore } from "@/lib/storage/dataset-store";
+import { FileAttachmentCard } from "@/components/agent/file-attachment-card";
+import { toast } from "sonner";
 import {
   parseFinancialCsv,
   validateFinancialQueryGrounding,
@@ -49,6 +51,10 @@ const initialThreads: ThreadData[] = [
     id: "th-1",
     title: "Q3 Actuals vs Budget Variance",
     updatedAt: "Today, 10:42 AM",
+    attachedFiles: [
+      { id: "f-1-1", name: "q3_actuals.xlsx", size: 1420000, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+      { id: "f-1-2", name: "q3_budget.xlsx", size: 845000, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ],
     messages: [
       {
         id: "m-1-1",
@@ -77,6 +83,10 @@ const initialThreads: ThreadData[] = [
     id: "th-2",
     title: "Cloud Infrastructure Reconciliation",
     updatedAt: "Today, 8:15 AM",
+    attachedFiles: [
+      { id: "f-2-1", name: "aws_billing_q3.csv", size: 482000, type: "text/csv" },
+      { id: "f-2-2", name: "datadog_invoices.pdf", size: 1250000, type: "application/pdf" },
+    ],
     messages: [
       {
         id: "m-2-1",
@@ -103,6 +113,9 @@ const initialThreads: ThreadData[] = [
     id: "th-3",
     title: "Contractor Spend Memo",
     updatedAt: "Yesterday",
+    attachedFiles: [
+      { id: "f-3-1", name: "contractor_timesheets_q3.xlsx", size: 910000, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ],
     messages: [
       {
         id: "m-3-1",
@@ -168,12 +181,18 @@ export default function WorkspacePage() {
 
             // Rehydrate stored datasets and files from datasetStore
             const rehydrated = deduped.map((t) => {
+              const defaultThread = initialThreads.find((it) => it.id === t.id);
               const storedDs = datasetStore.getDatasetByThread(t.id);
               const storedFiles = datasetStore.getThreadFiles(t.id);
               return {
                 ...t,
-                dataset: storedDs || t.dataset,
-                attachedFiles: storedFiles.length > 0 ? storedFiles : t.attachedFiles,
+                dataset: storedDs || t.dataset || defaultThread?.dataset,
+                attachedFiles:
+                  storedFiles.length > 0
+                    ? storedFiles
+                    : t.attachedFiles && t.attachedFiles.length > 0
+                    ? t.attachedFiles
+                    : defaultThread?.attachedFiles || [],
               };
             });
 
@@ -224,21 +243,25 @@ export default function WorkspacePage() {
     setIsMobileSidebarOpen(false);
 
     // Rehydrate stored dataset and files if present in datasetStore
+    const defaultThread = initialThreads.find((it) => it.id === id);
     const storedDs = datasetStore.getDatasetByThread(id);
     const storedFiles = datasetStore.getThreadFiles(id);
-    if (storedDs || storedFiles.length > 0) {
-      setThreads((prev) =>
-        prev.map((t) =>
-          t.id === id
-            ? {
-                ...t,
-                dataset: storedDs || t.dataset,
-                attachedFiles: storedFiles.length > 0 ? storedFiles : t.attachedFiles,
-              }
-            : t
-        )
-      );
-    }
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              dataset: storedDs || t.dataset || defaultThread?.dataset,
+              attachedFiles:
+                storedFiles.length > 0
+                  ? storedFiles
+                  : t.attachedFiles && t.attachedFiles.length > 0
+                  ? t.attachedFiles
+                  : defaultThread?.attachedFiles || [],
+            }
+          : t
+      )
+    );
   };
 
   // Issue 1: Rename Thread Title
@@ -337,6 +360,17 @@ export default function WorkspacePage() {
       );
     }
     datasetStore.saveThreadFiles(activeThreadId, allFilesCombined);
+
+    if (uniqueNew.length > 0) {
+      toast.success(
+        uniqueNew.length === 1
+          ? `Uploaded ${uniqueNew[0].name}`
+          : `Uploaded ${uniqueNew.length} files`,
+        {
+          description: `${uniqueNew.map((f) => f.name).join(", ")} ready for analysis`,
+        }
+      );
+    }
 
     setThreads((prev) =>
       prev.map((t) => {
@@ -678,42 +712,51 @@ ${preview}`;
               {(activeThread.dataset || (activeThread.attachedFiles && activeThread.attachedFiles.length > 0)) && (
                 <div className="border-t border-[#1f1f1f] bg-[#0d0d0d] px-4 py-2">
                   <div className="mx-auto max-w-3xl">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       {activeThread.dataset && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 px-3 py-1 text-[11.5px] text-emerald-300">
-                          <Database className="size-3.5 text-emerald-400" />
-                          <span className="font-semibold text-white">{activeThread.dataset.filename}</span>
-                          <span className="text-[10.5px] text-emerald-400/90 font-mono">
-                            ({activeThread.dataset.rowCount} rows · {activeThread.dataset.companies.length} companies)
-                          </span>
+                        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-700/60 bg-emerald-950/40 p-2 text-xs shadow-[0_0_15px_-3px_rgba(16,185,129,0.18)] animate-in fade-in zoom-in-95">
+                          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            <Database className="size-4.5" />
+                          </div>
+                          <div className="flex flex-col min-w-0 pr-1">
+                            <span className="max-w-[200px] truncate font-semibold text-white text-[12.5px] leading-tight" title={activeThread.dataset.filename}>
+                              {activeThread.dataset.filename}
+                            </span>
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                DATASET
+                              </span>
+                              <span className="font-mono text-[10.5px] text-stone-400">
+                                {activeThread.dataset.rowCount} rows · {activeThread.dataset.columns.length} cols
+                              </span>
+                              <span className="text-stone-600">·</span>
+                              <span className="inline-flex items-center gap-1 font-medium text-[10.5px] text-emerald-400">
+                                <CheckCircle2 className="size-3 text-emerald-400 shrink-0" />
+                                <span>Loaded</span>
+                              </span>
+                            </div>
+                          </div>
                           <button
                             type="button"
-                            aria-label="Unload dataset"
+                            aria-label="Remove dataset"
                             title="Remove dataset"
                             onClick={handleRemoveDataset}
-                            className="ml-1 text-emerald-400 hover:text-white"
+                            className="ml-auto rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-800/80 hover:text-white"
                           >
-                            <X className="size-3" />
+                            <X className="size-3.5" />
                           </button>
-                        </span>
+                        </div>
                       )}
                       {activeThread.attachedFiles
                         ?.filter((f) => !activeThread.dataset || f.name !== activeThread.dataset.filename)
                         .map((f) => (
-                          <span
+                          <FileAttachmentCard
                             key={f.id}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-stone-700 bg-stone-800/60 px-2.5 py-0.5 text-[11.5px] text-stone-300"
-                          >
-                            {f.name}
-                            <button
-                              type="button"
-                              aria-label={`Remove ${f.name}`}
-                              onClick={() => handleRemoveDatasetFile(f.id)}
-                              className="ml-0.5 text-stone-400 hover:text-white"
-                            >
-                              <X className="size-3" />
-                            </button>
-                          </span>
+                            file={f}
+                            variant="card"
+                            onRemove={() => handleRemoveDatasetFile(f.id)}
+                            statusText="Uploaded"
+                          />
                         ))}
                     </div>
                   </div>

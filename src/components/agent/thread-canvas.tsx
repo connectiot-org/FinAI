@@ -19,6 +19,8 @@ import { FinancialTableRow } from "./financial-table";
 import { SseStepPayload } from "@/lib/sse-types";
 import { AttachedFile, formatFileSize, processFilesAsync } from "@/lib/attached-file";
 import { ParsedFinancialDataset } from "@/lib/financial-dataset-engine";
+import { FileAttachmentCard } from "./file-attachment-card";
+import { toast } from "sonner";
 
 export interface MessageItem {
   id: string;
@@ -136,6 +138,14 @@ export function ThreadCanvas({
       } else {
         setHeroFiles((prev) => [...prev, ...processed]);
       }
+      toast.success(
+        processed.length === 1
+          ? `Attached ${processed[0].name}`
+          : `Attached ${processed.length} files`,
+        {
+          description: `${processed.map((f) => f.name).join(", ")} ready for analysis`,
+        }
+      );
     }
   };
 
@@ -220,32 +230,17 @@ export function ThreadCanvas({
             {heroFiles.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2 px-1 pt-1">
                 {heroFiles.map((file) => (
-                  <div
+                  <FileAttachmentCard
                     key={file.id}
-                    className="flex items-center gap-2 rounded-xl border border-stone-700 bg-[#2b2b2b] px-2.5 py-1.5 text-[12px] shadow-sm text-stone-200"
-                  >
-                    {getFileChipIcon(file.name)}
-                    <div className="flex flex-col min-w-0">
-                      <span className="max-w-[180px] truncate font-medium text-white" title={file.name}>
-                        {file.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-stone-400">
-                        {formatFileSize(file.size)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
-                        setHeroFiles((prev) => prev.filter((f) => f.id !== file.id));
-                        onRemoveFile?.(file.id);
-                      }}
-                      aria-label={`Remove ${file.name}`}
-                      className="ml-0.5 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
+                    file={file}
+                    variant="card"
+                    statusText="Ready"
+                    onRemove={() => {
+                      if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
+                      setHeroFiles((prev) => prev.filter((f) => f.id !== file.id));
+                      onRemoveFile?.(file.id);
+                    }}
+                  />
                 ))}
               </div>
             )}

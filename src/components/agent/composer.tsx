@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { ModelConfig } from "@/config/models.config";
 import { AttachedFile, formatFileSize, processFilesAsync } from "@/lib/attached-file";
+import { FileAttachmentCard } from "./file-attachment-card";
+import { toast } from "sonner";
 
 // Re-exported for existing consumers (page.tsx)
 export type { AttachedFile };
@@ -85,6 +87,14 @@ export function Composer({
     const processed = await processFilesAsync(fileList);
     if (processed.length > 0) {
       setAttachedFiles((prev) => [...prev, ...processed]);
+      toast.success(
+        processed.length === 1
+          ? `Attached ${processed[0].name}`
+          : `Attached ${processed.length} files`,
+        {
+          description: `${processed.map((f) => f.name).join(", ")} ready to send`,
+        }
+      );
     }
   }, []);
 
@@ -211,43 +221,21 @@ export function Composer({
           {attachedFiles.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2 border-b border-stone-800 px-1 pb-2">
               {attachedFiles.map((file) => (
-                <div
+                <FileAttachmentCard
                   key={file.id}
-                  className="group flex items-center gap-2 rounded-xl border border-stone-700 bg-[#2b2b2b] px-2.5 py-1.5 text-[12px] shadow-sm text-stone-200"
-                >
-                  {getFileChipIcon(file.name)}
-                  <div className="flex flex-col min-w-0">
-                    <span className="max-w-[180px] truncate font-medium text-white" title={file.name}>
-                      {file.name}
-                    </span>
-                    <span className="font-mono text-[10px] text-stone-400">
-                      {formatFileSize(file.size)}
-                    </span>
-                  </div>
-                  {/* Pin button — keeps this file available across model switches */}
-                  {onPinFiles && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onPinFiles([file]);
-                        handleRemoveFile(file.id);
-                      }}
-                      aria-label={`Pin ${file.name} as persistent context`}
-                      title="Pin file — keeps it attached across model switches"
-                      className="rounded-full p-0.5 text-stone-500 transition-colors hover:bg-emerald-950/60 hover:text-emerald-400"
-                    >
-                      <Pin className="size-3" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFile(file.id)}
-                    aria-label={`Remove ${file.name}`}
-                    className="ml-0.5 rounded-full p-0.5 text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
+                  file={file}
+                  variant="card"
+                  statusText="Ready"
+                  onRemove={() => handleRemoveFile(file.id)}
+                  onPin={
+                    onPinFiles
+                      ? () => {
+                          onPinFiles([file]);
+                          handleRemoveFile(file.id);
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </div>
           )}

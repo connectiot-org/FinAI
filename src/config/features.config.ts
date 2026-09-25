@@ -1,5 +1,5 @@
 /**
- * Fintra Feature Configuration Flags
+ * FInAI Feature Configuration Flags
  */
 
 export const featuresConfig = {

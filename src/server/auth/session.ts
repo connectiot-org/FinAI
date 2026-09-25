@@ -12,14 +12,14 @@ export async function getCurrentUser(): Promise<SessionUser> {
   // In development and testing without NextAuth session cookies, resolve or create default dev admin user
   try {
     let user = await prisma.user.findFirst({
-      where: { email: "admin@fintra.ai" },
+      where: { email: "admin@finai.ai" },
     });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          email: "admin@fintra.ai",
-          name: "Fintra Controller Admin",
+          email: "admin@finai.ai",
+          name: "FInAI Controller Admin",
           role: "ADMIN",
         },
       });
@@ -35,8 +35,8 @@ export async function getCurrentUser(): Promise<SessionUser> {
     // If DB is offline, provide memory fallback
     return {
       id: "usr_dev_admin",
-      email: "admin@fintra.ai",
-      name: "Fintra Controller Admin",
+      email: "admin@finai.ai",
+      name: "FInAI Controller Admin",
       role: "ADMIN",
     };
   }

@@ -319,7 +319,7 @@ export function Composer({
 
         {/* Disclaimer Footer Note */}
         <p className="mt-2 text-center text-[11px] text-stone-400">
-          Fintra can make mistakes. Verify important financial numbers and sources.
+          FInAI can make mistakes. Verify important financial numbers and sources.
         </p>
       </div>
     </div>

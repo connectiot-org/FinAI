@@ -41,7 +41,7 @@ const features = [
   {
     icon: Table2,
     title: "Spreadsheet review",
-    desc: "Point Fintra at a workbook to map its structure, trace precedents, and summarize what each tab actually does.",
+    desc: "Point FInAI at a workbook to map its structure, trace precedents, and summarize what each tab actually does.",
     tag: "Excel",
   },
   {
@@ -75,7 +75,7 @@ export function Analysis() {
               numbers.
             </>
           }
-          description="General-purpose chatbots guess. Fintra grounds every answer in the files and figures you attach — spreadsheets, statements, filings, and policies — and shows its sources so reviewers can verify."
+          description="General-purpose chatbots guess. FInAI grounds every answer in the files and figures you attach — spreadsheets, statements, filings, and policies — and shows its sources so reviewers can verify."
         />
 
         <Stagger className="mt-12 grid gap-4 sm:grid-cols-2 md:mt-14 lg:grid-cols-3">
@@ -125,7 +125,7 @@ export function Analysis() {
 
 const steps = [
   { n: "01", title: "Attach sources", desc: "Drop in spreadsheets, ERP exports, or last quarter's pack." },
-  { n: "02", title: "Set the outline", desc: "Use a saved template or let Fintra propose the structure." },
+  { n: "02", title: "Set the outline", desc: "Use a saved template or let FInAI propose the structure." },
   { n: "03", title: "Generate the draft", desc: "Narrative, tables, and charts written from your actual figures." },
   { n: "04", title: "Review & export", desc: "Edit inline, resolve flags, then export PDF, DOCX, or slides." },
 ];
@@ -147,7 +147,7 @@ export function ReportBuilder() {
                   reports.
                 </>
               }
-              description="Give Fintra your sources and a template. It drafts the narrative, builds the tables, inserts the charts, and keeps every number traceable to the file it came from — so the review pass takes minutes, not days."
+              description="Give FInAI your sources and a template. It drafts the narrative, builds the tables, inserts the charts, and keeps every number traceable to the file it came from — so the review pass takes minutes, not days."
             />
             <Reveal delay={0.15}>
               <ol className="mt-10 space-y-0">

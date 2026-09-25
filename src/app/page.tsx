@@ -6,9 +6,8 @@ import { MultiModel } from "@/components/landing/multi-model";
 import { Analysis, ReportBuilder } from "@/components/landing/analysis-report";
 import { ErrorChecking, PresentationBuilder } from "@/components/landing/checking-presentations";
 import { Agents, TemplatesWorkflows } from "@/components/landing/agents-templates";
-import { ModelRouting, Security } from "@/components/landing/routing-security";
-import { Comparison } from "@/components/landing/comparison";
-import { FinalCTA, Footer } from "@/components/landing/cta-footer";
+import { ModelRouting } from "@/components/landing/routing-security";
+import { Footer } from "@/components/landing/cta-footer";
 
 export default function Home() {
   return (
@@ -32,9 +31,6 @@ export default function Home() {
           <Agents />
           <TemplatesWorkflows />
           <ModelRouting />
-          <Security />
-          <Comparison />
-          <FinalCTA />
         </main>
         <Footer />
       </div>

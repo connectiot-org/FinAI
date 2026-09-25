@@ -1,5 +1,5 @@
 /**
- * Fintra Shared Server-Sent Events (SSE) Contract Types
+ * FInAI Shared Server-Sent Events (SSE) Contract Types
  * Used by both client stream parser and server AI gateway.
  */
 

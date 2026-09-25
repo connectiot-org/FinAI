@@ -146,7 +146,7 @@ export function Footer() {
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 md:flex-row md:items-center">
           <p className="text-[12px] text-stone-500">
-            © 2026 Fintra Technologies, Inc. All rights reserved.
+            © 2026 FInAI Technologies, Inc. All rights reserved.
           </p>
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[12px]">
             {["Privacy", "Terms", "Security", "Status", "Cookies"].map((l) => (

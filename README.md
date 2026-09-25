@@ -1,8 +1,8 @@
-# Summa — AI Finance Platform Homepage
+# FInAI — AI Finance Platform Homepage
 
 **Multiple AI models. One finance workspace.**
 
-A premium, production-quality marketing homepage for an AI-finance SaaS product — inspired by the polish of modern editorial SaaS sites (Profound-style whitespace, typography and motion), with a fully original brand identity ("Summa", Σ mark).
+A premium, production-quality marketing homepage for an AI-finance SaaS product — inspired by the polish of modern editorial SaaS sites (Profound-style whitespace, typography and motion), with a fully original brand identity ("FInAI", Σ mark).
 
 The page presents a multi-model AI workspace for finance teams: chat with GPT, Claude, Gemini and DeepSeek in one place, run financial analysis, interrogate documents, build reports and presentations, check numbers for errors and inconsistencies, and reuse templates, workflows and finance-specific AI agents.
 
@@ -107,7 +107,7 @@ Almost **all copy lives in one file**: `src/lib/site-data.ts`.
 
 ## Design system
 
-- **Brand:** Summa (Σ wordmark) — original identity, no third-party assets.
+- **Brand:** FInAI (Σ wordmark) — original identity, no third-party assets.
 - **Palette:** off-white paper background (`#FAFAF9`), stone ink text, deep moss-green accent.
 - **Type:** Geist Sans / Geist Mono + Instrument Serif for italic display accents.
 - **Motion:** subtle scroll reveals and micro-interactions; respects `prefers-reduced-motion`.
@@ -124,6 +124,6 @@ The `research/` folder contains the raw research captured while building the com
 
 ## Notes
 
-- "Summa" is a **placeholder brand** for this concept — check trademark/domain availability before launch.
+- "FInAI" is the brand identity for this multi-model finance workspace.
 - GPT, Claude, Gemini, DeepSeek and all competitor names are trademarks of their respective owners;
   references are for identification and comparison only.

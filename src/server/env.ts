@@ -5,7 +5,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default("file:../db/custom.db"),
   DIRECT_URL: z.string().optional(),
   APP_URL: z.string().default("http://localhost:3000"),
-  AUTH_SECRET: z.string().default("fintra-auth-secret-development-key-32-chars-min"),
+  AUTH_SECRET: z.string().default("finai-auth-secret-development-key-32-chars-min"),
   OPENROUTER_API_KEY: z
     .string()
     .default("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"),

@@ -1,5 +1,5 @@
 /**
- * Fintra — site data layer
+ * FInAI — site data layer
  * All competitor facts below are compiled from publicly available sources
  * (company websites, vendor comparison posts, third-party pricing trackers)
  * as of September 2026. Anything that could not be confirmed from public

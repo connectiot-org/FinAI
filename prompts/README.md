@@ -1,6 +1,6 @@
-# Fintra Versioned Prompt Library
+# FInAI Versioned Prompt Library
 
-This directory is the authoritative repository of financial prompt engineering artifacts for Fintra AI.
+This directory is the authoritative repository of financial prompt engineering artifacts for FInAI.
 
 ## Directory Structure
 - `system/`: Base financial intelligence system prompts enforcing D9 principles.

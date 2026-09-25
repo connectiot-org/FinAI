@@ -1,18 +1,18 @@
 /**
- * Fintra Platform Site Configuration
+ * FInAI Platform Site Configuration
  * Single source of truth for marketing metadata, navigation, agent definitions, and primary CTAs.
  */
 
 export const siteConfig = {
-  name: "Fintra",
+  name: "FInAI",
   tagline: "AI-Native Financial Intelligence Platform",
   description:
     "An AI-native financial intelligence platform for CFOs, controllers, FP&A leads, and analysts. Multi-model routing, auditable steps, and evidence-backed figures.",
-  url: "https://fintra.ai",
-  ogImage: "https://fintra.ai/og.png",
+  url: "https://finai.ai",
+  ogImage: "https://finai.ai/og.png",
   links: {
-    twitter: "https://twitter.com/fintra_ai",
-    github: "https://github.com/fintra-ai",
+    twitter: "https://twitter.com/finai_ai",
+    github: "https://github.com/finai-ai",
   },
   primaryCta: {
     label: "Launch Workspace",
@@ -20,7 +20,7 @@ export const siteConfig = {
   },
   announcement: {
     enabled: true,
-    text: "Fintra Workspace Private Beta is live — Experience multi-model financial orchestration",
+    text: "FInAI Workspace Private Beta is live — Experience multi-model financial orchestration",
     href: "/agent",
   },
   navigation: {

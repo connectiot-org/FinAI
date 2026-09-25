@@ -40,6 +40,8 @@ export interface ThreadSidebarProps {
   onRenameThread?: (id: string, newTitle: string) => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  creditsPercent?: number;
+  tokensUsed?: number;
 }
 
 export function ThreadSidebar({
@@ -53,6 +55,8 @@ export function ThreadSidebar({
   onRenameThread,
   isMobileOpen = false,
   onCloseMobile,
+  creditsPercent = 85,
+  tokensUsed = 1420,
 }: ThreadSidebarProps) {
   const { data: session } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -359,14 +363,24 @@ export function ThreadSidebar({
         <div className="rounded-xl border border-stone-800 bg-[#212121] p-3 shadow-xs">
           <div className="flex items-center justify-between text-[11px] text-stone-400">
             <span className="font-mono uppercase tracking-wider">Credits</span>
-            <span className="font-mono font-semibold text-white">72%</span>
+            <span className="font-mono font-semibold text-white">{Math.round(creditsPercent)}%</span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-800">
-            <div className="h-full w-[72%] rounded-full bg-emerald-500 transition-all duration-500" />
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                creditsPercent > 50
+                  ? "bg-emerald-500"
+                  : creditsPercent > 20
+                  ? "bg-amber-500"
+                  : "bg-rose-500"
+              }`}
+              style={{ width: `${Math.max(4, Math.min(100, creditsPercent))}%` }}
+            />
           </div>
-          <p className="mt-1.5 text-[10px] leading-snug text-stone-500">
-            Smart routing optimizes token spend
-          </p>
+          <div className="mt-1.5 flex items-center justify-between text-[10px] text-stone-500">
+            <span>Smart token optimization</span>
+            <span className="font-mono text-stone-400">{tokensUsed.toLocaleString()} tokens</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 text-[11px] text-stone-400">

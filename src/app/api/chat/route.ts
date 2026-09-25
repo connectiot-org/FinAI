@@ -12,7 +12,7 @@ const FALLBACK_MODELS = [
   "nvidia/nemotron-3.5-lightning:free",
 ];
 
-const SYSTEM_FINANCIAL_PROMPT = `You are Fintra AI, a senior financial intelligence analyst and controller assistant. 
+const SYSTEM_FINANCIAL_PROMPT = `You are FInAI, a senior financial intelligence analyst and controller assistant. 
 Your tone is professional, rigorous, and grounded in corporate finance standards (FP&A, accounting, auditing, variance analysis).
 Always format financial analysis cleanly with markdown tables, precise figures, clear assumptions, and variance percentages (+/-).
 When asked to compare budgets or actuals, highlight key variances and suggest concrete operational action items.`;
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://fintra.ai",
-        "X-Title": "Fintra AI Financial Workspace",
+        "HTTP-Referer": "https://finai.ai",
+        "X-Title": "FInAI Financial Workspace",
       },
       body: JSON.stringify(payload),
     });
@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
             headers: {
               Authorization: `Bearer ${OPENROUTER_API_KEY}`,
               "Content-Type": "application/json",
-              "HTTP-Referer": "https://fintra.ai",
-              "X-Title": "Fintra AI Financial Workspace",
+              "HTTP-Referer": "https://finai.ai",
+              "X-Title": "FInAI Financial Workspace",
             },
             body: JSON.stringify({
               ...payload,

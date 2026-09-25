@@ -20,11 +20,11 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Fintra — Multiple AI Models. One Finance Workspace.",
+  title: "FInAI — Multiple AI Models. One Finance Workspace.",
   description:
-    "Fintra is the AI workspace for finance teams: chat with GPT, Claude, Gemini and DeepSeek in one place, run financial analysis, build reports and decks, check numbers for errors, and reuse templates and workflows.",
+    "FInAI is the AI workspace for finance teams: chat with GPT, Claude, Gemini and DeepSeek in one place, run financial analysis, build reports and decks, check numbers for errors, and reuse templates and workflows.",
   keywords: [
-    "Fintra",
+    "FInAI",
     "AI finance workspace",
     "financial analysis AI",
     "multi-model AI",
@@ -37,15 +37,15 @@ export const metadata: Metadata = {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "Fintra — Multiple AI Models. One Finance Workspace.",
+    title: "FInAI — Multiple AI Models. One Finance Workspace.",
     description:
       "Chat with every frontier AI model, run financial analysis, build reports and decks, and automate recurring finance work — in one professional workspace.",
-    siteName: "Fintra",
+    siteName: "FInAI",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fintra — Multiple AI Models. One Finance Workspace.",
+    title: "FInAI — Multiple AI Models. One Finance Workspace.",
     description:
       "The AI workspace for finance teams. Every model. Every workflow. One place.",
   },

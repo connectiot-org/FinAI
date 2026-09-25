@@ -67,7 +67,7 @@ export function ErrorChecking() {
                 before anyone else sees it.
               </h2>
               <p className="max-w-lg text-pretty text-[16px] leading-relaxed text-stone-400">
-                Spreadsheets don't ship with a spell-checker for figures. Fintra
+                Spreadsheets don't ship with a spell-checker for figures. FInAI
                 cross-examines your work — statements against schedules, decks
                 against models, this month against last month — and flags
                 potential issues for your review before they reach the CFO.
@@ -112,7 +112,7 @@ export function ErrorChecking() {
             <Reveal delay={0.18}>
               <p className="mt-9 flex max-w-md items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 p-4 text-[12.5px] leading-relaxed text-stone-400">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-400" aria-hidden="true" />
-                Findings are advisory. Fintra surfaces potential issues with
+                Findings are advisory. FInAI surfaces potential issues with
                 citations — a human always makes the final call.
               </p>
             </Reveal>
@@ -251,7 +251,7 @@ export function PresentationBuilder() {
                   will actually read.
                 </>
               }
-              description="Turn any analysis into a branded presentation. Fintra follows your house template — fonts, colors, chart styles — writes the storyline, and keeps slide numbers in sync with the underlying model."
+              description="Turn any analysis into a branded presentation. FInAI follows your house template — fonts, colors, chart styles — writes the storyline, and keeps slide numbers in sync with the underlying model."
             />
             <Reveal delay={0.15}>
               <ul className="mt-9 grid gap-4 sm:grid-cols-2">

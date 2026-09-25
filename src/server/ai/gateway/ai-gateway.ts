@@ -32,7 +32,7 @@ export class AIGateway {
       event: "step",
       data: {
         id: "step-1",
-        label: `Connecting to Fintra Gateway (${targetModelId})`,
+        label: `Connecting to FInAI Gateway (${targetModelId})`,
         status: "active",
         index: 0,
       },
@@ -89,7 +89,7 @@ export class AIGateway {
               event: "step",
               data: {
                 id: "step-1",
-                label: `Connected to Fintra Gateway (${chosenModel})`,
+                label: `Connected to FInAI Gateway (${chosenModel})`,
                 status: "done",
                 index: 0,
                 duration: "0.2s",
@@ -118,7 +118,7 @@ export class AIGateway {
             event: "step",
             data: {
               id: "step-1",
-              label: `Connected to Fintra Gateway (${chosenModel})`,
+              label: `Connected to FInAI Gateway (${chosenModel})`,
               status: "done",
               index: 0,
               duration: "0.2s",

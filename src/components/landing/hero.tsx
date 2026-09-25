@@ -92,7 +92,7 @@ export function Hero() {
             {...anim(0.16)}
             className="mt-6 max-w-xl text-pretty text-[16.5px] leading-relaxed text-ink-soft md:text-[18.5px]"
           >
-            Fintra brings every frontier AI model, your financial data, and your
+            FInAI brings every frontier AI model, your financial data, and your
             recurring workflows into one professional workspace — so analysts,
             accountants, and finance teams stop juggling tabs and start
             finishing work.

@@ -31,7 +31,7 @@ export function Comparison() {
       <Container>
         <SectionHeading
           align="center"
-          eyebrow="How Fintra compares"
+          eyebrow="How FInAI compares"
           title={
             <>
               A different{" "}
@@ -39,7 +39,7 @@ export function Comparison() {
               of tool.
             </>
           }
-          description="Research platforms, FP&A suites, and close tools each solve one slice of finance work. Fintra is the general workspace above them: every model, every workflow, one place. Competitor facts are compiled from public sources as of September 2026."
+          description="Research platforms, FP&A suites, and close tools each solve one slice of finance work. FInAI is the general workspace above them: every model, every workflow, one place. Competitor facts are compiled from public sources as of September 2026."
         />
 
         {/* Matrix */}
@@ -50,7 +50,7 @@ export function Comparison() {
           <div className="overflow-x-auto touch-pan-x [scrollbar-width:thin] rounded-2xl border border-line bg-white shadow-card">
             <table className="w-full min-w-[880px] border-collapse text-left">
               <caption className="sr-only">
-                Feature comparison between Fintra and five publicly known
+                Feature comparison between FInAI and five publicly known
                 competitors across nine capability areas
               </caption>
               <thead>
@@ -69,7 +69,7 @@ export function Comparison() {
                       >
                         Σ
                       </span>
-                      Fintra
+                      FInAI
                     </span>
                   </th>
                   {competitors.map((c) => (

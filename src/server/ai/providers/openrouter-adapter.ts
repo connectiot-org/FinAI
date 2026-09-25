@@ -15,8 +15,8 @@ export class OpenRouterAdapter implements ProviderAdapter {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://fintra.ai",
-        "X-Title": "Fintra Financial AI Workspace",
+        "HTTP-Referer": "https://finai.ai",
+        "X-Title": "FInAI Financial Workspace",
       },
       body: JSON.stringify({
         model: request.modelId,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** Fintra — Σ mark + wordmark. */
+/** FInAI — Σ mark + wordmark. */
 export function Logo({
   className = "",
   mark = false,
@@ -15,7 +15,7 @@ export function Logo({
   return (
     <Link
       href={href}
-      aria-label="Fintra home"
+      aria-label="FInAI home"
       className={`inline-flex items-center gap-2.5 ${className}`}
     >
       <span
@@ -39,7 +39,7 @@ export function Logo({
             dark ? "text-white" : "text-stone-950"
           }`}
         >
-          Fintra
+          FInAI
         </span>
       )}
     </Link>

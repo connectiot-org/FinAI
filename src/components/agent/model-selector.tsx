@@ -17,21 +17,35 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
   const freeCount = useMemo(() => modelsConfig.filter((m) => m.isFree).length, []);
 
   const filteredModels = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const rawQ = search.toLowerCase().trim();
+    // Normalize typos and common search queries (e.g. "cloude" -> "claude", "chatgpt" -> "gpt")
+    const q = rawQ.replace(/cloude/g, "claude").replace(/chat\s*gpt/g, "gpt");
+
     return modelsConfig.filter((m) => {
       const matchesSearch =
-        !q ||
+        !rawQ ||
+        m.displayName.toLowerCase().includes(rawQ) ||
         m.displayName.toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(rawQ) ||
         m.provider.toLowerCase().includes(q) ||
+        m.desc.toLowerCase().includes(rawQ) ||
         m.desc.toLowerCase().includes(q) ||
+        m.modelId.toLowerCase().includes(rawQ) ||
         m.modelId.toLowerCase().includes(q) ||
-        (q === "free" && m.isFree);
+        (m.notes && m.notes.toLowerCase().includes(rawQ)) ||
+        (m.notes && m.notes.toLowerCase().includes(q)) ||
+        (rawQ === "free" && m.isFree) ||
+        ((rawQ === "popular" || rawQ === "known") && m.isPopular);
+
       const matchesTier =
         tierFilter === "All"
           ? true
+          : tierFilter === "Popular"
+          ? Boolean(m.isPopular)
           : tierFilter === "Free"
           ? Boolean(m.isFree)
           : m.tier === tierFilter;
+
       return matchesSearch && matchesTier;
     });
   }, [search, tierFilter]);
@@ -59,7 +73,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
       {open && (
         <div
           role="listbox"
-          className="absolute left-1/2 -translate-x-1/2 top-full z-50 mt-2 w-[calc(100vw-24px)] sm:w-[440px] max-w-[440px] rounded-2xl border border-stone-800 bg-[#181818] p-3 shadow-2xl text-stone-200"
+          className="absolute left-1/2 -translate-x-1/2 top-full z-50 mt-2 w-[calc(100vw-24px)] sm:w-[460px] max-w-[460px] rounded-2xl border border-stone-800 bg-[#181818] p-3 shadow-2xl text-stone-200"
         >
           <div className="mb-2.5 flex items-center justify-between border-b border-stone-800 pb-2">
             <span className="font-mono text-[10.5px] uppercase tracking-wider text-stone-400">
@@ -93,22 +107,26 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
 
           {/* Tier Filter Tabs */}
           <div className="mb-2.5 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {["All", "Free", "Reasoning", "Balanced", "Fast", "Finance Specialist", "Open"].map((t) => (
+            {["All", "Popular", "Free", "Reasoning", "Balanced", "Fast", "Finance Specialist", "Open"].map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTierFilter(t)}
-                className={`shrink-0 rounded-lg px-2 py-1 text-[10.5px] font-medium transition-colors ${
+                className={`shrink-0 rounded-lg px-2 py-1 text-[10.5px] font-medium transition-colors cursor-pointer ${
                   tierFilter === t
-                    ? t === "Free"
+                    ? t === "Popular"
+                      ? "bg-sky-500 text-black font-semibold"
+                      : t === "Free"
                       ? "bg-emerald-500 text-black font-semibold"
                       : "bg-white text-black font-semibold"
+                    : t === "Popular"
+                    ? "bg-sky-950/70 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-900/80"
                     : t === "Free"
                     ? "bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-900/80"
                     : "bg-[#242424] text-stone-400 hover:bg-[#2f2f2f] hover:text-white"
                 }`}
               >
-                {t === "Free" ? `⚡ Free (${freeCount})` : t}
+                {t === "Popular" ? "⭐ Popular" : t === "Free" ? `⚡ Free (${freeCount})` : t}
               </button>
             ))}
           </div>
@@ -132,7 +150,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                       onSelectModel(opt);
                       setOpen(false);
                     }}
-                    className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all ${
+                    className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all cursor-pointer ${
                       isSelected
                         ? "bg-[#282828] text-white ring-1 ring-stone-700"
                         : "text-stone-300 hover:bg-[#222222] hover:text-white"
@@ -143,6 +161,11 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                         <span className="text-[13px] font-semibold text-white">
                           {opt.displayName}
                         </span>
+                        {opt.isPopular && (
+                          <span className="rounded bg-sky-500/20 px-1.5 py-0.2 font-mono text-[9px] font-semibold text-sky-300 ring-1 ring-sky-500/40">
+                            POPULAR
+                          </span>
+                        )}
                         {opt.isFree && (
                           <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 font-mono text-[9px] font-semibold text-emerald-300 ring-1 ring-emerald-500/40">
                             FREE

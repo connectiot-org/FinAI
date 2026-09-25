@@ -40,7 +40,7 @@ Operating expense ran **$23.1M** vs. an approved budget of **$22.4M** (+3.1% var
 1. **Cloud & Infrastructure**: Unplanned data-platform migration costs ($0.17M) in July have compounded due to dual-running systems.
 2. **Contractor Utilization**: Engineering and audit surge staffing exceeded forecasted headcount with no matching approved PO variance.
 
-*Disclaimer: Fintra outputs are structured analytical interpretations for finance teams. Always review underlying workpapers prior to final board publication.*`;
+*Disclaimer: FInAI outputs are structured analytical interpretations for finance teams. Always review underlying workpapers prior to final board publication.*`;
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {

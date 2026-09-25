@@ -1,7 +1,7 @@
 # Financial AI Evaluation Workflow
 
 ## Purpose
-This document specifies the evaluation workflow for Fintra's financial model answers. Golden cases test compliance with the D9 financial safety rules:
+This document specifies the evaluation workflow for FInAI's financial model answers. Golden cases test compliance with the D9 financial safety rules:
 1. Grounded calculations
 2. Separation of data and interpretation
 3. Explicit assumptions

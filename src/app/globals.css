@@ -37,7 +37,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  /* Fintra brand tokens */
+  /* FInAI brand tokens */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-paper: var(--paper);
@@ -51,7 +51,7 @@
 :root {
   --radius: 0.625rem;
 
-  /* Fintra palette — warm paper, stone ink, deep moss green */
+  /* FInAI palette — warm paper, stone ink, deep moss green */
   --background: #fafaf9;
   --foreground: #141311;
   --paper: #fafaf9;

@@ -14,11 +14,11 @@ const audiences = [
   "Researchers",
 ];
 
-/** Audience marquee — communicates who Fintra is built for. */
+/** Audience marquee — communicates who FInAI is built for. */
 export function AudienceStrip() {
   const row = [...audiences, ...audiences];
   return (
-    <section aria-label="Who Fintra is built for" className="py-14 md:py-20">
+    <section aria-label="Who FInAI is built for" className="py-14 md:py-20">
       <Container>
         <Reveal>
           <p className="text-center font-mono text-[11px] uppercase tracking-[0.2em] text-stone-400">

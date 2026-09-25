@@ -24,7 +24,7 @@ const phases: {
     id: "limit",
     chip: "Credit limit reached on Claude",
     chipCls: "bg-amber-400/10 text-amber-300 ring-amber-400/30",
-    note: "If a model reaches an applicable usage or credit limitation, Fintra detects it mid-task.",
+    note: "If a model reaches an applicable usage or credit limitation, FInAI detects it mid-task.",
   },
   {
     id: "rerouted",
@@ -201,7 +201,7 @@ export function ModelRouting() {
               — even at the limit.
             </h2>
             <p className="text-pretty text-[16px] leading-relaxed text-stone-400">
-              You send a task. Fintra picks a suitable model and gets to work. If
+              You send a task. FInAI picks a suitable model and gets to work. If
               that model reaches an applicable usage or credit limitation, the
               platform is designed to continue on another suitable available
               model — preserving the relevant workflow context where technically
@@ -263,7 +263,7 @@ const securityItems = [
   },
   {
     title: "Your data, your models' boundaries",
-    desc: "Workspace data is not used to train third-party models under Fintra's enterprise configuration.",
+    desc: "Workspace data is not used to train third-party models under FInAI's enterprise configuration.",
   },
   {
     title: "Full audit logs",
@@ -300,7 +300,7 @@ export function Security() {
                   .
                 </>
               }
-              description="Finance data demands finance-grade controls. Fintra is designed around least privilege, full traceability, and admin governance — the defaults your security review will ask about."
+              description="Finance data demands finance-grade controls. FInAI is designed around least privilege, full traceability, and admin governance — the defaults your security review will ask about."
             />
             <Reveal delay={0.15}>
               <div className="mt-9 flex flex-wrap gap-2.5">

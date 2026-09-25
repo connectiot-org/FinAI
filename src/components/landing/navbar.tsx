@@ -6,20 +6,12 @@ import { ChevronDown, Menu, X, ArrowRight } from "lucide-react";
 import { Logo } from "./logo";
 
 const productLinks = [
-  { label: "Multi-model chat", href: "#models", desc: "GPT, Claude, Gemini, DeepSeek" },
-  { label: "Financial analysis", href: "#analysis", desc: "Variance, ratios, scenarios" },
-  { label: "Report builder", href: "#reports", desc: "Draft to board-ready" },
-  { label: "Error checking", href: "#checking", desc: "Ties, formulas, inconsistencies" },
-  { label: "Presentation builder", href: "#presentations", desc: "Branded decks in minutes" },
-  { label: "Finance agents", href: "#agents", desc: "Automate recurring work" },
-];
-
-const solutionsLinks = [
-  { label: "FP&A teams", href: "#analysis" },
-  { label: "Accounting & close", href: "#checking" },
-  { label: "Auditors", href: "#agents" },
-  { label: "Advisory & diligence", href: "#agents" },
-  { label: "CFO office", href: "#reports" },
+  { label: "Multi-model chat", href: "/agent#models", desc: "GPT, Claude, Gemini, DeepSeek" },
+  { label: "Financial analysis", href: "/agent#analysis", desc: "Variance, ratios, scenarios" },
+  { label: "Report builder", href: "/agent#reports", desc: "Draft to board-ready" },
+  { label: "Error checking", href: "/#checking", desc: "Ties, formulas, inconsistencies" },
+  { label: "Presentation builder", href: "/#presentations", desc: "Branded decks in minutes" },
+  { label: "Finance agents", href: "/agent", desc: "Automate recurring work" },
 ];
 
 function Dropdown({
@@ -114,12 +106,11 @@ export function Navbar() {
         {/* Desktop nav */}
         <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-0.5 lg:flex">
           <Dropdown label="Product" items={productLinks} rich />
-          <Dropdown label="Solutions" items={solutionsLinks} />
           {[
             { label: "Workspace", href: "/agent" },
-            { label: "Compare", href: "#compare" },
-            { label: "Security", href: "#security" },
-            { label: "Routing", href: "#routing" },
+            { label: "Compare", href: "/compare" },
+            { label: "Security", href: "/security" },
+            { label: "Routing", href: "/#routing" },
           ].map((l) => (
             <a
               key={l.label}
@@ -137,7 +128,7 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <a
-            href="/agent"
+            href="/sign-in"
             className="flex h-9 items-center rounded-full px-3.5 text-[14px] font-medium text-stone-600 transition-colors hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss"
           >
             Log in
@@ -146,7 +137,7 @@ export function Navbar() {
             href="/agent"
             className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-stone-950 px-4.5 text-[14px] font-medium text-white transition-colors hover:bg-moss-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss"
           >
-            Launch Workspace
+            Start free
             <ArrowRight
               className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
               aria-hidden="true"
@@ -202,11 +193,10 @@ export function Navbar() {
                 <div className="grid grid-cols-2 gap-1">
                   {[
                     { label: "Workspace", href: "/agent" },
-                    { label: "Compare", href: "#compare" },
-                    { label: "Security", href: "#security" },
-                    { label: "Routing", href: "#routing" },
-                    { label: "Templates", href: "#templates" },
-                    { label: "Pricing", href: "#pricing" },
+                    { label: "Compare", href: "/compare" },
+                    { label: "Security", href: "/security" },
+                    { label: "Routing", href: "/#routing" },
+                    { label: "Log in", href: "/sign-in" },
                   ].map((l) => (
                     <a
                       key={l.label}
@@ -226,7 +216,7 @@ export function Navbar() {
                 onClick={() => setOpen(false)}
                 className="flex h-11 items-center justify-center rounded-full bg-stone-950 text-[15px] font-medium text-white transition-colors hover:bg-moss-deep"
               >
-                Launch Workspace
+                Start free
               </a>
             </div>
           </motion.div>

@@ -13,6 +13,7 @@ import {
   FileCode,
   File,
   Database,
+  Pin,
 } from "lucide-react";
 import { UserMessageRenderer, AssistantMessageRenderer } from "./message-part-renderers";
 import { FinancialTableRow } from "./financial-table";
@@ -32,6 +33,7 @@ export interface MessageItem {
   steps?: SseStepPayload[];
   evidence?: string[];
   rerouted?: boolean;
+  isPinned?: boolean;
 }
 
 export interface ThreadCanvasProps {
@@ -54,6 +56,8 @@ export interface ThreadCanvasProps {
   onRemoveFile?: (fileId: string) => void;
   /** Callback to unload dataset */
   onRemoveDataset?: () => void;
+  /** Callback to pin/unpin a message */
+  onPinMessage?: (messageId: string) => void;
 }
 
 const emptyStatePrompts = [
@@ -117,6 +121,7 @@ export function ThreadCanvas({
   onAttachFiles,
   onRemoveFile,
   onRemoveDataset,
+  onPinMessage,
 }: ThreadCanvasProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [heroInput, setHeroInput] = useState("");
@@ -349,7 +354,7 @@ export function ThreadCanvas({
         {/* Bottom Disclaimer matching ChatGPT */}
         <div className="pb-2 text-center">
           <p className="text-[11.5px] text-stone-500">
-            Fintra is AI. By using it, you agree to our{" "}
+            FInAI is AI. By using it, you agree to our{" "}
             <a href="#" className="underline text-stone-400 hover:text-stone-300">Terms</a> &amp;{" "}
             <a href="#" className="underline text-stone-400 hover:text-stone-300">Privacy Policy</a>.{" "}
             Verified calculations &amp; model audit trail included.
@@ -359,9 +364,45 @@ export function ThreadCanvas({
     );
   }
 
+  const pinnedMessages = messages.filter((m) => m.isPinned);
+
   return (
     <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl space-y-6">
+        {/* Pinned Insights Banner if any */}
+        {pinnedMessages.length > 0 && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4 shadow-sm animate-in fade-in">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-amber-300">
+                <Pin className="size-3.5 rotate-45 text-amber-400" />
+                <span>Pinned Insights ({pinnedMessages.length})</span>
+              </span>
+              <span className="font-mono text-[10.5px] text-stone-400">Quick Access</span>
+            </div>
+            <div className="mt-2.5 space-y-1.5">
+              {pinnedMessages.map((pm) => (
+                <div
+                  key={pm.id}
+                  className="flex items-center justify-between rounded-lg bg-black/40 px-3 py-1.5 text-xs border border-stone-800"
+                >
+                  <p className="truncate text-stone-200 pr-2">
+                    {pm.content.slice(0, 80)}...
+                  </p>
+                  {onPinMessage && (
+                    <button
+                      type="button"
+                      onClick={() => onPinMessage(pm.id)}
+                      className="text-stone-400 hover:text-white shrink-0 cursor-pointer text-[11px]"
+                    >
+                      Unpin
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((msg) =>
           msg.role === "user" ? (
             <UserMessageRenderer key={msg.id} content={msg.content} files={msg.files} />
@@ -374,6 +415,9 @@ export function ThreadCanvas({
               tableData={msg.tableData}
               evidence={msg.evidence}
               rerouted={msg.rerouted}
+              messageId={msg.id}
+              onPin={onPinMessage}
+              isPinned={msg.isPinned}
             />
           )
         )}

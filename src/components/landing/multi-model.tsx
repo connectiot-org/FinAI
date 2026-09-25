@@ -40,7 +40,7 @@ export function MultiModel() {
                 frontier model.
               </>
             }
-            description="No more tab-hopping between AI tools or losing your place mid-task. In Fintra, GPT, Claude, Gemini, DeepSeek, and other supported models live in the same thread — switch mid-conversation without losing context."
+            description="No more tab-hopping between AI tools or losing your place mid-task. In FInAI, GPT, Claude, Gemini, DeepSeek, and other supported models live in the same thread — switch mid-conversation without losing context."
           />
           <Reveal delay={0.1} className="lg:justify-self-end">
             <a

@@ -54,3 +54,13 @@ server.log
 # Skills directory
 /skills/
 .freebuff/
+
+# Database files
+*.db
+*.db-journal
+*.sqlite*
+db/*.db
+
+# Review documents
+*.pdf
+.turbo/

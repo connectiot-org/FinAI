@@ -118,7 +118,7 @@ export function ProductMockup() {
   return (
     <div
       role="group"
-      aria-label="Interactive preview of the Fintra workspace"
+      aria-label="Interactive preview of the FInAI workspace"
       className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-float"
     >
       {/* Browser chrome */}
@@ -133,7 +133,7 @@ export function ProductMockup() {
           aria-hidden="true"
         >
           <Lock className="size-2.5" />
-          app.fintra.ai/workspace
+          app.finai.ai/workspace
         </div>
         <div className="w-10" aria-hidden="true" />
       </div>

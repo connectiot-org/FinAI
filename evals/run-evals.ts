@@ -19,7 +19,7 @@ interface EvalCase {
 async function runEvals() {
   console.log("📊 Starting Fintra Financial AI Evaluation Suite...");
 
-  const casesPath = path.join(__dirname, "golden-cases", "cases.json");
+  const casesPath = path.join(process.cwd(), "evals", "golden-cases", "cases.json");
   if (!fs.existsSync(casesPath)) {
     console.error("Cases file not found at", casesPath);
     process.exit(1);

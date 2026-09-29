@@ -22,6 +22,9 @@ export interface StoredDatasetRecord extends StoredDatasetSummary {
 const STORAGE_PREFIX = "fintra_dataset_";
 const INDEX_KEY = "fintra_datasets_index_v1";
 
+// Zero-latency in-memory cache for full datasets across thread sessions
+const inMemoryDatasetCache = new Map<string, ParsedFinancialDataset>();
+
 /**
  * Senior-level Dataset Store
  * Provides persistent storage for financial datasets & spreadsheets with
@@ -62,6 +65,11 @@ class DatasetStorageEngine {
     userId: string = "pilot-user"
   ): Promise<string> {
     const id = `ds-${threadId}`;
+    
+    // Always store full dataset in high-speed memory cache
+    inMemoryDatasetCache.set(threadId, dataset);
+    inMemoryDatasetCache.set(id, dataset);
+
     const summary: StoredDatasetSummary = {
       id,
       threadId,
@@ -78,9 +86,15 @@ class DatasetStorageEngine {
 
     if (this.isClient()) {
       try {
+        // Sanitize for localStorage to strictly respect browser 5MB storage limit
+        const sanitizedDataset: ParsedFinancialDataset = {
+          ...dataset,
+          rawCsv: dataset.rawCsv ? dataset.rawCsv.slice(0, 15000) : "",
+          rows: dataset.rows ? dataset.rows.slice(0, 200) : [],
+        };
         const fullRecord: StoredDatasetRecord = {
           ...summary,
-          dataset,
+          dataset: sanitizedDataset,
         };
         localStorage.setItem(`${STORAGE_PREFIX}${id}`, JSON.stringify(fullRecord));
 
@@ -122,12 +136,22 @@ class DatasetStorageEngine {
    * Retrieves a stored dataset by its threadId or datasetId
    */
   getDatasetByThread(threadId: string): ParsedFinancialDataset | null {
-    if (!this.isClient()) return null;
     const id = `ds-${threadId}`;
+    if (inMemoryDatasetCache.has(threadId)) {
+      return inMemoryDatasetCache.get(threadId)!;
+    }
+    if (inMemoryDatasetCache.has(id)) {
+      return inMemoryDatasetCache.get(id)!;
+    }
+
+    if (!this.isClient()) return null;
     try {
       const raw = localStorage.getItem(`${STORAGE_PREFIX}${id}`);
       if (!raw) return null;
       const record = JSON.parse(raw) as StoredDatasetRecord;
+      if (record.dataset) {
+        inMemoryDatasetCache.set(threadId, record.dataset);
+      }
       return record.dataset || null;
     } catch {
       return null;

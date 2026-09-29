@@ -6,10 +6,12 @@ const OPENROUTER_API_KEY =
 
 // Fallback chain for free tier / rate limits
 const FALLBACK_MODELS = [
-  "inclusionai/ling-3.0-flash-fin:free",
-  "google/gemma-4-31b-it:free",
-  "liquid/lfm-2.5-2.6b:free",
+  "openrouter/free",
   "nvidia/nemotron-3.5-lightning:free",
+  "dots-studio/dots-3-note-preview:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "poolside/laguna-s-2.1:free",
 ];
 
 const SYSTEM_FINANCIAL_PROMPT = `You are FInAI, a senior financial intelligence analyst and controller assistant. 
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
     // Determine candidate model
     let targetModel = modelId || "auto";
     if (targetModel === "auto") {
-      targetModel = "inclusionai/ling-3.0-flash-fin:free";
+      targetModel = "openrouter/free";
     }
 
     const payload = {

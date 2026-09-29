@@ -95,6 +95,21 @@ export class OpenRouterAdapter implements ProviderAdapter {
 
           try {
             const parsed = JSON.parse(dataStr);
+
+            if (parsed.error) {
+              const errMsg = parsed.error.message || "Provider error in stream";
+              const errCode = parsed.error.code || "UPSTREAM_ERROR";
+              yield {
+                event: "error",
+                data: {
+                  code: String(errCode),
+                  message: String(errMsg),
+                  retryable: true,
+                },
+              };
+              return;
+            }
+
             const choice = parsed.choices?.[0];
             const deltaContent = choice?.delta?.content;
             const deltaReasoning =
@@ -126,10 +141,25 @@ export class OpenRouterAdapter implements ProviderAdapter {
 
       // If model only output reasoning (e.g. thinking models before cutoff), emit reasoning as the answer
       if (!accumulatedContent.trim() && accumulatedReasoning.trim()) {
+        accumulatedContent = accumulatedReasoning;
         yield {
           event: "text-delta",
           data: { text: accumulatedReasoning },
         };
+      }
+
+      // If response is just a guardrail artifact or empty, trigger retryable error for fallback
+      const cleanContent = accumulatedContent.replace(/^user safety:\s*safe\s*/i, "").trim();
+      if (!cleanContent) {
+        yield {
+          event: "error",
+          data: {
+            code: "EMPTY_COMPLETION",
+            message: "Model completed with empty response content",
+            retryable: true,
+          },
+        };
+        return;
       }
 
       // Usage frame

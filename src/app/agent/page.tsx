@@ -17,6 +17,7 @@ import {
   parseFinancialCsv,
   validateFinancialQueryGrounding,
   buildGroundingContext,
+  generateDeterministicDatasetSummary,
   ParsedFinancialDataset,
   FinancialDataRow,
 } from "@/lib/financial-dataset-engine";
@@ -809,14 +810,17 @@ ${preview}`;
           s.label?.toLowerCase().includes("failover")
         );
 
+        const fallbackContent =
+          activeDataset
+            ? generateDeterministicDatasetSummary(activeDataset, displayContent)
+            : result.error
+            ? `⚠️ Gateway notice: ${result.error.message}`
+            : "(No response generated)";
+
         const assistantMsg: MessageItem = {
           id: `asst-${Date.now()}`,
           role: "assistant",
-          content:
-            result.text ||
-            (result.error
-              ? `⚠️ Gateway notice: ${result.error.message}`
-              : "(No response generated)"),
+          content: result.text?.trim() ? result.text : fallbackContent,
           model: selectedModel.displayName,
           steps: result.steps,
           rerouted: isRerouted,

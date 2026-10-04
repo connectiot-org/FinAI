@@ -67,6 +67,10 @@ export interface ParsedFinancialDataset {
   rows: FinancialDataRow[];
   rawCsv: string;
   profile?: DatasetProfile;
+  /** True when the in-session row set is a truncated subset of the file
+   *  (set by the dataset store on rehydration). Statistics in `profile`
+   *  remain computed from the full file. */
+  partialRows?: boolean;
 }
 
 // Map common company aliases to dataset ticker symbols
@@ -153,7 +157,7 @@ export function computeDatasetProfile(
 
     // Detect if column is predominantly numeric
     const numericValues = values
-      .map((v) => (typeof v === "number" ? v : parseFloat(String(v).replace(/[$,€£%]/g, "").replace(/,/g, ""))))
+      .map((v) => (typeof v === "number" ? v : parseNumericCell(String(v))))
       .filter((v) => !isNaN(v) && isFinite(v));
 
     const isNumeric =
@@ -241,8 +245,122 @@ export function computeDatasetProfile(
   };
 }
 
+/** Escape a literal string for safe embedding in a RegExp. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Hard caps so oversized uploads cannot freeze the main thread or blow the stack. */
+export const MAX_CSV_ROWS = 50_000;
+export const MAX_CSV_CHARS = 5_000_000; // ~5MB of text
+
 /**
- * Robust CSV/TSV parser supporting delimiters, quotes, commas, scientific notation, and CRLF
+ * Parse a full CSV document into rows of string cells, honoring RFC-4180
+ * quoting: fields may be wrapped in double quotes, contain the delimiter,
+ * escaped quotes (""), and *embedded newlines*.
+ */
+function parseCsvRecords(content: string, delimiter: string): string[][] {
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (content[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === delimiter) {
+      record.push(field.trim());
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      // Treat CRLF as one terminator.
+      if (char === "\r" && content[i + 1] === "\n") i++;
+      record.push(field.trim());
+      // Skip entirely blank records (stray blank lines).
+      if (record.length > 1 || record[0] !== "") {
+        records.push(record);
+      }
+      record = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  // Final record (no trailing newline).
+  record.push(field.trim());
+  if (record.length > 1 || record[0] !== "") {
+    records.push(record);
+  }
+
+  return records;
+}
+
+/**
+ * Parse a numeric cell into a JS number, handling currency symbols, thousands
+ * separators, percentages, accounting-style negatives "(1,234)", and
+ * European decimal format "1.234,56". Returns NaN when not numeric.
+ */
+function parseNumericCell(raw: string): number {
+  if (!raw) return NaN;
+  let s = raw.trim();
+
+  // Accounting negative: (1,234.56) -> -1234.56
+  const accounting = /^\((.*)\)$/.exec(s);
+  if (accounting) {
+    s = accounting[1].trim();
+    const inner = parseNumericCell(s);
+    return isNaN(inner) ? NaN : -inner;
+  }
+
+  // Strip currency symbols, spaces, and an optional trailing percent sign.
+  s = s.replace(/[$€£¥\s%]/g, "");
+  if (!s || s === "-" || s === "+") return NaN;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    // European format uses comma as decimal separator when the LAST separator
+    // is a comma (e.g. 1.234,56). Otherwise assume US format (1,234.56).
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    // Comma-only: thousands separator if grouped in 3s, else decimal comma.
+    if (/^-?\d{1,3}(,\d{3})+$/.test(s)) {
+      s = s.replace(/,/g, "");
+    } else {
+      s = s.replace(",", ".");
+    }
+  }
+
+  if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return NaN;
+  const n = parseFloat(s);
+  return isFinite(n) ? n : NaN;
+}
+
+/**
+ * Robust CSV/TSV parser supporting delimiters, RFC-4180 quoted fields
+ * (including embedded newlines), BOM, CRLF, currency/European number formats,
+ * and hard size caps.
  */
 export function parseFinancialCsv(
   csvContent: string,
@@ -251,70 +369,80 @@ export function parseFinancialCsv(
   if (!csvContent || typeof csvContent !== "string") {
     throw new Error("CSV content must be a non-empty string");
   }
-  const lines = csvContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  if (lines.length === 0 || !lines[0].trim()) {
+  if (csvContent.length > MAX_CSV_CHARS) {
+    throw new Error(
+      `File exceeds the ${Math.round(MAX_CSV_CHARS / 1_000_000)}MB text limit. Please upload a smaller extract.`
+    );
+  }
+
+  // Strip UTF-8 BOM (Excel/Windows exports) — otherwise the first header
+  // becomes "\uFEFFYear" and every Year-based feature silently breaks.
+  const content = csvContent.replace(/^\uFEFF/, "");
+
+  const firstNewline = content.search(/[\r\n]/);
+  const headerLine =
+    firstNewline === -1 ? content : content.slice(0, firstNewline);
+  if (!headerLine.trim()) {
     throw new Error("CSV file is empty");
   }
 
-  const delimiter = detectDelimiter(lines.slice(0, 10));
+  const delimiter = detectDelimiter(
+    content
+      .slice(0, Math.min(content.length, 4000))
+      .split(/\r?\n/)
+      .filter((l) => l.trim())
+      .slice(0, 10)
+  );
 
-  function parseCsvLine(line: string, delim: string): string[] {
-    const values: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === delim && !inQuotes) {
-        values.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    values.push(current.trim());
-    return values;
+  const records = parseCsvRecords(content, delimiter);
+  if (records.length === 0) {
+    throw new Error("CSV file is empty");
+  }
+  if (records.length - 1 > MAX_CSV_ROWS) {
+    // Fail loudly instead of silently truncating: financial aggregates must
+    // never present a partial dataset as complete.
+    throw new Error(
+      `Dataset has ${(records.length - 1).toLocaleString()} rows which exceeds the ${MAX_CSV_ROWS.toLocaleString()} row limit. Please upload a smaller extract.`
+    );
   }
 
-  const rawHeaders = parseCsvLine(lines[0], delimiter);
-  const headers = rawHeaders.map((h) => h.replace(/^["']|["']$/g, "").trim());
+  const rawHeaders = records[0];
+  const headers = rawHeaders
+    .map((h) => h.replace(/^["']|["']$/g, "").trim())
+    .map((h, idx) => (h ? h : `column_${idx + 1}`));
 
   const rows: FinancialDataRow[] = [];
   const companySet = new Set<string>();
   const categorySet = new Set<string>();
-  let yearMin = 9999;
-  let yearMax = 0;
+  let yearMin = Number.POSITIVE_INFINITY;
+  let yearMax = Number.NEGATIVE_INFINITY;
+  const seenCompaniesByUpper = new Map<string, string>(); // UPPER -> original
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const values = parseCsvLine(line, delimiter);
+  const rowLimit = Math.min(records.length - 1, MAX_CSV_ROWS);
+  for (let i = 1; i <= rowLimit; i++) {
+    const values = records[i];
     const rowObj: any = {};
 
     headers.forEach((h, idx) => {
-      const rawVal = values[idx] !== undefined ? values[idx].replace(/^["']|["']$/g, "").trim() : "";
+      const rawVal =
+        values[idx] !== undefined ? values[idx].replace(/^["']|["']$/g, "").trim() : "";
       if (h === "Company" || h === "Category") {
         rowObj[h] = rawVal;
       } else {
-        const cleaned = rawVal.replace(/[$,€£%]/g, "").replace(/,/g, "");
-        const num = parseFloat(cleaned);
-        rowObj[h] = !isNaN(num) && cleaned !== "" && !isNaN(Number(cleaned)) ? num : rawVal;
+        const num = parseNumericCell(rawVal);
+        rowObj[h] = !isNaN(num) ? num : rawVal;
       }
     });
 
-    if (rowObj.Company && typeof rowObj.Company === "string") {
-      companySet.add(rowObj.Company.toUpperCase());
+    if (rowObj.Company && typeof rowObj.Company === "string" && rowObj.Company) {
+      if (!seenCompaniesByUpper.has(rowObj.Company.toUpperCase())) {
+        seenCompaniesByUpper.set(rowObj.Company.toUpperCase(), rowObj.Company);
+      }
     }
     if (rowObj.Category && typeof rowObj.Category === "string") {
       categorySet.add(rowObj.Category);
     }
-    const yearVal = rowObj.Year || rowObj.year;
+    const yearVal = rowObj.Year ?? rowObj.year;
     if (typeof yearVal === "number" && yearVal >= 1950 && yearVal <= 2100) {
       if (yearVal < yearMin) yearMin = yearVal;
       if (yearVal > yearMax) yearMax = yearVal;
@@ -325,16 +453,22 @@ export function parseFinancialCsv(
 
   const profile = computeDatasetProfile(rows, headers, filename);
 
+  // Companies list uses canonical (first-seen) casing so downstream
+  // case-insensitive matching works; 0/0 signals "no year column" honestly
+  // instead of fabricating a 2009-2023 range.
+  const companies = Array.from(seenCompaniesByUpper.values()).sort();
+  const hasYears = Number.isFinite(yearMin) && Number.isFinite(yearMax);
+
   return {
     filename,
     rowCount: rows.length,
     columns: headers,
-    companies: Array.from(companySet).sort(),
+    companies,
     categories: Array.from(categorySet).sort(),
-    yearMin: yearMin === 9999 ? 2009 : yearMin,
-    yearMax: yearMax === 0 ? 2023 : yearMax,
+    yearMin: hasYears ? yearMin : 0,
+    yearMax: hasYears ? yearMax : 0,
     rows,
-    rawCsv: csvContent,
+    rawCsv: content,
     profile,
   };
 }
@@ -353,13 +487,15 @@ export function validateFinancialQueryGrounding(
 ): ValidationCheckResult {
   const lowerQuery = query.toLowerCase();
 
-  // 1. Task 18 & Issue 9: Company not in dataset check
+  // 1. Company not in dataset check.
   // ONLY run company ticker grounding checks if the dataset actually has companies listed!
   if (dataset.companies && dataset.companies.length > 0) {
+    const companiesUpper = new Set(dataset.companies.map((c) => c.toUpperCase()));
     const mentionedCompanies: string[] = [];
     for (const [alias, ticker] of Object.entries(COMPANY_ALIASES)) {
-      // Word boundary match
-      const regex = new RegExp(`\\b${alias}\\b`, "i");
+      // Word boundary match — alias is escaped so regex metacharacters in
+      // user-supplied names cannot crash the parser.
+      const regex = new RegExp(`\\b${escapeRegExp(alias)}\\b`, "i");
       if (regex.test(lowerQuery)) {
         if (!mentionedCompanies.includes(ticker)) {
           mentionedCompanies.push(ticker);
@@ -369,7 +505,7 @@ export function validateFinancialQueryGrounding(
 
     // Check if an unlisted company like TSLA / Tesla was explicitly requested
     for (const ticker of mentionedCompanies) {
-      if (!dataset.companies.includes(ticker)) {
+      if (!companiesUpper.has(ticker)) {
         const displayRequested = ticker === "TSLA" ? "Tesla" : ticker === "META" ? "Meta" : ticker;
         return {
           isViolation: true,
@@ -381,15 +517,15 @@ export function validateFinancialQueryGrounding(
     }
   }
 
-  // 2. Task 19: Future data hallucination check (e.g. 2026)
+  // 2. Future data hallucination check (e.g. years beyond the dataset)
   if (dataset.yearMax && dataset.yearMax > 0) {
-    const yearMatch = query.match(/\b(202[4-9]|203\d)\b/);
+    const yearMatch = query.match(/\b(20[2-9]\d|2[1-9]\d\d)\b/);
     if (yearMatch) {
       const futureYear = parseInt(yearMatch[1], 10);
       if (futureYear > dataset.yearMax) {
         return {
           isViolation: true,
-          directAnswer: `⚠️ **Future Data Not Available in Dataset**\n\nThe uploaded file (\`${dataset.filename}\`) only contains financial statements from **${dataset.yearMin}** through **${dataset.yearMax}**.\n\nNo records exist for **${futureYear}** in the file. NVIDIA (and all other companies) have data only up to ${dataset.yearMax}.`,
+          directAnswer: `⚠️ **Future Data Not Available in Dataset**\n\nThe uploaded file (\`${dataset.filename}\`) only contains financial statements from **${dataset.yearMin}** through **${dataset.yearMax}**.\n\nNo records exist for **${futureYear}** in the file. All companies in the dataset have data only up to ${dataset.yearMax}.`,
         };
       }
     }
@@ -421,7 +557,7 @@ export function validateFinancialQueryGrounding(
   if (isExecutiveMentioned && isQualitativePrompt) {
     return {
       isViolation: true,
-      directAnswer: `⚠️ **Qualitative Information Not Present in Dataset**\n\nThe uploaded CSV contains only structured quantitative financial statement line items (Revenue, Gross Profit, Net Income, Margins, etc.).\n\nIt does **not** contain executive transcripts, earnings calls, or commentary from Apple's CFO (or any other management). As instructed by the dataset-grounding policy, qualitative reasons cannot be provided without underlying documentary evidence in the file.`,
+      directAnswer: `⚠️ **Qualitative Information Not Present in Dataset**\n\nThe uploaded CSV contains only structured quantitative financial statement line items (Revenue, Gross Profit, Net Income, Margins, etc.).\n\nIt does **not** contain executive transcripts, earnings calls, or management commentary. As instructed by the dataset-grounding policy, qualitative reasons cannot be provided without underlying documentary evidence in the file.`,
     };
   }
 
@@ -440,50 +576,60 @@ export function buildGroundingContext(query: string, dataset: ParsedFinancialDat
   // 1. Comprehensive Metadata & Profile
   const companyInfo =
     dataset.companies && dataset.companies.length > 0
-      ? `- Companies: ${dataset.companies.join(", ")}\n- Years: ${dataset.yearMin} – ${dataset.yearMax}`
+      ? `- Companies: ${dataset.companies.join(", ")}\n- Years: ${
+          dataset.yearMax > 0 ? `${dataset.yearMin} – ${dataset.yearMax}` : "not present in file"
+        }`
       : `- Total Records: ${dataset.rowCount} rows · ${dataset.columns.length} columns`;
 
   contextSections.push(
     `[DATASET PROFILE: "${dataset.filename}"]
-- Total Rows: ${dataset.rowCount.toLocaleString()}
+- Total Rows: ${dataset.rowCount.toLocaleString()}${dataset.partialRows ? ` (row sample truncated to ${dataset.rows.length.toLocaleString()} for this session; statistics computed on the full file)` : ""}
 - Total Columns: ${dataset.columns.length} (${dataset.columns.join(", ")})
 ${companyInfo}`
   );
 
-  // 2. Unit conversion & company deterministic ground-truth checks (Task 06, etc.)
+  // 2. Unit conversion deterministic ground-truth (market-cap-to-revenue style
+  //    queries) — computed ONLY from actual dataset values, never from
+  //    hardcoded fallback figures.
   if (
     lowerQuery.includes("market-cap-to-revenue") ||
     (lowerQuery.includes("market cap") &&
-      (lowerQuery.includes("ratio") || lowerQuery.includes("revenue")) &&
-      (lowerQuery.includes("aapl") || lowerQuery.includes("apple")))
+      (lowerQuery.includes("ratio") || lowerQuery.includes("revenue")))
   ) {
-    const row = dataset.rows.find((r) => r.Company === "AAPL" && r.Year === 2022);
-    if (row) {
-      const mCapB = row["Market Cap(in B USD)"] ?? 2066.94;
-      const mCapM = mCapB * 1000;
-      const revM = row.Revenue ?? 394328;
-      const ratio = (mCapM / revM).toFixed(4);
-      contextSections.push(
-        `### DETERMINISTIC GROUND-TRUTH: AAPL 2022 Market-Cap-to-Revenue:
-- Source Raw Market Cap: $${mCapB} Billion USD
-- Source Raw Revenue: $${revM.toLocaleString()} Million USD
-- Normalized Market Cap: $${mCapM.toLocaleString()} Million USD ($${mCapB}B × 1,000)
-- Normalized Revenue: $${revM.toLocaleString()} Million USD
-- Ratio Formula: Normalized Market Cap / Normalized Revenue = ${mCapM.toLocaleString()} / ${revM.toLocaleString()}
-- Exact Calculated Ratio: ${ratio} (or ~5.24x)`
+    const hasCapCol = dataset.columns.includes("Market Cap(in B USD)");
+    if (hasCapCol) {
+      const mentioned = dataset.companies.find((c) =>
+        new RegExp(`\\b${escapeRegExp(c)}\\b`, "i").test(query)
       );
+      const rowsForCompany = mentioned
+        ? dataset.rows.filter((r) => String(r.Company).toUpperCase() === mentioned.toUpperCase())
+        : dataset.rows;
+      const row = rowsForCompany.find(
+        (r) => typeof r["Market Cap(in B USD)"] === "number" && typeof r.Revenue === "number"
+      );
+      if (row) {
+        const mCapB = row["Market Cap(in B USD)"] as number;
+        const revM = row.Revenue as number;
+        const ratio = (mCapB * 1000) / revM;
+        contextSections.push(
+          `### DETERMINISTIC GROUND-TRUTH: ${row.Company} ${row.Year ?? ""} Market-Cap-to-Revenue:\n- Source Raw Market Cap: $${mCapB} Billion USD\n- Source Raw Revenue: $${revM.toLocaleString()} Million USD\n- Normalized Market Cap: $${(mCapB * 1000).toLocaleString()} Million USD ($${mCapB}B × 1,000)\n- Ratio Formula: Normalized Market Cap / Normalized Revenue = ${(mCapB * 1000).toLocaleString()} / ${revM.toLocaleString()}\n- Exact Calculated Ratio: ${ratio.toFixed(4)} (≈${ratio.toFixed(2)}x)`
+        );
+      }
     }
   }
 
   // 3. Relevant company rows extraction (if specific company tickers are mentioned in query)
   const relevantCompanies = (dataset.companies || []).filter((c) =>
-    new RegExp(`\\b${c}\\b`, "i").test(query)
+    new RegExp(`\\b${escapeRegExp(c)}\\b`, "i").test(query)
   );
 
   if (relevantCompanies.length > 0) {
-    const relevantRows = dataset.rows.filter((r) => relevantCompanies.includes(r.Company));
+    const relevantUpper = new Set(relevantCompanies.map((c) => c.toUpperCase()));
+    const relevantRows = dataset.rows.filter((r) =>
+      relevantUpper.has(String(r.Company).toUpperCase())
+    );
     relevantRows.sort((a, b) =>
-      a.Company === b.Company ? a.Year - b.Year : a.Company.localeCompare(b.Company)
+      a.Company === b.Company ? (a.Year || 0) - (b.Year || 0) : String(a.Company).localeCompare(String(b.Company))
     );
 
     const headers = [
@@ -555,13 +701,16 @@ ${companyInfo}`
   }
 
   // 6. Query-Guided Matching Rows Extraction
+  //    (scan is capped so very large datasets cannot freeze the UI thread)
   const queryTokens = lowerQuery
     .split(/\s+/)
     .map((t) => t.replace(/[^a-z0-9]/g, ""))
     .filter((t) => t.length >= 3 && !["the", "and", "for", "with", "this", "what", "can", "you", "dataset", "please"].includes(t));
 
   if (queryTokens.length > 0) {
+    const scanLimit = Math.min(dataset.rows.length, 5000);
     const matchingRows = dataset.rows
+      .slice(0, scanLimit)
       .filter((r) => {
         const rowStr = Object.values(r).join(" ").toLowerCase();
         return queryTokens.some((tok) => rowStr.includes(tok));
@@ -623,7 +772,9 @@ export function generateDeterministicDatasetSummary(
   const catCols = Object.values(profile.columnStats).filter((c) => c.type === "category");
 
   if (dataset.companies && dataset.companies.length > 0) {
-    md += `It tracks enterprise financial statements for **${dataset.companies.join(", ")}** across fiscal years **${dataset.yearMin}–${dataset.yearMax}**.\n\n`;
+    md += `It tracks enterprise financial statements for **${dataset.companies.join(", ")}**${
+      dataset.yearMax > 0 ? ` across fiscal years **${dataset.yearMin}–${dataset.yearMax}**` : ""
+    }.\n\n`;
   } else {
     md += `It captures structured operational, behavioral, and demographic metrics across key user and entity dimensions.\n\n`;
   }
@@ -679,6 +830,10 @@ export function generateDeterministicDatasetSummary(
   return md;
 }
 
+/**
+ * Sample dataset for demo purposes. Kept as raw text; parse lazily at the
+ * call site (a module-level parse used to run on every bundle load).
+ */
 export const SAMPLE_FINANCIAL_STATEMENTS_CSV = `Year,Company,Category,Market Cap(in B USD),Revenue,Gross Profit,Net Income,Earning Per Share,EBITDA,Share Holder Equity,Cash Flow from Operating,Cash Flow from Investing,Cash Flow from Financial Activities,Current Ratio,Debt/Equity Ratio,ROE,ROA,ROI,Net Profit Margin,Free Cash Flow per Share,Return on Tangible Equity,Number of Employees,Inflation Rate(in US)
 2022,AAPL,IT,2066.94,394328,170782,99803,6.15,130541,50672,122151,-22354,-110749,0.879,2.369,1.969,0.283,0.378,0.253,111443,196.958,164000,8.0028
 2021,AAPL,IT,2913.28,365817,152836,94680,5.67,120233,63090,104038,-14545,-93353,1.075,1.727,1.501,0.269,0.354,0.259,92953,150.071,154000,4.6979
@@ -698,4 +853,3 @@ export const SAMPLE_FINANCIAL_STATEMENTS_CSV = `Year,Company,Category,Market Cap
 2022,PCG,Utilities,32.10,21700,7800,1800,0.85,6100,24000,3200,-9500,6200,0.820,2.150,0.075,0.016,0.024,0.083,1200,7.50,28000,8.0028
 2022,SHLDQ,Consumer,0.05,1200,240,-450,-4.20,-320,-3800,-280,-40,150,0.450,-1.800,0.118,-0.150,-0.220,-0.375,-320,-11.84,10000,8.0028`;
 
-export const DEFAULT_MAJOR_COMPANIES_DATASET = parseFinancialCsv(SAMPLE_FINANCIAL_STATEMENTS_CSV);

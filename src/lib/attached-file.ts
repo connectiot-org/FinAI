@@ -19,8 +19,10 @@ const TEXT_LIKE_EXTENSIONS = [
 
 /**
  * Converts a FileList/File array into AttachedFile records.
- * Text-like files are read as text; images get an object-URL preview;
- * everything else is treated as a binary/document attachment.
+ * Text-like files are read as text; everything else is attached as
+ * metadata-only (name/size/type). No object URLs are created — previewUrl
+ * was never rendered anywhere, and the URLs leaked because page-level
+ * removal paths never revoked them.
  */
 export function processFilesAsync(fileList: FileList | File[]): Promise<AttachedFile[]> {
   const files = Array.from(fileList);
@@ -53,17 +55,20 @@ export function processFilesAsync(fileList: FileList | File[]): Promise<Attached
                 type: file.type || ext,
               });
             };
+            // An aborted read must also settle the promise — otherwise the
+            // enclosing Promise.all (and the caller's await) hangs forever.
+            reader.onabort = () => {
+              resolve({
+                id,
+                name: file.name,
+                size: file.size,
+                type: file.type || ext,
+              });
+            };
             reader.readAsText(file);
-          } else if (file.type.startsWith("image/")) {
-            resolve({
-              id,
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              previewUrl: URL.createObjectURL(file),
-            });
           } else {
-            // Binary files: spreadsheets (.xlsx), documents (.pdf, .docx), archives, etc.
+            // Binary files: images, spreadsheets (.xlsx), documents (.pdf, .docx),
+            // archives, etc. — attached as metadata only.
             resolve({
               id,
               name: file.name,

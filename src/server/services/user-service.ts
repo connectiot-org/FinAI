@@ -8,21 +8,13 @@ export class UserService {
     });
   }
 
-  async getById(id: string) {
-    return prisma.user.findUnique({
-      where: { id },
-    });
-  }
-
-  async findOrCreateUser(email: string, name?: string, role: Role = Role.USER) {
-    const normalized = email.toLowerCase();
-    return prisma.user.upsert({
-      where: { email: normalized },
-      update: { name: name || undefined },
-      create: {
-        email: normalized,
+  async createUser(email: string, name?: string, passwordHash?: string) {
+    return prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
         name,
-        role,
+        passwordHash,
+        role: Role.USER,
       },
     });
   }

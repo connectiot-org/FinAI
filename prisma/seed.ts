@@ -4,10 +4,13 @@ import { modelsConfig } from "../src/config/models.config";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding Fintra Database...");
+  console.log("🌱 Seeding FInAI Database...");
 
-  // 1. Seed ModelCatalog from models.config.ts (Idempotent upsert)
-  for (const model of modelsConfig) {
+  // 1. Seed ModelCatalog from models.config.ts (idempotent upsert).
+  //    Note: the "auto" entry is a router alias, not a real provider model —
+  //    it is skipped so the catalog mirrors the live OpenRouter registry.
+  const catalogModels = modelsConfig.filter((m) => m.modelId !== "auto");
+  for (const model of catalogModels) {
     await prisma.modelCatalog.upsert({
       where: { modelId: model.modelId },
       update: {
@@ -41,19 +44,10 @@ async function main() {
       },
     });
   }
-  console.log(`✅ Seeded ${modelsConfig.length} models into ModelCatalog.`);
-
-  // 2. Seed Default Admin & Demo User
-  const devUser = await prisma.user.upsert({
-    where: { email: "admin@fintra.ai" },
-    update: {},
-    create: {
-      email: "admin@fintra.ai",
-      name: "Fintra Controller Admin",
-      role: "ADMIN",
-    },
-  });
-  console.log(`✅ Seeded default admin user: ${devUser.email}`);
+  console.log(`✅ Seeded ${catalogModels.length} models into ModelCatalog.`);
+  console.log(
+    "ℹ️  No admin user is seeded by default (admin accounts are provisioned out-of-band)."
+  );
 
   console.log("🎉 Seed finished successfully.");
 }

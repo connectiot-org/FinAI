@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import {
@@ -62,12 +62,34 @@ export function ThreadSidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const userDisplayName = session?.user?.name || "Acme Corp (Pilot)";
-  const userEmail = session?.user?.email || "cfo@northline.example";
-  const userSubtext = session?.user?.email || "Enterprise Pilot";
+  // Dismiss the account popover on outside click / Escape.
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isUserMenuOpen]);
+
+  const userDisplayName = session?.user?.name || "Guest Workspace";
+  const userEmail = session?.user?.email || "not signed in";
+  const userSubtext = session?.user?.email || "Local session";
   const userInitial = (userDisplayName[0] || "A").toUpperCase();
-  const userRole = (session?.user as unknown as { role?: string })?.role || "PILOT";
+  const userRole = (session?.user as unknown as { role?: string })?.role || "GUEST";
 
   const handleStartRename = (id: string, currentTitle: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -103,7 +125,7 @@ export function ThreadSidebar({
   const renderSidebarContent = (isMobileDrawer = false) => (
     <>
       {/* Dynamic User Profile / Drawer Header */}
-      <div className="relative mb-3">
+      <div className="relative mb-3" ref={userMenuRef}>
         <div
           onClick={() => setIsUserMenuOpen((v) => !v)}
           role="button"

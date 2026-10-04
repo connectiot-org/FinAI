@@ -6,7 +6,6 @@ import {
   Square,
   Paperclip,
   X,
-  Pin,
   FileSpreadsheet,
   FileText,
   FileCode,

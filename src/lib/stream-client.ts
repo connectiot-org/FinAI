@@ -5,8 +5,9 @@ export interface StreamClientCallbacks {
   onTextDelta?: (delta: string) => void;
   onEvidence?: (evidence: SseEvent & { event: "evidence" }) => void;
   onUsage?: (usage: SseEvent & { event: "usage" }) => void;
+  onNotice?: (notice: SseEvent & { event: "notice" }) => void;
   onError?: (error: { code: string; message: string; retryable: boolean }) => void;
-  onDone?: (done: { messageId: string; status?: string }) => void;
+  onDone?: (done: { messageId: string; conversationId?: string; status?: string }) => void;
 }
 
 /**
@@ -67,6 +68,9 @@ export async function consumeSseStream(
               break;
             case "usage":
               callbacks.onUsage?.({ event: "usage", data: parsedData });
+              break;
+            case "notice":
+              callbacks.onNotice?.({ event: "notice", data: parsedData });
               break;
             case "error":
               callbacks.onError?.(parsedData);

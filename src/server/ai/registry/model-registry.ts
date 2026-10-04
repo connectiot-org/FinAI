@@ -2,6 +2,15 @@ import { modelsConfig, ModelConfig, fallbackChainMap } from "../../../config/mod
 import { prisma } from "../../db/client";
 
 export class ModelRegistry {
+  /**
+   * Default concrete model used when the client asks for "auto".
+   * Resolved from the auto fallback chain's first entry (a real provider id).
+   */
+  getDefaultModel(): string {
+    const chain = fallbackChainMap["auto"];
+    return chain && chain.length > 0 ? chain[0] : modelsConfig[0]?.modelId ?? "auto";
+  }
+
   async listModels(): Promise<ModelConfig[]> {
     try {
       const dbModels = await prisma.modelCatalog.findMany();
@@ -27,13 +36,14 @@ export class ModelRegistry {
     }
   }
 
-  async getModel(modelId: string): Promise<ModelConfig | undefined> {
-    const list = await this.listModels();
-    return list.find((m) => m.modelId === modelId || m.id === modelId);
-  }
-
   getFallbackChain(modelId: string): string[] {
-    return fallbackChainMap[modelId] || ["openrouter/free", "nvidia/nemotron-3.5-lightning:free", "dots-studio/dots-3-note-preview:free"];
+    return (
+      fallbackChainMap[modelId] || [
+        "openrouter/free",
+        "nvidia/nemotron-3.5-lightning:free",
+        "dots-studio/dots-3-note-preview:free",
+      ]
+    );
   }
 }
 

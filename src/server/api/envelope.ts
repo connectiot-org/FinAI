@@ -34,12 +34,14 @@ export function apiError(err: unknown, requestId: string) {
     );
   }
 
-  const message = err instanceof Error ? err.message : "Internal Server Error";
+  // Unexpected errors: log the details server-side, return a generic message.
+  // Raw Prisma/driver messages can leak schema, table and connection details.
+  console.error(`[api] Unhandled error (requestId=${requestId}):`, err);
   return NextResponse.json<ApiErrorResponse>(
     {
       error: {
         code: "INTERNAL",
-        message,
+        message: "An internal error occurred. Please try again later.",
       },
       requestId,
     },

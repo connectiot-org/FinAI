@@ -47,10 +47,16 @@ export interface SseDonePayload {
   status?: "SUCCEEDED" | "STOPPED" | "FAILED";
 }
 
+export interface SseNoticePayload {
+  kind: "guardrail" | "system";
+  notices: string[];
+}
+
 export type SseEvent =
   | { event: "step"; data: SseStepPayload }
   | { event: "text-delta"; data: SseTextDeltaPayload }
   | { event: "evidence"; data: SseEvidencePayload }
   | { event: "usage"; data: SseUsagePayload }
+  | { event: "notice"; data: SseNoticePayload }
   | { event: "error"; data: SseErrorPayload }
   | { event: "done"; data: SseDonePayload };

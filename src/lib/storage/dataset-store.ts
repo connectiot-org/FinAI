@@ -22,13 +22,36 @@ export interface StoredDatasetRecord extends StoredDatasetSummary {
 const STORAGE_PREFIX = "fintra_dataset_";
 const INDEX_KEY = "fintra_datasets_index_v1";
 
-// Zero-latency in-memory cache for full datasets across thread sessions
+/**
+ * Zero-latency in-memory cache for full datasets across thread sessions.
+ * Bounded (LRU-ish) so it cannot grow without limit during long sessions.
+ */
+const MAX_MEMORY_CACHE_ENTRIES = 20;
 const inMemoryDatasetCache = new Map<string, ParsedFinancialDataset>();
+
+function cacheSet(key: string, dataset: ParsedFinancialDataset) {
+  inMemoryDatasetCache.set(key, dataset);
+  if (inMemoryDatasetCache.size > MAX_MEMORY_CACHE_ENTRIES) {
+    const oldest = inMemoryDatasetCache.keys().next().value;
+    if (oldest !== undefined) inMemoryDatasetCache.delete(oldest);
+  }
+}
+
+/** Warn (once) when localStorage quota is exhausted — silent data loss is worse. */
+let quotaWarned = false;
+function warnQuota(err: unknown) {
+  if (quotaWarned) return;
+  quotaWarned = true;
+  console.warn(
+    "localStorage quota exceeded — dataset persistence is degraded for this session. Large files remain available in-memory only.",
+    err
+  );
+}
 
 /**
  * Senior-level Dataset Store
  * Provides persistent storage for financial datasets & spreadsheets with
- * per-user and per-thread isolation, zero-latency caching, and full retrieval.
+ * per-thread isolation, zero-latency caching, and full retrieval.
  */
 class DatasetStorageEngine {
   private isClient(): boolean {
@@ -52,7 +75,7 @@ class DatasetStorageEngine {
     try {
       localStorage.setItem(INDEX_KEY, JSON.stringify(index));
     } catch (e) {
-      console.warn("Failed to write dataset index to localStorage", e);
+      warnQuota(e);
     }
   }
 
@@ -65,10 +88,10 @@ class DatasetStorageEngine {
     userId: string = "pilot-user"
   ): Promise<string> {
     const id = `ds-${threadId}`;
-    
+
     // Always store full dataset in high-speed memory cache
-    inMemoryDatasetCache.set(threadId, dataset);
-    inMemoryDatasetCache.set(id, dataset);
+    cacheSet(threadId, dataset);
+    cacheSet(id, dataset);
 
     const summary: StoredDatasetSummary = {
       id,
@@ -86,11 +109,18 @@ class DatasetStorageEngine {
 
     if (this.isClient()) {
       try {
-        // Sanitize for localStorage to strictly respect browser 5MB storage limit
+        // Sanitize for localStorage to strictly respect browser 5MB storage
+        // limit. The stored copy is marked partial so downstream consumers
+        // know the row set is truncated (statistics in `profile` remain
+        // computed from the full file).
+        const willTruncateRows =
+          (dataset.rows?.length || 0) > MAX_STORED_ROWS ||
+          (dataset.rawCsv?.length || 0) > MAX_STORED_CSV_CHARS;
         const sanitizedDataset: ParsedFinancialDataset = {
           ...dataset,
-          rawCsv: dataset.rawCsv ? dataset.rawCsv.slice(0, 15000) : "",
-          rows: dataset.rows ? dataset.rows.slice(0, 200) : [],
+          rawCsv: dataset.rawCsv ? dataset.rawCsv.slice(0, MAX_STORED_CSV_CHARS) : "",
+          rows: dataset.rows ? dataset.rows.slice(0, MAX_STORED_ROWS) : [],
+          partialRows: willTruncateRows || dataset.partialRows,
         };
         const fullRecord: StoredDatasetRecord = {
           ...summary,
@@ -99,11 +129,13 @@ class DatasetStorageEngine {
         localStorage.setItem(`${STORAGE_PREFIX}${id}`, JSON.stringify(fullRecord));
 
         // Update index
-        const index = this.getIndex().filter((item) => item.id !== id && item.threadId !== threadId);
+        const index = this.getIndex().filter(
+          (item) => item.id !== id && item.threadId !== threadId
+        );
         index.unshift(summary);
         this.saveIndex(index);
       } catch (err) {
-        console.warn("Dataset payload exceeded localStorage quota, keeping in memory/index", err);
+        warnQuota(err);
       }
     }
 
@@ -123,10 +155,12 @@ class DatasetStorageEngine {
             companies: dataset.companies,
             yearMin: dataset.yearMin,
             yearMax: dataset.yearMax,
-            rawData: dataset.rawCsv ? dataset.rawCsv.slice(0, 100000) : "",
+            textContent: dataset.rawCsv ? dataset.rawCsv.slice(0, 100000) : "",
           }),
         }).catch(() => {});
-      } catch {}
+      } catch {
+        // Best-effort only.
+      }
     }
 
     return id;
@@ -150,7 +184,7 @@ class DatasetStorageEngine {
       if (!raw) return null;
       const record = JSON.parse(raw) as StoredDatasetRecord;
       if (record.dataset) {
-        inMemoryDatasetCache.set(threadId, record.dataset);
+        cacheSet(threadId, record.dataset);
       }
       return record.dataset || null;
     } catch {
@@ -159,23 +193,20 @@ class DatasetStorageEngine {
   }
 
   /**
-   * Lists all datasets saved for the active user
-   */
-  listDatasets(userId?: string): StoredDatasetSummary[] {
-    const index = this.getIndex();
-    if (!userId) return index;
-    return index.filter((ds) => !ds.userId || ds.userId === userId);
-  }
-
-  /**
    * Removes a dataset from permanent storage
    */
   removeDataset(threadId: string): boolean {
+    // Purge the in-memory cache too.
+    inMemoryDatasetCache.delete(threadId);
+    inMemoryDatasetCache.delete(`ds-${threadId}`);
+
     if (!this.isClient()) return false;
     const id = `ds-${threadId}`;
     try {
       localStorage.removeItem(`${STORAGE_PREFIX}${id}`);
-      const index = this.getIndex().filter((item) => item.id !== id && item.threadId !== threadId);
+      const index = this.getIndex().filter(
+        (item) => item.id !== id && item.threadId !== threadId
+      );
       this.saveIndex(index);
 
       // Async backend cleanup
@@ -204,7 +235,9 @@ class DatasetStorageEngine {
         textContent: f.textContent ? f.textContent.slice(0, 150000) : undefined,
       }));
       localStorage.setItem(`fintra_files_${threadId}`, JSON.stringify(sanitized));
-    } catch {}
+    } catch (e) {
+      warnQuota(e);
+    }
   }
 
   /**
@@ -221,6 +254,19 @@ class DatasetStorageEngine {
       return [];
     }
   }
+
+  /** Removes attached-file metadata for a thread. */
+  removeThreadFiles(threadId: string) {
+    if (!this.isClient()) return;
+    try {
+      localStorage.removeItem(`fintra_files_${threadId}`);
+    } catch {
+      // ignore
+    }
+  }
 }
+
+const MAX_STORED_ROWS = 200;
+const MAX_STORED_CSV_CHARS = 15000;
 
 export const datasetStore = new DatasetStorageEngine();

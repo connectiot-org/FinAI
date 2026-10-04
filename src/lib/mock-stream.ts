@@ -12,7 +12,7 @@ export function createMockStream(
   prompt: string,
   options: MockStreamOptions = {}
 ): ReadableStream<Uint8Array> {
-  const { scenario = "normal", modelId = "anthropic/claude-3.5-sonnet", delayMs = 30 } = options;
+  const { scenario = "normal", modelId = "anthropic/claude-sonnet-4", delayMs = 30 } = options;
   const encoder = new TextEncoder();
 
   const steps = [
@@ -44,9 +44,18 @@ Operating expense ran **$23.1M** vs. an approved budget of **$22.4M** (+3.1% var
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
+      // When the consumer cancels the stream (user pressed Stop), further
+      // enqueue() calls throw TypeError — previously that surfaced as an
+      // unhandled rejection from the timer loop below.
+      let cancelled = false;
       function sendEvent(eventObj: SseEvent) {
+        if (cancelled) return;
         const payload = `event: ${eventObj.event}\ndata: ${JSON.stringify(eventObj.data)}\n\n`;
-        controller.enqueue(encoder.encode(payload));
+        try {
+          controller.enqueue(encoder.encode(payload));
+        } catch {
+          cancelled = true;
+        }
       }
 
       if (scenario === "empty-response") {
@@ -98,6 +107,7 @@ Operating expense ran **$23.1M** vs. an approved budget of **$22.4M** (+3.1% var
       // 3. Emit Text Deltas
       const chunks = sampleResponse.split(" ");
       for (let i = 0; i < chunks.length; i++) {
+        if (cancelled) return;
         if (scenario === "error-mid-stream" && i === 15) {
           sendEvent({
             event: "error",
@@ -132,6 +142,7 @@ Operating expense ran **$23.1M** vs. an approved budget of **$22.4M** (+3.1% var
       }
 
       // 4. Emit Usage
+      if (cancelled) return;
       sendEvent({
         event: "usage",
         data: {

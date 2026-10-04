@@ -2,9 +2,9 @@
 
 **Multiple AI models. One finance workspace.**
 
-A premium, production-quality marketing homepage for an AI-finance SaaS product — inspired by the polish of modern editorial SaaS sites (Profound-style whitespace, typography and motion), with a fully original brand identity ("FInAI", Σ mark).
+A production-quality marketing homepage + AI agent workspace for a multi-model finance product — inspired by the polish of modern editorial SaaS sites (Profound-style whitespace, typography and motion), with a fully original brand identity ("FInAI", Σ mark).
 
-The page presents a multi-model AI workspace for finance teams: chat with GPT, Claude, Gemini and DeepSeek in one place, run financial analysis, interrogate documents, build reports and presentations, check numbers for errors and inconsistencies, and reuse templates, workflows and finance-specific AI agents.
+The workspace lets finance teams chat with frontier and free-tier models through an OpenRouter gateway with automatic failover, upload and interrogate CSV datasets with deterministic grounding, run interactive analysis views, and compile executive reports.
 
 ---
 
@@ -34,34 +34,48 @@ The page presents a multi-model AI workspace for finance teams: chat with GPT, C
 - **TypeScript**
 - **Tailwind CSS 4** + shadcn/ui primitives
 - **Framer Motion** (with `MotionConfig reducedMotion="user"` for accessibility)
-- **Prisma** scaffold included (the homepage itself needs no database)
+- **Prisma + PostgreSQL** (conversations, usage tracking, audit log)
+- **NextAuth v4** (credentials + optional Google OAuth, scrypt password hashing)
+- **OpenRouter gateway** (streaming SSE, failover chains, circuit breaker)
 
 ## Quick start
 
-Requires **Node.js 20+** (or Bun). No database setup is needed to view the homepage.
+Requires **Node.js 20+** (or Bun) and a PostgreSQL database for server-backed features (the homepage itself needs no database).
 
 ```bash
 # 1) install dependencies
 bun install            # or: npm install
 
-# 2) create your env file (optional — only needed for Prisma work)
+# 2) create your env file
 cp .env.example .env
+#    → set DATABASE_URL (postgres://…), AUTH_SECRET, OPENROUTER_API_KEY
 
-# 3) run the dev server
+# 3) sync the database schema
+bun run db:push        # or: npm run db:push
+
+# 4) run the dev server
 bun run dev            # or: npm run dev
 
-# 4) open http://localhost:3000
+# 5) open http://localhost:3000
 ```
 
 ### Production build
 
 ```bash
-bun run build          # next build (standalone output)
-bun run start          # serves the standalone build
+bun run build          # next build
+bun run start          # serves the build
 ```
 
-> On non-Bun environments use `npm run build` and start the standalone server with
-> `NODE_ENV=production node .next/standalone/server.js`.
+### Configuration (see `.env.example` for the full list)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `DATABASE_URL` | For DB features | PostgreSQL URL. When unset, DB-backed endpoints fail gracefully (health reports `db: "unconfigured"`). |
+| `AUTH_SECRET` | In production | NextAuth signing secret (`openssl rand -base64 32`). Never commit. |
+| `OPENROUTER_API_KEY` | For live chat | https://openrouter.ai/keys — no default key exists in the codebase. |
+| `OPENROUTER_BASE_URL` | Optional | Point at an OpenRouter-compatible gateway/proxy. |
+| `STRICT_AUTH` | Optional | `true` gates `/agent` + protected APIs behind a session. |
+| `GOOGLE_CLIENT_ID/SECRET` | Optional | Enables Google sign-in. |
 
 ## Project structure
 
@@ -70,40 +84,39 @@ bun run start          # serves the standalone build
 │   ├── app/
 │   │   ├── layout.tsx            # fonts, metadata
 │   │   ├── page.tsx              # composes the 15 homepage sections
-│   │   └── globals.css           # design tokens, utilities, animations
+│   │   ├── agent/page.tsx        # workspace (chat, analysis, reports, templates, history)
+│   │   ├── sign-in/page.tsx      # credentials (+ optional Google) auth
+│   │   └── api/
+│   │       ├── auth/[...nextauth]# NextAuth handlers
+│   │       └── v1/
+│   │           ├── chat/stream   # SSE streaming chat (gateway + failover)
+│   │           ├── conversations # CRUD (session-required, ownership-scoped)
+│   │           ├── datasets      # bounded in-memory registry (auth + rate limited)
+│   │           ├── models        # live model registry
+│   │           └── health        # dependency-aware health (503 on DB failure)
 │   ├── components/landing/       # all homepage sections (one file per section)
-│   │   ├── navbar.tsx
-│   │   ├── hero.tsx
-│   │   ├── product-mockup.tsx    # interactive product UI mockup (5 views)
-│   │   ├── mockup-views.tsx
-│   │   ├── audience-strip.tsx
-│   │   ├── multi-model.tsx
-│   │   ├── analysis-report.tsx
-│   │   ├── checking-presentations.tsx
-│   │   ├── agents-templates.tsx
-│   │   ├── routing-security.tsx
-│   │   ├── comparison.tsx        # competitor matrix + research accordions
-│   │   ├── cta-footer.tsx
-│   │   └── ...shared primitives (logo, reveal, section-heading)
-│   ├── hooks/                    # reusable React hooks
-│   ├── components/ui/            # shadcn/ui primitives
-│   └── lib/
-│       ├── site-data.ts          # ★ all page copy + verified competitor data
-│       └── utils.ts
-├── research/                     # competitor research notes (JSON) + reference screenshots
-├── prisma/schema.prisma          # DB scaffold (not required by the homepage)
-├── public/                       # static assets (logo, robots.txt)
+│   ├── components/agent/         # workspace components
+│   ├── server/                   # API controllers, services, AI gateway, auth
+│   ├── lib/                      # dataset engine, SSE client, storage, utils
+│   ├── config/                   # model registry + site copy
+│   └── proxy.ts                  # edge middleware (optional strict-auth gate)
+├── prompts/                      # versioned system prompts (markdown)
+├── prisma/schema.prisma          # Postgres schema (users, conversations, usage, audit)
+├── evals/                        # evaluation harness
 └── package.json
 ```
 
 ## Editing content
 
-Almost **all copy lives in one file**: `src/lib/site-data.ts`.
+Almost **all marketing copy lives in one file**: `src/lib/site-data.ts`.
 
 - Hero headline, feature copy, agent cards, security items → edit the exported objects.
 - **Competitor data** (Hebbia, AlphaSense, Datarails, Julius AI, Numeric) lives here too, with explicit
   `verified / partial / unverified` states per fact and a source note. Anything not confirmable from
   public sources is labeled **"Not publicly verified"** — keep that discipline when you edit.
+
+**Model catalog**: `src/config/models.config.ts` is the source of truth (verified live OpenRouter ids).
+Fallback chains are defined in the same file's `fallbackChainMap`.
 
 ## Design system
 
@@ -121,6 +134,14 @@ The `research/` folder contains the raw research captured while building the com
 1. Only **public, verifiable** information is used (official product/pricing pages).
 2. Anything not confirmable is explicitly marked **"Not publicly verified."**
 3. Pricing changes frequently — re-verify before publishing claims.
+
+## Security notes
+
+- No secrets are committed; the gateway key and auth secret come from the environment.
+- Chat streaming is rate limited (guests: IP-scoped, users: identity-scoped).
+- Conversation endpoints require a session and enforce per-user ownership.
+- Uploaded dataset payloads are size-capped and ownership-scoped.
+- Untrusted dataset content is fenced before it reaches the model (prompt-injection defense).
 
 ## Notes
 

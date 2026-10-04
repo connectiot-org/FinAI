@@ -1,6 +1,6 @@
 {
   "name": "finai",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -8,10 +8,13 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:push": "prisma db push --accept-data-loss",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "db:seed": "tsx prisma/seed.ts",
+    "eval": "tsx evals/run-evals.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -78,7 +81,6 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
-    "z-ai-web-dev-sdk": "^0.0.18",
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },
@@ -90,6 +92,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
   }

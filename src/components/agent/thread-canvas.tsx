@@ -7,18 +7,13 @@ import {
   Plus,
   ArrowUp,
   X,
-  FileSpreadsheet,
-  FileText,
-  Image as ImageIcon,
-  FileCode,
-  File,
   Database,
   Pin,
 } from "lucide-react";
 import { UserMessageRenderer, AssistantMessageRenderer } from "./message-part-renderers";
 import { FinancialTableRow } from "./financial-table";
 import { SseStepPayload } from "@/lib/sse-types";
-import { AttachedFile, formatFileSize, processFilesAsync } from "@/lib/attached-file";
+import { AttachedFile, processFilesAsync } from "@/lib/attached-file";
 import { ParsedFinancialDataset } from "@/lib/financial-dataset-engine";
 import { FileAttachmentCard } from "./file-attachment-card";
 import { toast } from "sonner";
@@ -87,26 +82,6 @@ const emptyStatePrompts = [
   },
 ];
 
-function getFileChipIcon(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase() || "";
-  if (["xlsx", "xls", "csv", "tsv"].includes(ext)) {
-    return <FileSpreadsheet className="size-3.5 text-emerald-400" />;
-  }
-  if (["pdf"].includes(ext)) {
-    return <FileText className="size-3.5 text-rose-400" />;
-  }
-  if (["png", "jpg", "jpeg", "webp", "svg", "gif"].includes(ext)) {
-    return <ImageIcon className="size-3.5 text-sky-400" />;
-  }
-  if (["json", "sql", "ts", "js", "py", "html", "css", "xml", "yml", "yaml"].includes(ext)) {
-    return <FileCode className="size-3.5 text-indigo-300" />;
-  }
-  if (["doc", "docx", "txt", "md"].includes(ext)) {
-    return <FileText className="size-3.5 text-amber-300" />;
-  }
-  return <File className="size-3.5 text-stone-400" />;
-}
-
 export function ThreadCanvas({
   messages,
   isStreaming,
@@ -128,10 +103,14 @@ export function ThreadCanvas({
   const [heroFiles, setHeroFiles] = useState<AttachedFile[]>([]);
   const [showWhatCanYouDo, setShowWhatCanYouDo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Whether the user is near the bottom of the transcript — used to avoid
+  // hijacking scroll position while they read earlier content mid-stream.
+  const isNearBottomRef = useRef(true);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (el && isNearBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages, isStreaming, streamingText]);
 
@@ -139,18 +118,20 @@ export function ThreadCanvas({
     const processed = await processFilesAsync(fileList);
     if (processed.length > 0) {
       if (onAttachFiles) {
+        // The parent handles persistence AND surfaces the upload toast —
+        // toasting here as well used to double-notify on every attach.
         onAttachFiles(processed);
       } else {
         setHeroFiles((prev) => [...prev, ...processed]);
+        toast.success(
+          processed.length === 1
+            ? `Attached ${processed[0].name}`
+            : `Attached ${processed.length} files`,
+          {
+            description: `${processed.map((f) => f.name).join(", ")} ready for analysis`,
+          }
+        );
       }
-      toast.success(
-        processed.length === 1
-          ? `Attached ${processed[0].name}`
-          : `Attached ${processed.length} files`,
-        {
-          description: `${processed.map((f) => f.name).join(", ")} ready for analysis`,
-        }
-      );
     }
   };
 
@@ -197,7 +178,8 @@ export function ThreadCanvas({
                     </span>
                   </div>
                   <p className="mt-0.5 text-[11.5px] text-emerald-300/80 truncate">
-                    Companies: {dataset.companies.join(", ")} · Years: {dataset.yearMin}–{dataset.yearMax}
+                    {dataset.companies.length > 0 ? `Companies: ${dataset.companies.join(", ")}` : "Dataset grounded"}
+                    {dataset.yearMax > 0 ? ` · Years: ${dataset.yearMin}–${dataset.yearMax}` : ""}
                   </p>
                 </div>
               </div>
@@ -212,6 +194,26 @@ export function ThreadCanvas({
                   <X className="size-4" />
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Non-dataset attachments (PDFs, sheets, docs…) — previously these
+              were invisible in the hero state until the first message. */}
+          {attachedFiles
+            .filter((f) => !dataset || f.name !== dataset.filename)
+            .length > 0 && (
+            <div className="mb-4 flex w-full flex-wrap items-center justify-center gap-2">
+              {attachedFiles
+                .filter((f) => !dataset || f.name !== dataset.filename)
+                .map((file) => (
+                  <FileAttachmentCard
+                    key={file.id}
+                    file={file}
+                    variant="card"
+                    statusText="Uploaded"
+                    onRemove={onRemoveFile ? () => onRemoveFile(file.id) : undefined}
+                  />
+                ))}
             </div>
           )}
 
@@ -354,10 +356,8 @@ export function ThreadCanvas({
         {/* Bottom Disclaimer matching ChatGPT */}
         <div className="pb-2 text-center">
           <p className="text-[11.5px] text-stone-500">
-            FInAI is AI. By using it, you agree to our{" "}
-            <a href="#" className="underline text-stone-400 hover:text-stone-300">Terms</a> &amp;{" "}
-            <a href="#" className="underline text-stone-400 hover:text-stone-300">Privacy Policy</a>.{" "}
-            Verified calculations &amp; model audit trail included.
+            FInAI is AI. Verify important financial numbers and sources. Model
+            audit trail included.
           </p>
         </div>
       </div>
@@ -367,7 +367,14 @@ export function ThreadCanvas({
   const pinnedMessages = messages.filter((m) => m.isPinned);
 
   return (
-    <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6 lg:p-8">
+    <div
+      ref={scrollRef}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      }}
+      className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6 lg:p-8"
+    >
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Pinned Insights Banner if any */}
         {pinnedMessages.length > 0 && (

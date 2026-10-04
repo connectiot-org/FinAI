@@ -1,15 +1,28 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { consumeSseStream } from "./stream-client";
 import { createMockStream } from "./mock-stream";
-import { SseStepPayload, SseEvidencePayload, SseUsagePayload } from "./sse-types";
+import {
+  SseStepPayload,
+  SseEvidencePayload,
+  SseUsagePayload,
+  SseNoticePayload,
+} from "./sse-types";
+import { toast } from "sonner";
 
 export interface UseThreadStreamOptions {
   modelId: string;
   answerMode?: "quick" | "deep";
   conversationId?: string;
   useMock?: boolean;
+}
+
+export interface StartStreamOptions {
+  /** Thread the stream belongs to (scopes the streaming UI to that thread). */
+  threadId?: string;
+  /** Server conversation id for persistence (authenticated users). */
+  conversationId?: string;
 }
 
 export interface StreamResult {
@@ -19,6 +32,8 @@ export interface StreamResult {
   usage: SseUsagePayload | null;
   isStopped: boolean;
   error?: { code: string; message: string; retryable: boolean } | null;
+  /** Server conversation id returned in the done event, if any. */
+  conversationId?: string;
 }
 
 export function useThreadStream(options: UseThreadStreamOptions) {
@@ -29,8 +44,25 @@ export function useThreadStream(options: UseThreadStreamOptions) {
   const [usage, setUsage] = useState<SseUsagePayload | null>(null);
   const [error, setError] = useState<{ code: string; message: string; retryable: boolean } | null>(null);
   const [isStopped, setIsStopped] = useState(false);
+  /** Thread the active stream belongs to — streaming UI is scoped to it so
+   * switching threads mid-stream cannot render the in-flight answer inside
+   * an unrelated transcript. */
+  const [streamingThreadId, setStreamingThreadId] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Latest-ref pattern: keep the current options readable inside a stable
+  // callback without re-creating startStream on every render (which churned
+  // child components subscribed to it). useMock used to be captured directly
+  // — toggling it after mount had no effect (stale closure).
+  const modelIdRef = useRef(options.modelId);
+  const answerModeRef = useRef(options.answerMode);
+  const conversationIdRef = useRef(options.conversationId);
+  const useMockRef = useRef(Boolean(options.useMock));
+  modelIdRef.current = options.modelId;
+  answerModeRef.current = options.answerMode;
+  conversationIdRef.current = options.conversationId;
+  useMockRef.current = Boolean(options.useMock);
 
   const stopStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -41,10 +73,20 @@ export function useThreadStream(options: UseThreadStreamOptions) {
     }
   }, []);
 
+  // Abort the in-flight stream when the component unmounts (route change):
+  // otherwise the fetch/reader loop keeps running and calls setState on an
+  // unmounted component for the lifetime of the stream.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const startStream = useCallback(
     async (
       prompt: string,
-      messagesHistory: Array<{ role: string; content: string }> = []
+      messagesHistory: Array<{ role: string; content: string }> = [],
+      streamOpts?: StartStreamOptions
     ): Promise<StreamResult> => {
       setIsStreaming(true);
       setStreamText("");
@@ -53,6 +95,7 @@ export function useThreadStream(options: UseThreadStreamOptions) {
       setUsage(null);
       setError(null);
       setIsStopped(false);
+      setStreamingThreadId(streamOpts?.threadId ?? null);
 
       let accumulatedText = "";
       const currentSteps: SseStepPayload[] = [];
@@ -60,16 +103,19 @@ export function useThreadStream(options: UseThreadStreamOptions) {
       let currentUsage: SseUsagePayload | null = null;
       let currentError: { code: string; message: string; retryable: boolean } | null = null;
       let stopped = false;
+      let doneConversationId: string | undefined;
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       try {
         let stream: ReadableStream<Uint8Array>;
+        const conversationId =
+          streamOpts?.conversationId ?? conversationIdRef.current;
 
-        if (options.useMock) {
+        if (useMockRef.current) {
           stream = createMockStream(prompt, {
-            modelId: options.modelId,
+            modelId: modelIdRef.current,
           });
         } else {
           // Attempt real endpoint
@@ -77,9 +123,9 @@ export function useThreadStream(options: UseThreadStreamOptions) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              modelId: options.modelId,
-              answerMode: options.answerMode || "deep",
-              conversationId: options.conversationId,
+              modelId: modelIdRef.current,
+              answerMode: answerModeRef.current || "deep",
+              conversationId,
               messages: [...messagesHistory, { role: "user", content: prompt }],
             }),
             signal: controller.signal,
@@ -125,11 +171,22 @@ export function useThreadStream(options: UseThreadStreamOptions) {
               currentUsage = uEvt.data;
               setUsage(uEvt.data);
             },
+            onNotice: (nEvt) => {
+              const payload = nEvt.data as SseNoticePayload;
+              if (payload?.notices?.length) {
+                toast.info("Quality notice", {
+                  description: payload.notices.join(" "),
+                });
+              }
+            },
             onError: (err) => {
               currentError = err;
               setError(err);
             },
             onDone: (donePayload) => {
+              if (donePayload.conversationId) {
+                doneConversationId = donePayload.conversationId;
+              }
               if (donePayload.status === "STOPPED") {
                 stopped = true;
                 setIsStopped(true);
@@ -153,6 +210,7 @@ export function useThreadStream(options: UseThreadStreamOptions) {
         }
       } finally {
         setIsStreaming(false);
+        setStreamingThreadId(null);
         abortControllerRef.current = null;
       }
 
@@ -163,9 +221,10 @@ export function useThreadStream(options: UseThreadStreamOptions) {
         usage: currentUsage,
         isStopped: stopped,
         error: currentError,
+        conversationId: doneConversationId,
       };
     },
-    [options]
+    []
   );
 
   return {
@@ -176,6 +235,7 @@ export function useThreadStream(options: UseThreadStreamOptions) {
     usage,
     error,
     isStopped,
+    streamingThreadId,
     startStream,
     stopStream,
   };

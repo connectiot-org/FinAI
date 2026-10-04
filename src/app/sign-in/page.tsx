@@ -14,7 +14,6 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Building,
   CheckCircle2,
   AlertCircle,
   LoaderCircle,
@@ -25,26 +24,48 @@ import { Logo } from "@/components/landing/logo";
 
 type AuthMode = "signin" | "signup";
 
+/** Only allow same-origin relative redirect targets. */
+function safeNext(raw: string | null): string {
+  if (!raw) return "/agent";
+  // Must be a relative path (starts with "/") and not a protocol-relative URL.
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
+    return raw;
+  }
+  return "/agent";
+}
+
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/agent";
+  const next = safeNext(searchParams.get("next"));
 
   const [mode, setMode] = useState<AuthMode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [organization, setOrganization] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const validate = (): string | null => {
+    if (!email.trim().includes("@")) return "Please enter a valid email address.";
+    if (password.length < 8)
+      return "Password must be at least 8 characters long.";
+    if (mode === "signup" && !name.trim())
+      return "Please enter your full name.";
+    return null;
+  };
+
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+
+    const validationError = validate();
+    if (validationError) {
+      setErrorMsg(validationError);
+      return;
+    }
 
     setLoading(true);
     setErrorMsg("");
@@ -53,28 +74,31 @@ function SignInContent() {
     try {
       const res = await signIn("credentials", {
         email: email.trim().toLowerCase(),
-        password: password || "finai-demo-pass",
-        name: name.trim() || undefined,
+        password,
+        name: mode === "signup" ? name.trim() : undefined,
         redirect: false,
       });
 
       if (res?.error) {
-        // Fallback for seamless demo experience
-        setSuccessMsg(mode === "signup" ? "Account created! Loading workspace…" : "Authenticated! Loading workspace…");
-        setTimeout(() => {
-          router.push(next);
-          router.refresh();
-        }, 500);
+        // Real failure — show it. Never fabricate success on auth errors.
+        setErrorMsg(
+          mode === "signup"
+            ? "Could not create the account. If this email is already registered, sign in instead."
+            : "Invalid email or password."
+        );
       } else {
-        setSuccessMsg(mode === "signup" ? "Account created! Redirecting to workspace…" : "Authenticated! Loading workspace…");
+        setSuccessMsg(
+          mode === "signup"
+            ? "Account created! Loading workspace…"
+            : "Authenticated! Loading workspace…"
+        );
         setTimeout(() => {
           router.push(next);
           router.refresh();
-        }, 500);
+        }, 400);
       }
     } catch {
-      // Graceful demo redirect
-      router.push(next);
+      setErrorMsg("Sign-in is temporarily unavailable. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -84,55 +108,21 @@ function SignInContent() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
-      const res = await signIn("google", {
-        callbackUrl: next,
-        redirect: false,
-      });
+      const res = await signIn("google", { callbackUrl: next, redirect: false });
 
       if (res?.error || !res?.ok) {
-        // Seamless fallback for demo environments without Google OAuth keys
-        const fallbackRes = await signIn("credentials", {
-          email: "demo.user@finai.ai",
-          password: "google-demo-pass",
-          name: "Alex Rivera (Financial Analyst)",
-          redirect: false,
-        });
-
-        if (!fallbackRes?.error) {
-          setSuccessMsg("Signed in with Google Account! Loading workspace…");
-          setTimeout(() => {
-            router.push(next);
-            router.refresh();
-          }, 400);
-        } else {
-          router.push(next);
-        }
+        // Google OAuth is not configured on this deployment. Fail honestly —
+        // do NOT silently sign the user in with a fabricated identity.
+        setErrorMsg(
+          "Google sign-in is not configured on this deployment. Use email and password instead."
+        );
+      } else if (res?.url) {
+        window.location.href = res.url;
       }
     } catch {
-      router.push(next);
+      setErrorMsg("Google sign-in is temporarily unavailable.");
     } finally {
       setGoogleLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    setSuccessMsg("Signing in with Apple…");
-    try {
-      await signIn("credentials", {
-        email: "cfo@northline.example",
-        password: "apple-demo-pass",
-        name: "Elena Vance (CFO)",
-        redirect: false,
-      });
-      setTimeout(() => {
-        router.push(next);
-        router.refresh();
-      }, 400);
-    } catch {
-      router.push(next);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -196,18 +186,6 @@ function SignInContent() {
                 </svg>
               )}
               <span>Continue with Google</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleAppleSignIn}
-              disabled={loading || googleLoading}
-              className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-stone-800 bg-[#161616] px-4 text-[13.5px] font-medium text-stone-200 transition-colors hover:border-stone-700 hover:bg-[#1f1f1f] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 cursor-pointer disabled:opacity-60"
-            >
-              <svg viewBox="0 0 24 24" className="size-4 shrink-0 fill-current" aria-hidden="true">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.76 1.05-1.82.93-2.88-.91.04-2 .61-2.65 1.37-.57.66-.99 1.73-.85 2.76 1.02.08 2.05-.53 2.57-1.25z" />
-              </svg>
-              <span>Continue with Apple</span>
             </button>
           </div>
 
@@ -282,7 +260,11 @@ function SignInContent() {
                 {mode === "signin" && (
                   <button
                     type="button"
-                    onClick={() => setErrorMsg("Password reset email feature is in private preview.")}
+                    onClick={() =>
+                      setErrorMsg(
+                        "Password reset email feature is in private preview."
+                      )
+                    }
                     className="text-[12px] text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
                   >
                     Forgot password?
@@ -294,6 +276,7 @@ function SignInContent() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
@@ -308,36 +291,11 @@ function SignInContent() {
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-            </div>
-
-            {mode === "signup" && (
-              <div>
-                <label className="block text-[13px] font-medium text-stone-300">
-                  Organization / Company <span className="text-stone-500">(Optional)</span>
-                </label>
-                <div className="relative mt-1.5">
-                  <Building className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-stone-500" />
-                  <input
-                    type="text"
-                    value={organization}
-                    onChange={(e) => setOrganization(e.target.value)}
-                    placeholder="Acme Financial Corp"
-                    className="h-11 w-full rounded-xl border border-stone-800 bg-[#141414] pl-10 pr-4 text-[14px] text-white placeholder-stone-600 transition-colors focus:border-emerald-500 focus:bg-[#181818] focus:outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="size-4 rounded-md border-stone-700 bg-stone-900 text-emerald-500 focus:ring-emerald-500"
-                />
-                <span className="text-[12.5px] text-stone-400">Remember this device</span>
-              </label>
+              {mode === "signup" && (
+                <p className="mt-1.5 text-[11.5px] text-stone-500">
+                  Minimum 8 characters.
+                </p>
+              )}
             </div>
 
             <button
@@ -349,7 +307,9 @@ function SignInContent() {
                 <LoaderCircle className="size-4 animate-spin text-black" />
               ) : (
                 <>
-                  <span>{mode === "signin" ? "Sign In to Workspace" : "Create FInAI Account"}</span>
+                  <span>
+                    {mode === "signin" ? "Sign In to Workspace" : "Create FInAI Account"}
+                  </span>
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -394,7 +354,9 @@ function SignInContent() {
 
         {/* Footer info */}
         <div className="text-center text-[11.5px] text-stone-500">
-          <span>Protected by SOC 2-aligned controls &amp; finance-grade isolation.</span>
+          <span>
+            Protected by SOC 2-aligned controls &amp; finance-grade isolation.
+          </span>
         </div>
       </div>
 
@@ -417,10 +379,15 @@ function SignInContent() {
         <div className="relative z-10 my-auto max-w-lg space-y-6">
           <div className="space-y-3">
             <h2 className="text-[34px] xl:text-[40px] font-bold tracking-tight text-white leading-tight">
-              Reach financial goals <span className="text-emerald-400 font-serif-accent font-normal italic">faster</span>.
+              Reach financial goals{" "}
+              <span className="text-emerald-400 font-serif-accent font-normal italic">
+                faster
+              </span>
+              .
             </h2>
             <p className="text-[15px] leading-relaxed text-stone-300">
-              The simplest way to orchestrate frontier AI models across financial data, variance decomposition, board decks, and ledger tie-outs.
+              The simplest way to orchestrate frontier AI models across financial
+              data, variance decomposition, board decks, and ledger tie-outs.
             </p>
           </div>
 
@@ -432,7 +399,9 @@ function SignInContent() {
                   <TrendingUp className="size-4" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-white">Monthly Close Variance</p>
+                  <p className="text-[13px] font-semibold text-white">
+                    Monthly Close Variance
+                  </p>
                   <p className="text-[11px] text-stone-400">General Ledger Tie-Outs</p>
                 </div>
               </div>
@@ -443,15 +412,21 @@ function SignInContent() {
 
             <div className="mt-4 grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl bg-black/40 p-2.5 border border-stone-800/50">
-                <p className="text-[10px] uppercase font-mono text-stone-400">Median Review</p>
+                <p className="text-[10px] uppercase font-mono text-stone-400">
+                  Median Review
+                </p>
                 <p className="mt-0.5 text-[16px] font-bold text-white">12.4s</p>
               </div>
               <div className="rounded-xl bg-black/40 p-2.5 border border-stone-800/50">
-                <p className="text-[10px] uppercase font-mono text-stone-400">Model Failover</p>
+                <p className="text-[10px] uppercase font-mono text-stone-400">
+                  Model Failover
+                </p>
                 <p className="mt-0.5 text-[16px] font-bold text-emerald-400">0.1s</p>
               </div>
               <div className="rounded-xl bg-black/40 p-2.5 border border-stone-800/50">
-                <p className="text-[10px] uppercase font-mono text-stone-400">Audit Trace</p>
+                <p className="text-[10px] uppercase font-mono text-stone-400">
+                  Audit Trace
+                </p>
                 <p className="mt-0.5 text-[16px] font-bold text-white">100%</p>
               </div>
             </div>
@@ -462,7 +437,9 @@ function SignInContent() {
                 <Cpu className="size-3.5 text-emerald-400" />
                 <span>Multi-Model Engine</span>
               </span>
-              <span className="font-mono text-[11px] text-stone-300">Claude · GPT · Gemini · DeepSeek</span>
+              <span className="font-mono text-[11px] text-stone-300">
+                Claude · GPT · Gemini · DeepSeek
+              </span>
             </div>
           </div>
         </div>
@@ -470,7 +447,9 @@ function SignInContent() {
         {/* Bottom Trust Guarantee */}
         <div className="relative z-10 flex items-center gap-3 text-[12.5px] text-stone-400">
           <ShieldCheck className="size-4.5 text-emerald-400 shrink-0" />
-          <span>Workspace data is never used to train third-party frontier AI models.</span>
+          <span>
+            Workspace data is never used to train third-party frontier AI models.
+          </span>
         </div>
       </div>
     </div>

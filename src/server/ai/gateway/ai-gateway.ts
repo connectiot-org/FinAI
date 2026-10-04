@@ -19,7 +19,7 @@ export class AIGateway {
     // 1. Resolve target model
     let targetModelId = req.modelId;
     if (targetModelId === "auto") {
-      targetModelId = "openrouter/free";
+      targetModelId = modelRegistry.getDefaultModel();
     }
 
     const candidates = fallbackEngine.getCandidates(targetModelId);
@@ -36,22 +36,36 @@ export class AIGateway {
     };
 
     let chosenModel = targetModelId;
-    let fallbackHappened = false;
 
     for (let i = 0; i < candidates.length; i++) {
+      // Client already disconnected — stop immediately. Aborts are caller
+      // behavior, not provider failures: they must not be recorded on the
+      // circuit breaker (two aborted streams must not open it for everyone).
+      if (req.signal?.aborted) {
+        return;
+      }
+
       const candidate = candidates[i];
-      if (circuitBreaker.isOpen()) {
-        logger.warn("Circuit breaker open for primary gateway, probing candidate", { candidate });
+
+      // Circuit breaker: when OPEN, skip candidates that recently failed
+      // (except the last one, so we always leave one path to attempt).
+      if (circuitBreaker.isOpen() && i < candidates.length - 1) {
+        logger.warn("Circuit breaker open — skipping candidate", { candidate });
+        continue;
       }
 
       chosenModel = candidate;
-      let hasError = false;
       let generatedContent = false;
       let firstChunkReceived = false;
+      /** True once any text-delta has been *emitted downstream* — after this
+       * point we must NOT retry another candidate, because the client would
+       * receive a concatenated/duplicated answer. */
+      let contentSentToClient = false;
+      let streamError: { code: string; message: string; retryable: boolean } | null =
+        null;
 
       // If this is a fallback candidate, notify the client
       if (i > 0) {
-        fallbackHappened = true;
         yield {
           event: "step",
           data: {
@@ -72,15 +86,38 @@ export class AIGateway {
         });
 
         for await (const event of stream) {
+          if (req.signal?.aborted) {
+            // Client went away mid-stream — stop; do not record a provider
+            // failure and do not attempt further candidates.
+            return;
+          }
+
           if (event.event === "error") {
-            hasError = true;
+            streamError = event.data;
+            if (req.signal?.aborted) {
+              return;
+            }
+            if (!contentSentToClient) {
+              // Clean failure before any output: record + try next candidate.
+              circuitBreaker.recordFailure();
+              fallbackEngine.logFallback(
+                targetModelId,
+                chosenModel,
+                event.data.message,
+                req.requestId
+              );
+              break;
+            }
+            // Mid-stream failure AFTER content was already delivered: we
+            // cannot retry without corrupting the answer — surface the error.
             circuitBreaker.recordFailure();
-            fallbackEngine.logFallback(targetModelId, chosenModel, event.data.message, req.requestId);
-            break;
+            yield event;
+            return;
           }
 
           if (event.event === "text-delta" && event.data.text.trim()) {
             generatedContent = true;
+            contentSentToClient = true;
           }
 
           // When first text or completion arrives, mark connection step as done
@@ -108,10 +145,18 @@ export class AIGateway {
             };
           }
 
+          if (event.event === "text-delta") {
+            contentSentToClient = true;
+          }
+
           yield event;
         }
 
-        if (!hasError && (generatedContent || firstChunkReceived)) {
+        if (streamError && !contentSentToClient) {
+          continue; // try next candidate
+        }
+
+        if (generatedContent || (firstChunkReceived && !streamError)) {
           circuitBreaker.recordSuccess();
 
           // Ensure step-1 is marked done
@@ -126,21 +171,56 @@ export class AIGateway {
             },
           };
           return;
-        } else {
-          hasError = true;
-          fallbackEngine.logFallback(targetModelId, chosenModel, "Candidate generated empty content", req.requestId);
         }
+
+        if (!contentSentToClient) {
+          fallbackEngine.logFallback(
+            targetModelId,
+            chosenModel,
+            streamError?.message ?? "Candidate generated empty content",
+            req.requestId
+          );
+          continue;
+        }
+        // Content was sent but the stream ended without a proper finish —
+        // treat as complete with what we have.
+        return;
       } catch (err: unknown) {
-        hasError = true;
-        circuitBreaker.recordFailure();
+        // Exceptions from the adapter (connection reset, hard timeout, abort).
+        if (req.signal?.aborted) {
+          // Caller-initiated abort — not a provider failure.
+          return;
+        }
         const msg = err instanceof Error ? err.message : "Unknown gateway error";
+        if (contentSentToClient) {
+          // Exception AFTER content was already delivered downstream:
+          // retrying another candidate would concatenate a second answer onto
+          // the partial one — surface the error instead.
+          circuitBreaker.recordFailure();
+          fallbackEngine.logFallback(targetModelId, chosenModel, msg, req.requestId);
+          yield {
+            event: "error",
+            data: {
+              code: "UPSTREAM_ERROR",
+              message: `Connection lost while streaming (${msg}). Partial answer may be incomplete.`,
+              retryable: false,
+            },
+          };
+          return;
+        }
+        // Clean failure before any output — safe to try the next candidate.
+        circuitBreaker.recordFailure();
         fallbackEngine.logFallback(targetModelId, chosenModel, msg, req.requestId);
+        continue;
       }
     }
 
-    // If all candidates exhausted, check if we can synthesize a high-value dataset response
+    // If all candidates exhausted, check if we can synthesize a deterministic dataset response
     const lastUserMsg = req.messages[req.messages.length - 1]?.content || "";
-    if (lastUserMsg.includes("[DATASET PROFILE:") || lastUserMsg.includes("FULL-DATASET NUMERICAL STATISTICS")) {
+    if (
+      lastUserMsg.includes("[DATASET PROFILE:") ||
+      lastUserMsg.includes("FULL-DATASET NUMERICAL STATISTICS")
+    ) {
       logger.info("Synthesizing deterministic dataset briefing after gateway model exhaustion", {
         requestId: req.requestId,
       });
@@ -156,7 +236,8 @@ export class AIGateway {
         },
       };
 
-      const fallbackText = `### Dataset Executive Briefing\n\n` +
+      const fallbackText =
+        `### Dataset Executive Briefing\n\n` +
         `The financial analytics engine has processed and verified the dataset statistics.\n\n` +
         `All metrics, column types, and distributions have been compiled and grounded across all records. ` +
         `You can query specific columns, request variance calculations, or compare categories.`;

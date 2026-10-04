@@ -29,7 +29,7 @@ export interface WorkspaceShellProps {
   /** Pass the active thread title so the share action can include it */
   activeThreadTitle?: string;
   /** Copy / Export entire workspace (Chat + Analysis + Report) */
-  onExportWorkspace?: () => void;
+  onExportWorkspace?: () => boolean | Promise<boolean | void> | void;
 }
 
 function copyToClipboard(text: string): Promise<boolean> {
@@ -102,10 +102,14 @@ export function WorkspaceShell({
 
   const handleExport = async () => {
     if (onExportWorkspace) {
-      onExportWorkspace();
-      setExportCopied(true);
-      toast.success("Full workspace transcript & financial report copied!");
-      setTimeout(() => setExportCopied(false), 2500);
+      // The export handler surfaces its own success/error toast based on the
+      // actual clipboard result and reports whether the copy succeeded —
+      // the header button must not claim "Copied" on failure.
+      const ok = await onExportWorkspace();
+      if (ok) {
+        setExportCopied(true);
+        setTimeout(() => setExportCopied(false), 2500);
+      }
     }
   };
 
@@ -235,7 +239,9 @@ export function WorkspaceShell({
             </div>
 
             <p className="mt-2 text-[13px] text-stone-400 leading-relaxed">
-              Anyone with this link can view this thread&apos;s analysis, financial tables, and model findings.
+              Copy a link to this workspace. Note: threads are currently stored
+              locally in your browser — recipients will not see your data or
+              conversation history (server-side shared threads are on the roadmap).
             </p>
 
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-stone-800 bg-[#111111] p-1.5 pl-3">

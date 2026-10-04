@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { modelsConfig, ModelConfig } from "@/config/models.config";
 import { WorkspaceShell } from "@/components/agent/workspace-shell";
 import { ThreadSidebar, ViewId } from "@/components/agent/thread-sidebar";
 import { ThreadCanvas, MessageItem } from "@/components/agent/thread-canvas";
 import { Composer, AttachedFile, formatFileSize } from "@/components/agent/composer";
-import { FinancialContextCard } from "@/components/agent/financial-context-card";
-import { EvidencePanel } from "@/components/agent/evidence-panel";
 import { useThreadStream } from "@/lib/use-thread-stream";
 import { useSession } from "next-auth/react";
 import { datasetStore } from "@/lib/storage/dataset-store";
 import { FileAttachmentCard } from "@/components/agent/file-attachment-card";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   parseFinancialCsv,
   validateFinancialQueryGrounding,
@@ -23,13 +22,9 @@ import {
 } from "@/lib/financial-dataset-engine";
 import {
   CheckCircle2,
-  CircleDashed,
-  LoaderCircle,
   Route,
-  Pin,
   X,
   Database,
-  Download,
   Copy,
   Check,
   TrendingUp,
@@ -40,19 +35,11 @@ import {
   Sparkles,
   Plus,
   Search,
-  Filter,
   ArrowUpRight,
-  ArrowDownRight,
   Eye,
   Play,
   Trash2,
   Printer,
-  Share2,
-  SlidersHorizontal,
-  ChevronRight,
-  AlertTriangle,
-  Info,
-  Calendar,
 } from "lucide-react";
 
 export interface ThreadData {
@@ -294,19 +281,33 @@ export default function WorkspacePage() {
   // Track dynamic token consumption
   const trackTokenUsage = (inLen: number, outLen: number = 0) => {
     const added = Math.max(90, Math.ceil(inLen / 4) + Math.ceil(outLen / 4));
-    setTokensUsed((prev) => {
-      const next = prev + added;
-      const budget = 10000;
-      const pct = Math.max(5, Math.min(100, Math.round(((budget - next) / budget) * 100)));
-      setCreditsPercent(pct);
-      return next;
-    });
+    setTokensUsed((prev) => prev + added);
   };
+
+  // Keep the credit meter derived from token usage (single source of truth,
+  // no nested setState inside an updater).
+  useEffect(() => {
+    const budget = 10000;
+    setCreditsPercent(Math.max(5, Math.min(100, Math.round(((budget - tokensUsed) / budget) * 100))));
+  }, [tokensUsed]);
+
+  // Skip the first save until the restore effect has run — otherwise the
+  // initial demo state overwrites saved history before it is rehydrated
+  // (silent data destruction on mount).
+  const hasRestoredRef = useRef(false);
+  const quotaToastShownRef = useRef(false);
 
   // Restore history & custom templates from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
+        // Purge any dataset/files staged under the transient "th-new" draft
+        // id from a previous session — otherwise the next first message on a
+        // NEW draft thread would re-key that stale data and silently attach
+        // it to an unrelated conversation.
+        datasetStore.removeDataset("th-new");
+        datasetStore.removeThreadFiles("th-new");
+
         const saved = localStorage.getItem("fintra_threads_v4");
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -353,21 +354,53 @@ export default function WorkspacePage() {
             setCustomTemplates(parsedTpl);
           }
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Could not restore saved workspace history:", err);
+      } finally {
+        hasRestoredRef.current = true;
+      }
     }
   }, []);
 
-  // Sync threads to localStorage
+  // Sync threads to localStorage. Full dataset payloads (rawCsv + rows) are
+  // stripped — datasets live in their own bounded store — so a single large
+  // CSV cannot blow the 5MB quota and silently kill ALL thread persistence.
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" || typeof document !== "undefined") {
+      if (!hasRestoredRef.current) return;
       try {
-        const toSave = threads.filter(
-          (t) => t.id !== "th-new" && t.messages && t.messages.length > 0
-        );
+        const toSave = threads
+          .filter((t) => t.id !== "th-new" && t.messages && t.messages.length > 0)
+          .map((t) =>
+            t.dataset
+              ? {
+                  ...t,
+                  dataset: {
+                    ...t.dataset,
+                    rows: [],
+                    rawCsv: "",
+                    partialRows: true,
+                    profile: undefined,
+                  } as ParsedFinancialDataset,
+                }
+              : t
+          );
         if (toSave.length > 0) {
           localStorage.setItem("fintra_threads_v4", JSON.stringify(toSave));
+        } else {
+          // Nothing worth saving: clear the key so deleted threads do not
+          // resurrect on the next reload.
+          localStorage.removeItem("fintra_threads_v4");
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Could not persist workspace history (storage quota?):", err);
+        if (!quotaToastShownRef.current) {
+          quotaToastShownRef.current = true;
+          toast.error("Could not save workspace history — browser storage is full.", {
+            description: "Delete old threads to free space.",
+          });
+        }
+      }
     }
   }, [threads]);
 
@@ -376,18 +409,38 @@ export default function WorkspacePage() {
 
   const messages = activeThread.messages;
 
+  // Auto-select the most recent year present in the active dataset so the
+  // Analysis view is never pointed at a year the file doesn't contain.
+  useEffect(() => {
+    const rows = activeThread.dataset?.rows;
+    if (!rows || rows.length === 0) return;
+    const maxYear = rows.reduce((max, r) =>
+      typeof r.Year === "number" && r.Year > max ? r.Year : max, 0);
+    if (maxYear > 0) setAnalysisYear(maxYear);
+  }, [activeThread.dataset]);
+
   const {
     isStreaming,
     streamText,
     steps,
     evidence,
     isStopped,
+    streamingThreadId,
     startStream,
     stopStream,
   } = useThreadStream({
     modelId: selectedModel.modelId,
     answerMode,
   });
+
+  // Streaming UI is scoped to the thread the stream belongs to — switching
+  // threads mid-stream no longer renders the in-flight answer inside an
+  // unrelated (possibly empty) transcript.
+  const isStreamingThisThread =
+    isStreaming && (!streamingThreadId || streamingThreadId === activeThreadId);
+
+  // Server conversation ids per client thread (authenticated persistence).
+  const conversationIdsRef = useRef<Record<string, string>>({});
 
   const handleSelectThread = (id: string) => {
     setActiveThreadId(id);
@@ -423,10 +476,13 @@ export default function WorkspacePage() {
   };
 
   const handleNewThread = () => {
+    // Keep threads that carry files/datasets even without messages — dropping
+    // them here used to delete the user's freshly-uploaded file.
     if (
       activeThread &&
       activeThread.messages.length === 0 &&
-      (!activeThread.attachedFiles || activeThread.attachedFiles.length === 0)
+      (!activeThread.attachedFiles || activeThread.attachedFiles.length === 0) &&
+      !activeThread.dataset
     ) {
       setActiveView("chat");
       setActiveTabLabel("Chat");
@@ -443,7 +499,9 @@ export default function WorkspacePage() {
       dataset: undefined,
     };
     setThreads((prev) => {
-      const withoutEmpty = prev.filter((t) => t.messages.length > 0);
+      const withoutEmpty = prev.filter(
+        (t) => t.messages.length > 0 || (t.attachedFiles?.length || 0) > 0 || t.dataset
+      );
       return [newThread, ...withoutEmpty];
     });
     setActiveThreadId(newId);
@@ -453,70 +511,101 @@ export default function WorkspacePage() {
   };
 
   const handleDeleteThread = (id: string) => {
-    setThreads((prev) => {
-      const remaining = prev.filter((t) => t.id !== id);
-      if (remaining.length === 0) {
-        const fallbackId = `th-${Date.now()}`;
-        setActiveThreadId(fallbackId);
-        return [
-          {
-            id: fallbackId,
-            title: "New Conversation",
-            updatedAt: "Just now",
-            messages: [],
-            attachedFiles: [],
-          },
-        ];
-      }
-      if (activeThreadId === id) {
-        setActiveThreadId(remaining[0].id);
-      }
-      return remaining;
-    });
+    // Clean up per-thread dataset + file records so they cannot leak as
+    // orphans in localStorage forever.
+    try {
+      datasetStore.removeDataset(id);
+      datasetStore.removeThreadFiles(id);
+    } catch {
+      // best-effort cleanup
+    }
+
+    const remaining = threads.filter((t) => t.id !== id);
+    if (remaining.length === 0) {
+      const fallbackId = `th-${Date.now()}`;
+      setThreads([
+        {
+          id: fallbackId,
+          title: "New Conversation",
+          updatedAt: "Just now",
+          messages: [],
+          attachedFiles: [],
+        },
+      ]);
+      setActiveThreadId(fallbackId);
+      return;
+    }
+    if (activeThreadId === id) {
+      setActiveThreadId(remaining[0].id);
+    }
+    setThreads(remaining);
   };
 
   // Review Item 4: Pin message toggle handler
   const handlePinMessage = (messageId: string) => {
+    // Compute the next pinned state OUTSIDE the updater — updaters must stay
+    // pure (StrictMode double-invokes them, which used to fire the toast twice).
+    const active = threads.find((t) => t.id === activeThreadId);
+    const targeted = active?.messages.find((m) => m.id === messageId);
+    const willPin = targeted ? !targeted.isPinned : false;
+
     setThreads((prev) =>
-      prev.map((t) => {
-        if (t.id === activeThreadId) {
-          const next = t.messages.map((m) =>
-            m.id === messageId ? { ...m, isPinned: !m.isPinned } : m
-          );
-          const targeted = next.find((m) => m.id === messageId);
-          if (targeted?.isPinned) {
-            toast.success("Insight pinned to top of thread", {
-              description: "Quickly access this finding anytime.",
-            });
-          } else {
-            toast.info("Message unpinned");
-          }
-          return { ...t, messages: next };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.id === activeThreadId
+          ? {
+              ...t,
+              messages: t.messages.map((m) =>
+                m.id === messageId ? { ...m, isPinned: !m.isPinned } : m
+              ),
+            }
+          : t
+      )
     );
+
+    if (willPin) {
+      toast.success("Insight pinned to top of thread", {
+        description: "Quickly access this finding anytime.",
+      });
+    } else {
+      toast.info("Message unpinned");
+    }
   };
 
-  const handleAttachFiles = (newFiles: AttachedFile[]) => {
-    let parsedDataset: ParsedFinancialDataset | undefined;
-    for (const f of newFiles) {
+  /** Parse the first CSV-like file from a batch. */
+  const parseDatasetFromFiles = (
+    files: AttachedFile[]
+  ): ParsedFinancialDataset | undefined => {
+    for (const f of files) {
       if (
         f.textContent &&
         (f.name.toLowerCase().endsWith(".csv") ||
-          f.type.includes("csv") ||
-          f.textContent.includes(","))
+          f.name.toLowerCase().endsWith(".tsv") ||
+          f.type.includes("csv"))
       ) {
         try {
-          parsedDataset = parseFinancialCsv(f.textContent, f.name);
-          break;
+          return parseFinancialCsv(f.textContent, f.name);
         } catch (err) {
-          console.warn("Could not parse file as CSV:", err);
+          toast.error(`Could not parse ${f.name}`, {
+            description: err instanceof Error ? err.message : "The file is not a readable delimited dataset.",
+          });
         }
       }
     }
+    return undefined;
+  };
 
-    const currentFiles = activeThread.attachedFiles || [];
+  const handleAttachFiles = (
+    newFiles: AttachedFile[],
+    opts?: { threadId?: string; dataset?: ParsedFinancialDataset }
+  ) => {
+    const targetThreadId = opts?.threadId ?? activeThreadId;
+    const parsedDataset = opts?.dataset ?? parseDatasetFromFiles(newFiles);
+
+    // Read and merge against the TARGET thread's files. Previously the
+    // ACTIVE thread's state was mutated while storage targeted
+    // opts.threadId — state and storage could diverge.
+    const targetThread = threads.find((t) => t.id === targetThreadId);
+    const currentFiles = targetThread?.attachedFiles || [];
     const uniqueNew = newFiles.filter(
       (nf) => !currentFiles.some((cf) => cf.id === nf.id)
     );
@@ -525,11 +614,11 @@ export default function WorkspacePage() {
     if (parsedDataset) {
       void datasetStore.saveDataset(
         parsedDataset,
-        activeThreadId,
+        targetThreadId,
         session?.user?.email || "pilot-user"
       );
     }
-    datasetStore.saveThreadFiles(activeThreadId, allFilesCombined);
+    datasetStore.saveThreadFiles(targetThreadId, allFilesCombined);
 
     if (uniqueNew.length > 0) {
       toast.success(
@@ -544,7 +633,7 @@ export default function WorkspacePage() {
 
     setThreads((prev) =>
       prev.map((t) => {
-        if (t.id === activeThreadId) {
+        if (t.id === targetThreadId) {
           return {
             ...t,
             attachedFiles: allFilesCombined,
@@ -557,18 +646,29 @@ export default function WorkspacePage() {
   };
 
   const handleRemoveDatasetFile = (fileId: string) => {
+    const thread = activeThread;
+    const updated = (thread.attachedFiles || []).filter((f) => f.id !== fileId);
+    const removedFile = (thread.attachedFiles || []).find((f) => f.id === fileId);
+
+    // Drop the dataset when its source file is removed (not only when ALL
+    // files are gone — previously removing just the CSV kept a dangling chip).
+    const datasetLosesSource =
+      !!thread.dataset &&
+      !!removedFile &&
+      removedFile.name === thread.dataset.filename;
+
+    datasetStore.saveThreadFiles(activeThreadId, updated);
+    if (updated.length === 0 || datasetLosesSource) {
+      datasetStore.removeDataset(activeThreadId);
+    }
+
     setThreads((prev) =>
       prev.map((t) => {
         if (t.id === activeThreadId) {
-          const updated = (t.attachedFiles || []).filter((f) => f.id !== fileId);
-          datasetStore.saveThreadFiles(activeThreadId, updated);
-          if (updated.length === 0) {
-            datasetStore.removeDataset(activeThreadId);
-          }
           return {
             ...t,
             attachedFiles: updated,
-            dataset: updated.length === 0 ? undefined : t.dataset,
+            dataset: updated.length === 0 || datasetLosesSource ? undefined : t.dataset,
           };
         }
         return t;
@@ -613,8 +713,8 @@ export default function WorkspacePage() {
     });
   };
 
-  const handleCopyFullWorkspace = () => {
-    if (typeof window === "undefined") return;
+  const handleCopyFullWorkspace = async (): Promise<boolean> => {
+    if (typeof window === "undefined") return false;
     let md = `# FInAI Financial Workspace: ${activeThread.title}\n`;
     md += `*Generated by FInAI · Model: ${selectedModel.displayName} · Date: ${new Date().toLocaleDateString()}*\n\n`;
 
@@ -622,8 +722,13 @@ export default function WorkspacePage() {
       md += `## 📁 Uploaded Dataset\n`;
       md += `- **File**: ${activeThread.dataset.filename}\n`;
       md += `- **Rows**: ${activeThread.dataset.rowCount} · **Columns**: ${activeThread.dataset.columns.length}\n`;
-      md += `- **Companies**: ${activeThread.dataset.companies.join(", ")}\n`;
-      md += `- **Years Available**: ${activeThread.dataset.yearMin}–${activeThread.dataset.yearMax}\n\n`;
+      if (activeThread.dataset.companies.length > 0) {
+        md += `- **Companies**: ${activeThread.dataset.companies.join(", ")}\n`;
+      }
+      if (activeThread.dataset.yearMax > 0) {
+        md += `- **Years Available**: ${activeThread.dataset.yearMin}–${activeThread.dataset.yearMax}\n`;
+      }
+      md += `\n`;
     }
 
     const assistantMessages = messages.filter((m) => m.role === "assistant");
@@ -642,38 +747,32 @@ export default function WorkspacePage() {
       md += `### ${idx + 1}. ${speaker}\n\n${m.content}\n\n`;
     });
 
-    navigator.clipboard?.writeText(md);
-    toast.success("Workspace copied to clipboard", {
-      description: "Full transcript, financial schedules, and metadata copied as Markdown.",
-    });
+    const ok = await copyToClipboard(md);
+    if (ok) {
+      toast.success("Workspace copied to clipboard", {
+        description: "Full transcript, financial schedules, and metadata copied as Markdown.",
+      });
+    } else {
+      toast.error("Could not copy — clipboard access was denied.");
+    }
+    return ok;
   };
 
   const handleSendMessage = async (text: string, incomingFiles?: AttachedFile[]) => {
+    // Guard FIRST: a dropped send must not mutate attachments.
+    const hasText = Boolean(text.trim());
+    if ((!hasText && !(incomingFiles?.length || 0)) || isStreaming) return;
+
     const threadFiles = activeThread.attachedFiles || [];
     const newFiles = incomingFiles || [];
     const allFiles = [...threadFiles, ...newFiles];
 
-    let activeDataset = activeThread.dataset;
+    // Parse the dataset once (the attach handler reuses the parsed result).
+    const parsedFromNew = newFiles.length > 0 ? parseDatasetFromFiles(newFiles) : undefined;
+    let activeDataset = parsedFromNew || activeThread.dataset;
     if (newFiles.length > 0) {
-      for (const f of newFiles) {
-        if (
-          f.textContent &&
-          (f.name.toLowerCase().endsWith(".csv") ||
-            f.type.includes("csv") ||
-            f.textContent.includes(","))
-        ) {
-          try {
-            activeDataset = parseFinancialCsv(f.textContent, f.name);
-            break;
-          } catch (e) {}
-        }
-      }
-      handleAttachFiles(newFiles);
+      handleAttachFiles(newFiles, { dataset: parsedFromNew });
     }
-
-    const hasText = Boolean(text.trim());
-    const hasFiles = Boolean(allFiles.length > 0);
-    if ((!hasText && !hasFiles) || isStreaming) return;
 
     // Track input token consumption
     trackTokenUsage(text.length, 0);
@@ -684,6 +783,23 @@ export default function WorkspacePage() {
 
     if (originalThreadId === "th-new") {
       setActiveThreadId(currentThreadId);
+      // Re-key the dataset store from the transient "th-new" id to the real
+      // thread id — otherwise the stored dataset/files orphan and are lost
+      // on reload.
+      const staged = datasetStore.getDatasetByThread("th-new");
+      if (staged) {
+        void datasetStore.saveDataset(
+          staged,
+          currentThreadId,
+          session?.user?.email || "pilot-user"
+        );
+        datasetStore.removeDataset("th-new");
+      }
+      const stagedFiles = datasetStore.getThreadFiles("th-new");
+      if (stagedFiles.length > 0) {
+        datasetStore.saveThreadFiles(currentThreadId, stagedFiles);
+        datasetStore.removeThreadFiles("th-new");
+      }
     }
 
     const fileNames = allFiles.map((f) => f.name);
@@ -764,7 +880,12 @@ export default function WorkspacePage() {
 
     let promptToSend = displayContent;
     if (activeDataset) {
-      const groundingContext = buildGroundingContext(displayContent, activeDataset);
+      let groundingContext = "";
+      try {
+        groundingContext = buildGroundingContext(displayContent, activeDataset);
+      } catch (err) {
+        console.warn("Grounding context build failed — sending plain question:", err);
+      }
       promptToSend = `IMPORTANT: You are analyzing the uploaded financial dataset (${activeDataset.filename}).
 ALL financial figures, company metrics, and calculations MUST be strictly sourced from the dataset. If a company, year, or metric is not present, state so clearly and do not hallucinate external figures.
 
@@ -797,7 +918,39 @@ ${preview}`;
       content: m.content,
     }));
 
-    const result = await startStream(promptToSend, historyForApi);
+    // Server-side persistence for authenticated users: lazily create a
+    // conversation on the first turn of a thread and reuse its id afterwards
+    // (the API was previously unreachable from the UI). Failures degrade to
+    // an ephemeral turn — chat must never block on persistence.
+    let serverConversationId = conversationIdsRef.current[currentThreadId];
+    if (!serverConversationId && session?.user) {
+      try {
+        const res = await fetch("/api/v1/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: autoTitle || undefined }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const id = json?.data?.id;
+          if (typeof id === "string" && id) {
+            conversationIdsRef.current[currentThreadId] = id;
+            serverConversationId = id;
+          }
+        }
+      } catch {
+        // Ephemeral fallback (DB unconfigured / offline).
+      }
+    }
+
+    const result = await startStream(promptToSend, historyForApi, {
+      threadId: currentThreadId,
+      conversationId: serverConversationId,
+    });
+
+    if (result?.conversationId) {
+      conversationIdsRef.current[currentThreadId] = result.conversationId;
+    }
 
     if (result) {
       const hasContent = Boolean(result.text?.trim());
@@ -810,17 +963,27 @@ ${preview}`;
           s.label?.toLowerCase().includes("failover")
         );
 
-        const fallbackContent =
-          activeDataset
+        // Error transparency: a gateway error must NEVER be masked by a
+        // canned dataset summary — that fabricated a "successful" answer to
+        // a question the model never answered. Errors win over the fallback;
+        // a partial answer is kept but clearly marked as incomplete.
+        let finalContent: string;
+        if (result.error) {
+          finalContent = hasContent
+            ? `${result.text?.trim()}\n\n---\n⚠️ **Stream ended with an error — the answer above may be incomplete.** (${result.error.message})`
+            : `⚠️ **Gateway notice:** ${result.error.message}`;
+        } else if (hasContent) {
+          finalContent = result.text!.trim();
+        } else {
+          finalContent = activeDataset
             ? generateDeterministicDatasetSummary(activeDataset, displayContent)
-            : result.error
-            ? `⚠️ Gateway notice: ${result.error.message}`
             : "(No response generated)";
+        }
 
         const assistantMsg: MessageItem = {
           id: `asst-${Date.now()}`,
           role: "assistant",
-          content: result.text?.trim() ? result.text : fallbackContent,
+          content: finalContent,
           model: selectedModel.displayName,
           steps: result.steps,
           rerouted: isRerouted,
@@ -863,7 +1026,12 @@ ${preview}`;
     const updated = [template, ...customTemplates];
     setCustomTemplates(updated);
     if (typeof window !== "undefined") {
-      localStorage.setItem("finai_custom_templates", JSON.stringify(updated));
+      try {
+        localStorage.setItem("finai_custom_templates", JSON.stringify(updated));
+      } catch (err) {
+        console.warn("Could not persist custom templates (quota?):", err);
+        toast.error("Template created but could not be saved — browser storage is full.");
+      }
     }
     toast.success(`Created template: ${template.name}`);
     setIsCreateTemplateOpen(false);
@@ -877,7 +1045,11 @@ ${preview}`;
     const updated = customTemplates.filter((t) => t.id !== id);
     setCustomTemplates(updated);
     if (typeof window !== "undefined") {
-      localStorage.setItem("finai_custom_templates", JSON.stringify(updated));
+      try {
+        localStorage.setItem("finai_custom_templates", JSON.stringify(updated));
+      } catch (err) {
+        console.warn("Could not persist template deletion (quota?):", err);
+      }
     }
     toast.success("Template deleted");
   };
@@ -892,6 +1064,67 @@ ${preview}`;
   const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
 
+  // Honest memo/runs content: root-cause and recommendation sections quote the
+  // actual assistant analysis produced in this thread (keyword-matched) —
+  // they never fabricate drivers, savings figures, or audit attestations.
+  const assistantContents = messages
+    .filter((m) => m.role === "assistant")
+    .map((m) => m.content);
+  const driverMessages = assistantContents.filter((c) =>
+    /root cause|driver|due to|because|attribut|caused by|variance/i.test(c)
+  );
+  const actionMessages = assistantContents.filter((c) =>
+    /recommend|should|action|next step|mitigat|remediat|consider/i.test(c)
+  );
+
+  // Runs view derives from real threads (was a hardcoded fake audit trail).
+  const realRuns = threads
+    .filter((t) => t.messages.length > 0)
+    .slice(0, 12)
+    .map((t) => {
+      const models = Array.from(
+        new Set(t.messages.map((m) => m.model).filter(Boolean) as string[])
+      );
+      const rerouted = t.messages.some((m) => m.rerouted);
+      const hasAnswer = t.messages.some((m) => m.role === "assistant");
+      return {
+        id: t.id,
+        name: t.title,
+        detail: `${t.messages.length} message${t.messages.length === 1 ? "" : "s"} · ${
+          hasAnswer ? "analysis delivered" : "awaiting response"
+        }`,
+        models: models.length > 0 ? models.join(", ") : "—",
+        time: t.updatedAt,
+        status: rerouted ? ("rerouted" as const) : ("done" as const),
+      };
+    });
+
+  /**
+   * Adaptive money formatter for the analysis view.
+   * The demo/enterprise dataset stores amounts in $ millions (394,328 →
+   * "$394.3B"). Arbitrary user CSVs may store raw dollars — when values are
+   * ≥ 1M we treat them as absolute amounts instead of assuming millions.
+   */
+  const formatAnalysisMoney = (v: number): string => {
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000) {
+      if (abs >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
+      if (abs >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+      return `$${(v / 1e6).toFixed(1)}M`;
+    }
+    // Values below 1M follow the dataset convention of $ millions.
+    return `$${(v / 1000).toFixed(1)}B`;
+  };
+
+  /**
+   * Market-cap formatter: the "Market Cap(in B USD)" column is in $ billions
+   * by definition, so values are formatted as B/T directly. Never route them
+   * through the millions convention — the old ×1000 pre-scaling hack made
+   * trillion-dollar caps render as "$2.1M".
+   */
+  const formatMarketCap = (v: number): string =>
+    Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(2)}T` : `$${v.toFixed(1)}B`;
+
   // Determine active rows for analysis
   const activeDatasetRows: FinancialDataRow[] =
     activeThread.dataset?.rows && activeThread.dataset.rows.length > 0
@@ -902,9 +1135,13 @@ ${preview}`;
     new Set(activeDatasetRows.map((r) => r.Company).filter(Boolean))
   );
 
-  const rowsFilteredByYear = activeDatasetRows.filter(
-    (r) => r.Year === analysisYear || !r.Year
-  );
+  // When the dataset has real Year values, filter strictly by year (rows
+  // without a Year used to leak into EVERY year's aggregates). When no row
+  // carries a Year, the filter is ignored entirely.
+  const datasetHasYears = activeDatasetRows.some((r) => typeof r.Year === "number");
+  const rowsFilteredByYear = datasetHasYears
+    ? activeDatasetRows.filter((r) => r.Year === analysisYear)
+    : activeDatasetRows;
 
   const displayAnalysisRows =
     analysisCompany === "ALL"
@@ -932,7 +1169,9 @@ ${preview}`;
     else if (analysisMetric === "Gross Profit") rawVal = r["Gross Profit"] || 0;
     else if (analysisMetric === "Net Income") rawVal = r["Net Income"] || 0;
     else if (analysisMetric === "Net Profit Margin") rawVal = r["Net Profit Margin"] || 0;
-    else if (analysisMetric === "Market Cap(in B USD)") rawVal = (r["Market Cap(in B USD)"] || 0) * 1000;
+    // Market cap stays in its native unit ($ billions) — formatting is
+    // handled by formatMarketCap, NOT the millions-convention formatter.
+    else if (analysisMetric === "Market Cap(in B USD)") rawVal = r["Market Cap(in B USD)"] || 0;
 
     return {
       company: r.Company,
@@ -943,13 +1182,58 @@ ${preview}`;
     };
   });
 
-  const maxChartVal = Math.max(...chartItems.map((c) => Math.abs(c.val)), 1);
+  const maxChartVal = chartItems.reduce(
+    (max, c) => Math.max(max, Math.abs(c.val)),
+    1
+  );
 
-  // Multi-year trend items for selected company (or AAPL default)
-  const trendCompany = analysisCompany === "ALL" ? "AAPL" : analysisCompany;
-  const multiYearRows = activeDatasetRows
-    .filter((r) => r.Company === trendCompany && [2019, 2020, 2021, 2022].includes(r.Year))
-    .sort((a, b) => a.Year - b.Year);
+  // YoY growth computed from the data when the dataset spans years,
+  // hidden otherwise (was a hardcoded +11.8% presented as a calculation).
+  const priorYear = analysisYear - 1;
+  const hasPriorYearData = datasetHasYears &&
+    activeDatasetRows.some(
+      (r) =>
+        r.Year === priorYear &&
+        (analysisCompany === "ALL" || r.Company === analysisCompany)
+    );
+  const revenueForYear = (year: number) =>
+    activeDatasetRows
+      .filter(
+        (r) =>
+          r.Year === year &&
+          (analysisCompany === "ALL" || r.Company === analysisCompany) &&
+          typeof r.Revenue === "number"
+      )
+      .reduce((acc, r) => acc + (r.Revenue as number), 0);
+  const currentYearRevenue = revenueForYear(analysisYear);
+  const priorYearRevenue = revenueForYear(priorYear);
+  const yoyGrowthPct =
+    hasPriorYearData && priorYearRevenue > 0 && currentYearRevenue > 0
+      ? ((currentYearRevenue - priorYearRevenue) / priorYearRevenue) * 100
+      : null;
+
+  // Multi-year trend items for the selected company across the LAST years
+  // actually present in the data (was hardcoded to AAPL / 2019–2022).
+  const trendCompany =
+    analysisCompany !== "ALL"
+      ? analysisCompany
+      : availableCompanies[0] || "";
+  const trendYears = datasetHasYears
+    ? Array.from(
+        new Set(
+          activeDatasetRows
+            .filter((r) => typeof r.Year === "number")
+            .map((r) => r.Year)
+        )
+      )
+        .sort((a, b) => a - b)
+        .slice(-4)
+    : [];
+  const multiYearRows = trendCompany
+    ? activeDatasetRows
+        .filter((r) => r.Company === trendCompany && trendYears.includes(r.Year))
+        .sort((a, b) => (a.Year || 0) - (b.Year || 0))
+    : [];
 
   return (
     <WorkspaceShell
@@ -988,7 +1272,7 @@ ${preview}`;
         <div className="flex h-full flex-col bg-[#0d0d0d]">
           <ThreadCanvas
             messages={messages}
-            isStreaming={isStreaming}
+            isStreaming={isStreamingThisThread}
             streamingSteps={steps}
             streamingText={streamText}
             activeModelName={selectedModel.displayName}
@@ -1003,7 +1287,7 @@ ${preview}`;
             onPinMessage={handlePinMessage}
           />
 
-          {!(messages.length === 0 && !isStreaming) && (
+          {!(messages.length === 0 && !isStreamingThisThread) && (
             <div className="relative">
               {(activeThread.dataset || (activeThread.attachedFiles && activeThread.attachedFiles.length > 0)) && (
                 <div className="border-t border-[#1f1f1f] bg-[#0d0d0d] px-4 py-2">
@@ -1084,7 +1368,7 @@ ${preview}`;
                     INTERACTIVE INTELLIGENCE
                   </span>
                   <span className="font-mono text-[11px] text-stone-500">
-                    Grounded Engine
+                    {activeThread.dataset ? "Grounded Engine" : "Demo Data Engine"}
                   </span>
                 </div>
                 <h2 className="mt-1 text-[24px] font-bold tracking-tight text-white">Financial Analysis</h2>
@@ -1137,7 +1421,7 @@ ${preview}`;
                         : "bg-[#202020] text-stone-400 hover:text-white"
                     }`}
                   >
-                    All Peers (6)
+                    All ({availableCompanies.length})
                   </button>
                   {availableCompanies.map((comp) => (
                     <button
@@ -1196,12 +1480,21 @@ ${preview}`;
                   <TrendingUp className="size-3.5 text-emerald-400" />
                 </div>
                 <p className="mt-2 text-[24px] font-bold text-white">
-                  ${(totalRevenue / 1000).toFixed(1)}B
+                  {formatAnalysisMoney(totalRevenue)}
                 </p>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-emerald-400">
-                  <ArrowUpRight className="size-3" />
-                  <span>+11.8% YoY aggregate growth</span>
-                </div>
+                {yoyGrowthPct !== null ? (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                    {yoyGrowthPct >= 0 ? (
+                      <ArrowUpRight className="size-3 text-emerald-400" />
+                    ) : (
+                      <ArrowUpRight className="size-3 text-rose-400 rotate-90" />
+                    )}
+                    <span className={yoyGrowthPct >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                      {yoyGrowthPct >= 0 ? "+" : ""}
+                      {yoyGrowthPct.toFixed(1)}% YoY {analysisCompany === "ALL" ? "aggregate" : analysisCompany} growth
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-2xl border border-stone-800 bg-[#161616] p-4.5 shadow-xs">
@@ -1210,7 +1503,7 @@ ${preview}`;
                   <Layers className="size-3.5 text-emerald-400" />
                 </div>
                 <p className="mt-2 text-[24px] font-bold text-white">
-                  ${(totalGrossProfit / 1000).toFixed(1)}B
+                  {formatAnalysisMoney(totalGrossProfit)}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-[11px] text-stone-400">
                   <span>Gross Margin:</span>
@@ -1226,7 +1519,7 @@ ${preview}`;
                   <Building2 className="size-3.5 text-sky-400" />
                 </div>
                 <p className="mt-2 text-[24px] font-bold text-white">
-                  ${(totalNetIncome / 1000).toFixed(1)}B
+                  {formatAnalysisMoney(totalNetIncome)}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-[11px]">
                   <span className="text-stone-400">Net Margin:</span>
@@ -1242,7 +1535,7 @@ ${preview}`;
                   <BarChart3 className="size-3.5 text-indigo-400" />
                 </div>
                 <p className="mt-2 text-[24px] font-bold text-white">
-                  ${totalMarketCap > 1000 ? `${(totalMarketCap / 1000).toFixed(2)}T` : `$${totalMarketCap.toFixed(1)}B`}
+                  {formatMarketCap(totalMarketCap)}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-[11px] text-stone-400">
                   <span className="rounded bg-[#202020] px-1.5 py-0.2 font-mono text-[9.5px] text-stone-300">
@@ -1262,7 +1555,9 @@ ${preview}`;
                       Comparative {analysisMetric}
                     </h3>
                     <p className="text-[12px] text-stone-400">
-                      FY{analysisYear} Benchmark across {chartItems.length} peer companies
+                      {datasetHasYears
+                        ? `FY${analysisYear} Benchmark across ${chartItems.length} peer companies`
+                        : `Benchmark across ${chartItems.length} entities`}
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-950/60 px-2.5 py-1 font-mono text-[10.5px] text-emerald-400 border border-emerald-800/40">
@@ -1293,8 +1588,17 @@ ${preview}`;
                       const x = spacing * (idx + 0.65);
                       const barWidth = Math.min(42, Math.max(22, 280 / totalBars));
                       const isNegative = item.val < 0;
-                      const absHeight = Math.max(6, (Math.abs(item.val) / maxChartVal) * 115);
-                      const y = isNegative ? 140 : 140 - absHeight;
+                      // Positive bars grow up from the baseline (y=140);
+                      // negative bars grow down, clamped to the viewBox
+                      // (previously tall negative bars clipped at 180).
+                      const absHeight = Math.max(
+                        6,
+                        (Math.abs(item.val) / maxChartVal) * 115
+                      );
+                      const maxNegativeHeight = 38; // 142..180
+                      const negHeight = Math.min(absHeight, maxNegativeHeight);
+                      const y = isNegative ? 142 : 140 - absHeight;
+                      const barHeight = isNegative ? negHeight : absHeight;
                       const isHovered = hoveredBarIndex === idx;
 
                       return (
@@ -1308,7 +1612,7 @@ ${preview}`;
                             x={x}
                             y={y}
                             width={barWidth}
-                            height={absHeight}
+                            height={barHeight}
                             rx="5"
                             fill={
                               isNegative
@@ -1322,7 +1626,7 @@ ${preview}`;
                           {/* Value above bar */}
                           <text
                             x={x + barWidth / 2}
-                            y={isNegative ? y + absHeight + 12 : y - 6}
+                            y={isNegative ? y + barHeight + 12 : y - 6}
                             textAnchor="middle"
                             fontSize="9.5"
                             fontWeight="600"
@@ -1330,8 +1634,10 @@ ${preview}`;
                           >
                             {analysisMetric === "Net Profit Margin"
                               ? `${item.val.toFixed(1)}%`
-                              : item.val > 1000
-                              ? `$${(item.val / 1000).toFixed(0)}B`
+                              : analysisMetric === "Market Cap(in B USD)"
+                              ? formatMarketCap(item.val)
+                              : Math.abs(item.val) >= 1000
+                              ? formatAnalysisMoney(item.val)
                               : `$${Math.round(item.val)}M`}
                           </text>
                           {/* Company Label */}
@@ -1357,7 +1663,12 @@ ${preview}`;
                         {chartItems[hoveredBarIndex].company} — {chartItems[hoveredBarIndex].category}
                       </p>
                       <p className="text-emerald-400 font-mono mt-0.5">
-                        {analysisMetric}: {analysisMetric === "Net Profit Margin" ? `${chartItems[hoveredBarIndex].val.toFixed(1)}%` : `$${(chartItems[hoveredBarIndex].val / 1000).toFixed(1)}B`}
+                        {analysisMetric}: {" "}
+                        {analysisMetric === "Net Profit Margin"
+                          ? `${chartItems[hoveredBarIndex].val.toFixed(1)}%`
+                          : analysisMetric === "Market Cap(in B USD)"
+                          ? formatMarketCap(chartItems[hoveredBarIndex].val)
+                          : formatAnalysisMoney(chartItems[hoveredBarIndex].val)}
                       </p>
                       <p className="text-stone-400 text-[10px] mt-0.5">
                         Net Margin: {chartItems[hoveredBarIndex].margin}% · Cap: ${chartItems[hoveredBarIndex].marketCap}B
@@ -1372,10 +1683,15 @@ ${preview}`;
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-[15px] font-semibold text-white">
-                      {trendCompany} 4-Year Progression &amp; Margins
+                      {trendCompany || "—"}{" "}
+                      {trendYears.length > 1
+                        ? `${trendYears.length}-Year Progression & Margins`
+                        : "Revenue Trend & Margins"}
                     </h3>
                     <p className="text-[12px] text-stone-400">
-                      Historical trajectory from FY2019 to FY2022
+                      {trendYears.length >= 2
+                        ? `Historical trajectory from FY${trendYears[0]} to FY${trendYears[trendYears.length - 1]}`
+                        : "Year-over-year trajectory grounded in the active dataset"}
                     </p>
                   </div>
                   <span className="font-mono text-[11px] text-stone-400">
@@ -1406,9 +1722,12 @@ ${preview}`;
 
                     {/* Multi-year Area and Path */}
                     {multiYearRows.length >= 2 && (() => {
-                      const maxRev = Math.max(...multiYearRows.map((r) => r.Revenue || 1), 1);
+                      const maxRev = multiYearRows.reduce(
+                        (max, r) => Math.max(max, r.Revenue || 1),
+                        1
+                      );
                       const points = multiYearRows.map((r, i) => {
-                        const x = 70 + i * 115;
+                        const x = 70 + i * (430 / Math.max(1, multiYearRows.length - 1));
                         const y = 140 - ((r.Revenue || 0) / maxRev) * 110;
                         return { x, y, row: r };
                       });
@@ -1439,7 +1758,7 @@ ${preview}`;
                                 fontWeight="bold"
                                 fill="#ffffff"
                               >
-                                ${( (p.row.Revenue || 0) / 1000 ).toFixed(0)}B
+                                {formatAnalysisMoney(p.row.Revenue || 0)}
                               </text>
                               <text
                                 x={p.x}
@@ -1466,7 +1785,7 @@ ${preview}`;
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-[15px] font-semibold text-white">
-                    Grounded Statement Line Items
+                    {activeThread.dataset ? "Grounded Statement Line Items" : "Demo Statement Line Items"}
                   </h3>
                   <p className="text-[12px] text-stone-400">
                     Click &apos;Query in Chat&apos; on any row to immediately run detailed agent flux models
@@ -1531,7 +1850,11 @@ ${preview}`;
                               setActiveView("chat");
                               setActiveTabLabel("Chat");
                               handleSendMessage(
-                                `Deep dive analysis for ${r.Company} (FY${r.Year}): Revenue was $${( (r.Revenue || 0) / 1000 ).toFixed(1)}B with Net Margin of ${r["Net Profit Margin"]}%. What are the primary operating margin drivers?`
+                                `Deep dive analysis for ${r.Company}${r.Year ? ` (FY${r.Year})` : ""}: Revenue was ${
+                                  r.Revenue != null ? formatAnalysisMoney(r.Revenue) : "not reported"
+                                } with Net Margin of ${
+                                  r["Net Profit Margin"] != null ? `${r["Net Profit Margin"]}%` : "n/a"
+                                }. What are the primary operating margin drivers?`
                               );
                             }}
                             className="inline-flex items-center gap-1 rounded-md bg-[#252525] px-2.5 py-1 text-[11px] font-sans font-medium text-emerald-300 hover:bg-emerald-950/60 hover:text-emerald-200 transition-colors cursor-pointer"
@@ -1645,24 +1968,31 @@ ${preview}`;
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       const summaryContent = `# FInAI Executive Financial Memo: ${activeThread.title}
 Date: ${new Date().toLocaleDateString()}
 Classification: CONFIDENTIAL FP&A
 
 ## 1. Executive Briefing
-This memorandum synthesizes findings from ${activeThread.title}. The underlying financial data indicates variance concentrations across operational cost centers.
+This memorandum synthesizes the AI analysis produced in "${activeThread.title}".
 
 ## 2. Findings Summary
 ${messages.filter((m) => m.role === "assistant").map((m) => m.content).join("\n\n")}
 
-## 3. Audit Verification
-All calculations validated via SOC 2 grounded ledger tie-outs.`;
+## 3. Provenance
+- Model: ${selectedModel.displayName}
+- Dataset: ${activeThread.dataset?.filename ?? "None attached"}
+- Source: ${messages.length} thread message(s), auto-synthesized on ${new Date().toLocaleDateString()}
+- Note: This memo quotes the thread's AI responses verbatim. It has NOT been independently audited — validate all figures against source workpapers before distribution.`;
 
-                      navigator.clipboard?.writeText(summaryContent);
-                      setReportCopied(true);
-                      toast.success("Executive Memo copied as Markdown");
-                      setTimeout(() => setReportCopied(false), 2000);
+                      const ok = await copyToClipboard(summaryContent);
+                      if (ok) {
+                        setReportCopied(true);
+                        toast.success("Executive Memo copied as Markdown");
+                        setTimeout(() => setReportCopied(false), 2000);
+                      } else {
+                        toast.error("Could not copy — clipboard access was denied.");
+                      }
                     }}
                     className="inline-flex items-center gap-1.5 rounded-full bg-[#242424] px-3.5 py-1.5 text-xs font-medium text-white border border-stone-700 hover:bg-[#303030] transition-colors cursor-pointer"
                   >
@@ -1712,7 +2042,7 @@ All calculations validated via SOC 2 grounded ledger tie-outs.`;
                         <span>Executive Briefing &amp; Key Highlights</span>
                       </h4>
                       <p className="text-[13.5px] text-stone-300">
-                        Based on the recent thread investigation &quot;<strong>{activeThread.title}</strong>&quot;, FInAI has identified key variances requiring leadership attention. Operational expenditures and infrastructure commitments represent the primary source of flux against projected run-rate.
+                        Based on the recent thread investigation &quot;<strong>{activeThread.title}</strong>&quot;, the sections below quote and synthesize the AI analysis produced in that conversation. Figures are only as reliable as the underlying thread and dataset — review against source workpapers before distribution.
                       </p>
                       {lastAssistantMessage && (
                         <div className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-[13px] text-stone-300 leading-relaxed">
@@ -1725,8 +2055,10 @@ All calculations validated via SOC 2 grounded ledger tie-outs.`;
                     </div>
                   )}
 
-                  {/* Section 2: Structured Variance Schedule */}
-                  {(reportActiveTab === "variance" || lastAssistantMessage?.tableData) && (
+                  {/* Section 2: Structured Variance Schedule (only on the
+                      variance tab — previously it rendered on EVERY tab as soon
+                      as the last message had a table) */}
+                  {reportActiveTab === "variance" && (
                     <div className="space-y-3 pt-2">
                       <h4 className="text-base font-semibold text-white flex items-center gap-2 border-b border-stone-800 pb-2">
                         <span className="font-mono text-xs text-emerald-400">02</span>
@@ -1778,68 +2110,85 @@ All calculations validated via SOC 2 grounded ledger tie-outs.`;
                     </div>
                   )}
 
-                  {/* Section 3: Root Cause Decomposition */}
+                  {/* Section 3: Root Cause Decomposition — quotes real assistant
+                      analysis from this thread; never fabricates drivers. */}
                   {reportActiveTab === "drivers" && (
                     <div className="space-y-3">
                       <h4 className="text-base font-semibold text-white flex items-center gap-2 border-b border-stone-800 pb-2">
                         <span className="font-mono text-xs text-emerald-400">03</span>
                         <span>Operational Root Cause &amp; Variance Attribution</span>
                       </h4>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-stone-800 bg-[#121212] p-4">
-                          <p className="text-xs font-semibold text-white mb-1">Architecture &amp; Cloud Migration</p>
-                          <p className="text-xs text-stone-400">
-                            Dual-write cluster activity and temporary on-demand pricing caused a 18.4% variance in infrastructure cost centers.
-                          </p>
+                      {driverMessages.length > 0 ? (
+                        driverMessages.slice(0, 4).map((content, i) => (
+                          <div
+                            key={i}
+                            className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-xs text-stone-300 leading-relaxed whitespace-pre-wrap"
+                          >
+                            {content}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-xs text-stone-400">
+                          No root-cause analysis has been produced in this thread yet. Ask in Chat
+                          (e.g. &quot;What drove the variance in this dataset?&quot;) and the agent&apos;s answer
+                          will be quoted here verbatim — this section never fabricates drivers.
                         </div>
-                        <div className="rounded-xl border border-stone-800 bg-[#121212] p-4">
-                          <p className="text-xs font-semibold text-white mb-1">Contractor SOW Scope Creep</p>
-                          <p className="text-xs text-stone-400">
-                            Unbudgeted external engineering hours billed past target milestones without purchase order amendments.
-                          </p>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Section 4: Strategic Action Plan */}
+                  {/* Section 4: Strategic Action Plan — quotes real assistant
+                      recommendations; never fabricates savings figures. */}
                   {reportActiveTab === "recommendations" && (
                     <div className="space-y-3">
                       <h4 className="text-base font-semibold text-white flex items-center gap-2 border-b border-stone-800 pb-2">
                         <span className="font-mono text-xs text-emerald-400">04</span>
                         <span>Strategic Action Plan &amp; Remediation</span>
                       </h4>
-                      <ul className="space-y-2 text-xs">
-                        <li className="flex items-start gap-2 rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-3 text-stone-300">
-                          <CheckCircle2 className="size-4 text-emerald-400 shrink-0 mt-0.5" />
-                          <div>
-                            <strong className="text-white">Immediate (30 Days):</strong> Decommission legacy staging clusters to recover $38,000/month recurring opex.
+                      {actionMessages.length > 0 ? (
+                        actionMessages.slice(0, 4).map((content, i) => (
+                          <div
+                            key={i}
+                            className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-xs text-stone-300 leading-relaxed whitespace-pre-wrap"
+                          >
+                            {content}
                           </div>
-                        </li>
-                        <li className="flex items-start gap-2 rounded-xl border border-stone-800 bg-[#121212] p-3 text-stone-300">
-                          <CheckCircle2 className="size-4 text-emerald-400 shrink-0 mt-0.5" />
-                          <div>
-                            <strong className="text-white">Mid-Term (60 Days):</strong> Implement automated Coupa purchase order hard stops when billed contractor hours reach 100% of approved ceiling.
-                          </div>
-                        </li>
-                      </ul>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-xs text-stone-400">
+                          No recommended actions have been produced in this thread yet. Ask in Chat
+                          for a remediation plan (e.g. &quot;Recommend cost-reduction actions based on
+                          this dataset&quot;) and the agent&apos;s answer will be quoted here verbatim.
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Section 5: Audit Trail & Sign-off */}
+                  {/* Section 5: Provenance — honest record of what was
+                      synthesized and from where (was a fabricated SOC 2 /
+                      zero-hallucination attestation). */}
                   {reportActiveTab === "audit" && (
                     <div className="space-y-3">
                       <h4 className="text-base font-semibold text-white flex items-center gap-2 border-b border-stone-800 pb-2">
                         <span className="font-mono text-xs text-emerald-400">05</span>
-                        <span>Audit Trail &amp; Verification Sign-off</span>
+                        <span>Provenance &amp; Verification Notes</span>
                       </h4>
                       <div className="rounded-xl border border-stone-800 bg-[#121212] p-4 text-xs space-y-2">
                         <p className="text-stone-400">
-                          <strong>Grounded Audit Trail:</strong> Verified against active GL schedules and transaction invoices.
+                          <strong className="text-stone-200">Synthesis source:</strong> {messages.length} message(s) from &quot;{activeThread.title}&quot;, generated by {selectedModel.displayName}.
                         </p>
-                        <div className="flex items-center gap-2 flex-wrap text-emerald-400 font-mono text-[11px]">
-                          <span className="rounded bg-emerald-950/80 px-2 py-0.5 border border-emerald-800/40">SOC 2 Type II Compliant</span>
-                          <span className="rounded bg-emerald-950/80 px-2 py-0.5 border border-emerald-800/40">Zero External Hallucination Guarantee</span>
+                        <p className="text-stone-400">
+                          <strong className="text-stone-200">Dataset:</strong>{" "}
+                          {activeThread.dataset
+                            ? `${activeThread.dataset.filename} (${activeThread.dataset.rowCount} rows, ${activeThread.dataset.columns.length} columns)`
+                            : "None attached to this thread"}
+                        </p>
+                        <p className="text-stone-400">
+                          <strong className="text-stone-200">Verification:</strong> This memo auto-synthesizes the thread&apos;s AI responses. Figures have NOT been independently audited — validate against source workpapers and ledger tie-outs before board distribution.
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap text-stone-500 font-mono text-[11px]">
+                          <span className="rounded bg-[#1a1a1a] px-2 py-0.5 border border-stone-800">AI-SYNTHESIZED</span>
+                          <span className="rounded bg-[#1a1a1a] px-2 py-0.5 border border-stone-800">NOT INDEPENDENTLY AUDITED</span>
                         </div>
                       </div>
                     </div>
@@ -2121,36 +2470,34 @@ All calculations validated via SOC 2 grounded ledger tie-outs.`;
             <div>
               <h2 className="text-[24px] font-bold text-white tracking-tight">Execution History</h2>
               <p className="text-[13px] text-stone-400">
-                Audit trail of agent executions, model routing, and verified ledger tie-outs
+                Threads executed in this workspace, with the models actually used
               </p>
             </div>
 
             <div className="space-y-3">
-              {[
-                {
-                  name: "Board Pack Agent",
-                  detail: "October board pack · 12 steps",
-                  models: "Claude 3.7 + Gemini 1.5",
-                  time: "Today, 9:41 AM",
-                  status: "done" as const,
-                },
-                {
-                  name: "Flux Analysis Sweep",
-                  detail: "All opex accounts · 41 checks",
-                  models: "DeepSeek R1 → GPT-4o",
-                  time: "Today, 8:15 AM",
-                  status: "rerouted" as const,
-                },
-                {
-                  name: "Close Checklist Review",
-                  detail: "September close · 38 items",
-                  models: "Claude 3.5 Sonnet",
-                  time: "Yesterday",
-                  status: "done" as const,
-                },
-              ].map((r) => (
+              {realRuns.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-stone-800 bg-[#111111] p-12 text-center">
+                  <Route className="mx-auto size-8 text-stone-500" />
+                  <h4 className="mt-3 text-base font-semibold text-white">No Executions Yet</h4>
+                  <p className="mt-1 text-xs text-stone-400 max-w-sm mx-auto">
+                    Start a conversation in Chat — every thread you run will be listed here with its
+                    actual model routing and status. Nothing is simulated.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveView("chat");
+                      setActiveTabLabel("Chat");
+                    }}
+                    className="mt-4 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-stone-200 transition-colors cursor-pointer"
+                  >
+                    Start a Conversation →
+                  </button>
+                </div>
+              ) : (
+                realRuns.map((r) => (
                 <div
-                  key={r.name}
+                  key={r.id}
                   className="flex items-center justify-between rounded-2xl border border-stone-800 bg-[#161616] p-4 shadow-xs"
                 >
                   <div className="flex items-center gap-3">
@@ -2184,7 +2531,8 @@ All calculations validated via SOC 2 grounded ledger tie-outs.`;
                     <p className="font-mono text-[10.5px] text-stone-500">{r.time}</p>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </div>

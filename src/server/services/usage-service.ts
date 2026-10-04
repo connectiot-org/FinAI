@@ -22,7 +22,7 @@ export interface RecordAIRequestInput {
 }
 
 export class UsageService {
-  async recordAIRequest(input: RecordAIRequestInput) {
+  async recordAIRequest(input: RecordAIRequestInput): Promise<Prisma.AIRequestGetPayload<object> | null> {
     const costDecimal = input.costUsd !== undefined ? new Prisma.Decimal(input.costUsd) : null;
 
     try {
@@ -84,13 +84,9 @@ export class UsageService {
       return request;
     } catch (err) {
       console.warn("Usage tracking DB write skipped (database offline or unconfigured):", err instanceof Error ? err.message : err);
-      return {
-        id: `ai_req_${Date.now()}`,
-        userId: input.userId,
-        modelId: input.modelId,
-        provider: input.provider,
-        status: input.status,
-      } as unknown as Prisma.AIRequestGetPayload<object>;
+      // Return null instead of a fabricated record: a fake id would violate
+      // the Message.aiRequestId FK and silently drop the assistant message.
+      return null;
     }
   }
 }

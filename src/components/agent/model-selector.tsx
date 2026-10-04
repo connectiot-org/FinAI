@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Check, Search, X } from "lucide-react";
 import { modelsConfig, ModelConfig } from "@/config/models.config";
 
@@ -13,6 +13,29 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("All");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Dismiss on outside click / Escape (previously the list could only be
+  // closed by re-clicking the trigger).
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   const freeCount = useMemo(() => modelsConfig.filter((m) => m.isFree).length, []);
 
@@ -51,7 +74,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
   }, [search, tierFilter]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

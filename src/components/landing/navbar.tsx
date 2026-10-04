@@ -108,6 +108,7 @@ export function Navbar() {
           <Dropdown label="Product" items={productLinks} rich />
           {[
             { label: "Workspace", href: "/agent" },
+            { label: "Pricing", href: "/#pricing" },
             { label: "Compare", href: "/compare" },
             { label: "Security", href: "/security" },
             { label: "Routing", href: "/#routing" },
@@ -118,6 +119,8 @@ export function Navbar() {
               className={`flex h-9 items-center rounded-full px-3.5 text-[14px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss ${
                 l.label === "Workspace"
                   ? "text-moss hover:text-moss-deep font-semibold"
+                  : l.label === "Pricing"
+                  ? "text-stone-900 font-semibold hover:text-moss"
                   : "text-stone-600 hover:text-stone-950"
               }`}
             >
@@ -193,6 +196,7 @@ export function Navbar() {
                 <div className="grid grid-cols-2 gap-1">
                   {[
                     { label: "Workspace", href: "/agent" },
+                    { label: "Pricing", href: "/#pricing" },
                     { label: "Compare", href: "/compare" },
                     { label: "Security", href: "/security" },
                     { label: "Routing", href: "/#routing" },
@@ -203,7 +207,11 @@ export function Navbar() {
                       href={l.href}
                       onClick={() => setOpen(false)}
                       className={`rounded-xl px-3 py-2.5 text-[15px] font-medium hover:bg-white ${
-                        l.label === "Workspace" ? "text-moss font-semibold" : ""
+                        l.label === "Workspace"
+                          ? "text-moss font-semibold"
+                          : l.label === "Pricing"
+                          ? "text-stone-900 font-semibold"
+                          : ""
                       }`}
                     >
                       {l.label}

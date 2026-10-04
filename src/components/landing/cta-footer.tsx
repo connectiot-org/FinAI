@@ -52,7 +52,7 @@ const footerCols = [
 export function FinalCTA() {
   return (
     <section
-      id="pricing"
+      id="get-started"
       className="scroll-mt-24 bg-stone-950 pb-16 pt-20 text-white md:pb-20 md:pt-28"
       aria-label="Get started"
     >

@@ -7,6 +7,7 @@ import { Analysis, ReportBuilder } from "@/components/landing/analysis-report";
 import { ErrorChecking, PresentationBuilder } from "@/components/landing/checking-presentations";
 import { Agents, TemplatesWorkflows } from "@/components/landing/agents-templates";
 import { ModelRouting } from "@/components/landing/routing-security";
+import { Pricing } from "@/components/landing/pricing";
 import { Footer } from "@/components/landing/cta-footer";
 
 export default function Home() {
@@ -31,6 +32,7 @@ export default function Home() {
           <Agents />
           <TemplatesWorkflows />
           <ModelRouting />
+          <Pricing />
         </main>
         <Footer />
       </div>

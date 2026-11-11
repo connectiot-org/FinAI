@@ -1,0 +1,14 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.local
+# Environment values stay private; commit only deliberately safe examples.
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+artifacts/
+
+.finai-server/
+.vercel/

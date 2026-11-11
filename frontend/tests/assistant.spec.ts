@@ -1,0 +1,807 @@
+import { test, expect, type Page } from "@playwright/test";
+const entityId = "22222222-2222-4222-8222-222222222222",
+  conversationId = "33333333-3333-4333-8333-333333333333",
+  turnId = "44444444-4444-4444-8444-444444444444",
+  date = "2026-10-25T00:00:00.000Z";
+
+for (const adapter of ["shared", "checklist"] as const) {
+  test(`${adapter} transport handles an interrupted unauthorized response without an unhandled rejection`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const status = await page.evaluate(async (adapter) => {
+      const savedFetch = window.fetch;
+      window.fetch = async (input, init) =>
+        String(input).includes("/api/v1/")
+          ? new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.error(new Error("Disconnected error body"));
+                },
+              }),
+              { status: 401 },
+            )
+          : savedFetch(input, init);
+      try {
+        if (adapter === "shared") {
+          const path = "/src/features/assistant/api.ts";
+          const { assistantApi } = await import(path);
+          await assistantApi.capabilities(new AbortController().signal);
+        } else {
+          const path = "/src/features/checklist/api.ts";
+          const { checklistClient } = await import(path);
+          await checklistClient.entities();
+        }
+        return 200;
+      } catch (e) {
+        return (e as { status: number }).status;
+      } finally {
+        window.fetch = savedFetch;
+      }
+    }, adapter);
+    expect(status).toBe(401);
+    await page.evaluate(async () => {
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    expect(errors).toEqual([]);
+  });
+  test(`${adapter} transport blocks a pending write after the account changes`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    let release!: () => void,
+      checking = false,
+      writes = 0;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/auth/session", async (route) => {
+      checking = true;
+      await gate;
+      await route.fulfill({ json: { csrfToken: "a".repeat(64) } });
+    });
+    await page.route("**/api/v1/**", (route) => {
+      writes++;
+      return route.fulfill({
+        json:
+          adapter === "shared"
+            ? { id: turnId, version: 1 }
+            : {
+                id: turnId,
+                entityId,
+                month: "2026-09",
+                title: "Before account change",
+                completed: false,
+                version: 1,
+                createdAt: date,
+                updatedAt: date,
+              },
+      });
+    });
+    const result = page.evaluate(
+      async ({ adapter, entityId, turnId }) => {
+        try {
+          if (adapter === "shared") {
+            const path = "/src/features/assistant/api.ts";
+            const { assistantApi } = await import(path);
+            await assistantApi.save(
+              turnId,
+              {
+                entityId,
+                detail: "concise",
+                note: "Before account change",
+                expectedVersion: 0,
+              },
+              new AbortController().signal,
+            );
+          } else {
+            const path = "/src/features/checklist/api.ts";
+            const { checklistClient } = await import(path);
+            await checklistClient.create({
+              id: turnId,
+              entityId,
+              month: "2026-09",
+              title: "Before account change",
+            });
+          }
+          return "write completed";
+        } catch (e) {
+          return (e as Error).message;
+        }
+      },
+      { adapter, entityId, turnId },
+    );
+    await expect.poll(() => checking).toBe(true);
+    await page.evaluate(async () => {
+      const path = "/src/lib/session.ts";
+      const { authenticateSession } = await import(path);
+      authenticateSession();
+    });
+    release();
+    expect(await result).toContain("Identity changed");
+    expect(writes).toBe(0);
+  });
+  test(`${adapter} transport discards a response from the previous account`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    let release!: () => void,
+      reading = false;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/v1/**", async (route) => {
+      reading = true;
+      await gate;
+      await route.fulfill({
+        json:
+          adapter === "shared"
+            ? caps()
+            : { items: [{ id: entityId, name: "Previous account company" }] },
+      });
+    });
+    const result = page.evaluate(async (adapter) => {
+      try {
+        if (adapter === "shared") {
+          const path = "/src/features/assistant/api.ts";
+          const { assistantApi } = await import(path);
+          await assistantApi.capabilities(new AbortController().signal);
+        } else {
+          const path = "/src/features/checklist/api.ts";
+          const { checklistClient } = await import(path);
+          await checklistClient.entities();
+        }
+        return "previous account response accepted";
+      } catch (e) {
+        return (e as Error).message;
+      }
+    }, adapter);
+    await expect.poll(() => reading).toBe(true);
+    await page.evaluate(async () => {
+      const path = "/src/lib/session.ts";
+      const { authenticateSession } = await import(path);
+      authenticateSession();
+    });
+    release();
+    expect(await result).toContain("Identity changed");
+  });
+}
+const conversation = {
+  id: conversationId,
+  entityId,
+  month: "2026-09",
+  currency: "USD",
+  version: 1,
+  createdAt: date,
+  expiresAt: "2026-11-24T00:00:00.000Z",
+};
+const caps = (configured = true) => ({
+  configured,
+  ledgerMappingsEnabled: false,
+  model: configured ? "controlled-fixture" : null,
+  policy: "grounded-facts-v1",
+  limits: {
+    conversations: 100,
+    turns: 200,
+    questionCharacters: 2000,
+    leaseSeconds: 40,
+    conversationDays: 30,
+    preferenceDays: 365,
+    maxTools: 3,
+    tokenReservation: 50000,
+  },
+});
+const response = {
+  ...conversation,
+  offset: 0,
+  limit: 50,
+  total: 0,
+  turns: [] as unknown[],
+};
+const answer = {
+  facts: [
+    {
+      id: "f1",
+      label: "Outstanding source balance",
+      value: "75000",
+      unit: "minor",
+      currency: "USD",
+      precision: 2,
+      sourceId: "s1",
+    },
+  ],
+  sources: [
+    {
+      id: "s1",
+      label: "Untrusted <script>alert(1)</script> source",
+      href: `/workspace/receivables/invoices?entityId=${entityId}`,
+      basis: "Issue month; cumulative paid, not aging",
+      capturedAt: date,
+      importedAt: date,
+      retrievedAt: date,
+      version: 1,
+      snapshotId: conversationId,
+    },
+  ],
+  notes: [],
+  basis: "Server exact facts",
+  detail: "concise",
+};
+const completed = {
+  id: turnId,
+  question: "Question",
+  status: "completed",
+  answer,
+  failureCode: null,
+  model: "controlled-fixture",
+  policy: "grounded-facts-v1",
+  createdAt: date,
+  finishedAt: date,
+};
+const path = `/workspace/assistant/records?unused=1`,
+  chatPath = `/workspace/assistant/records?entityId=${entityId}&month=2026-09&currency=USD&conversationId=${conversationId}`;
+
+test("account changes in another tab clear private answers in this tab", async ({
+  page,
+  context,
+}) => {
+  await routes(page);
+  await page.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({ json: { ...response, total: 1, turns: [completed] } }),
+  );
+  await page.goto(chatPath);
+  await expect(page.locator(".assistant-turn dd")).toHaveText("USD 750.00");
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.evaluate(async () => {
+    const path = "/src/lib/session.ts";
+    const { authenticateSession } = await import(path);
+    authenticateSession();
+  });
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+  await other.close();
+});
+
+test("a shared session check cannot return a token from the previous identity", async ({
+  page,
+}) => {
+  await page.goto("/");
+  let release!: () => void,
+    checking = false,
+    checks = 0;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/auth/session", async (r) => {
+    checks++;
+    checking = true;
+    await gate;
+    await r.fulfill({ json: { csrfToken: "a".repeat(64) } });
+  });
+  const result = page.evaluate(async () => {
+    const path = "/src/lib/session.ts";
+    const { readSession } = await import(path);
+    return Promise.all(
+      [readSession(), readSession()].map((p) =>
+        p.then(
+          () => "stale token accepted",
+          (e: Error) => e.message,
+        ),
+      ),
+    );
+  });
+  await expect.poll(() => checking).toBe(true);
+  await page.evaluate(async () => {
+    const path = "/src/lib/session.ts";
+    const { authenticateSession } = await import(path);
+    authenticateSession();
+  });
+  release();
+  expect(checks).toBe(1);
+  expect((await result).every((s) => s.includes("Identity changed"))).toBe(
+    true,
+  );
+});
+async function routes(p: Page, configured = true) {
+  await p.route("**/auth/session", (r) =>
+    r.fulfill({ json: { csrfToken: "a".repeat(64) } }),
+  );
+  await p.route("**/api/v1/workspace/context", (r) =>
+    r.fulfill({
+      json: {
+        userId: entityId,
+        organisationId: entityId,
+        organisationName: "Private organisation",
+        administrator: false,
+        revision: "a".repeat(64),
+        entities: [
+          {
+            id: entityId,
+            name: "Private entity",
+            canWrite: false,
+            canImport: false,
+          },
+        ],
+      },
+    }),
+  );
+  await p.route("**/api/v1/assistant/models", (r) =>
+    r.fulfill({
+      json: {
+        items: configured
+          ? [
+              { id: "controlled-fixture", name: "Controlled default" },
+              {
+                id: "controlled-alternative:free",
+                name: "Controlled alternative",
+              },
+            ]
+          : [],
+        retrievedAt: date,
+        defaultModel: configured ? "controlled-fixture" : null,
+        freeOnly: true,
+      },
+    }),
+  );
+  await p.route("**/api/v1/assistant/capabilities", (r) =>
+    r.fulfill({ json: caps(configured) }),
+  );
+  await p.route("**/api/v1/assistant/conversations?*", (r) =>
+    r.fulfill({
+      json: { offset: 0, limit: 20, total: 1, items: [conversation] },
+    }),
+  );
+  await p.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({ json: response }),
+  );
+  await p.route("**/api/v1/assistant/preferences?*", (r) =>
+    r.fulfill({ json: { items: [] } }),
+  );
+}
+test("production selection redirects to one sign-in gate and never fetches private sources before login", async ({
+  page,
+}) => {
+  await routes(page);
+  await page.route("**/auth/session", (r) =>
+    r.fulfill({ status: 401, json: { message: "Expired" } }),
+  );
+  const privateRequests: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/v1/")) privateRequests.push(r.url());
+  });
+  await page.goto(path);
+  await expect(page).toHaveURL(/\/workspace\/assistant/);
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your finance workspace" }),
+  ).toBeVisible();
+  expect(privateRequests).toEqual([]);
+  await page.goto("/demo/assistant");
+  await expect(
+    page.getByRole("region", { name: "FinAI chat", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".assistant-disclaimer")).toHaveCount(0);
+});
+test("missing model configuration is explicit; no deterministic fallback or false financial answer", async ({
+  page,
+}) => {
+  await routes(page, false);
+  await page.goto(chatPath);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Model unavailable" }),
+  ).toBeVisible();
+  await page.getByLabel("Ask FinAI", { exact: true }).fill("cash?");
+  await expect(
+    page.getByRole("button", { name: "Send question", exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+  await expect(page.locator(".finance-snapshot")).toHaveCount(0);
+  await expect(
+    page.getByText("OpenRouter · free models only.", { exact: false }),
+  ).toContainText("remaining provider quota is not available here");
+});
+test("uncertain send retries original UUID/payload, then displays only validated exact facts", async ({
+  page,
+}) => {
+  await routes(page);
+  let attempts = 0;
+  const bodies: unknown[] = [];
+  let finished = false;
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversationId}/turns`,
+    (r) => {
+      bodies.push(r.request().postDataJSON());
+      attempts++;
+      if (attempts === 1) return r.abort();
+      finished = true;
+      return r.fulfill({
+        status: 202,
+        json: { conversationVersion: 2, turn: completed },
+      });
+    },
+  );
+  await page.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({
+      json: finished
+        ? { ...response, version: 2, total: 1, turns: [completed] }
+        : response,
+    }),
+  );
+  await page.goto(chatPath);
+  await page
+    .getByLabel("Ask FinAI", { exact: true })
+    .fill("Who owes us money?");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Retry same question", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Retry same question", exact: true })
+    .click();
+  await expect(page.locator(".assistant-turn")).toContainText("USD 750.00");
+  expect(bodies[0]).toEqual(bodies[1]);
+  expect(attempts).toBe(2);
+  await page.getByText("Answer basis and sources").click();
+  await expect(
+    page.getByRole("link", {
+      name: "Untrusted <script>alert(1)</script> source",
+    }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
+});
+test("rejected input is editable with a new request ID and malformed citations never render", async ({
+  page,
+}) => {
+  await routes(page);
+  let attempts = 0;
+  const ids: string[] = [];
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversationId}/turns`,
+    (r) => {
+      ids.push(r.request().postDataJSON().id);
+      attempts++;
+      return r.fulfill({ status: 422, json: { message: "Question rejected" } });
+    },
+  );
+  await page.goto(chatPath);
+  await page.getByLabel("Ask FinAI", { exact: true }).fill("Rejected");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Question rejected");
+  await page.getByLabel("Ask FinAI", { exact: true }).fill("Corrected");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect.poll(() => attempts).toBe(2);
+  expect(ids[0]).not.toBe(ids[1]);
+  await page.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({
+      json: {
+        ...response,
+        total: 1,
+        turns: [
+          {
+            ...completed,
+            answer: {
+              ...answer,
+              sources: [{ ...answer.sources[0], href: "https://evil.example" }],
+            },
+          },
+        ],
+      },
+    }),
+  );
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("inconsistent");
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+});
+test("401 clears private chat; long hostile names remain plain text and mobile fits", async ({
+  page,
+}) => {
+  await routes(page);
+  await page.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({
+      json: {
+        ...response,
+        total: 1,
+        turns: [
+          {
+            ...completed,
+            answer: {
+              ...answer,
+              facts: [
+                {
+                  ...answer.facts[0],
+                  label: "<img onerror=alert(1)>" + "長".repeat(200),
+                },
+              ],
+            },
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(chatPath);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByLabel("Ask FinAI", { exact: true }).focus();
+    await expect(page.getByLabel("Ask FinAI", { exact: true })).toBeFocused();
+    await page.screenshot({
+      path: `artifacts/assistant/hostile-${width}.png`,
+      fullPage: true,
+    });
+  }
+  await expect(page.locator(".assistant-turn img")).toHaveCount(0);
+  await page.route(`**/api/v1/assistant/conversations/${conversationId}`, (r) =>
+    r.fulfill({ status: 401, json: { message: "Expired" } }),
+  );
+  await page
+    .getByRole("button", { name: "Refresh conversation", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your finance workspace" }),
+  ).toBeVisible();
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+});
+
+test("scope change immediately clears a delayed old answer", async ({
+  page,
+}) => {
+  await routes(page);
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversationId}`,
+    async (r) => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      await r
+        .fulfill({ json: { ...response, total: 1, turns: [completed] } })
+        .catch(() => {});
+    },
+  );
+  await page.goto(chatPath);
+  await page.getByLabel("Assistant month", { exact: true }).fill("2026-08");
+  await expect(
+    page.getByRole("heading", {
+      name: "Start a scoped conversation",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.waitForTimeout(400);
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("USD 750.00");
+});
+test("preference conflict never claims saved; confirmed forget clears future preference controls", async ({
+  page,
+}) => {
+  await routes(page);
+  let exists = true;
+  const p = {
+    id: turnId,
+    entityId,
+    detail: "detailed",
+    note: "Original private preference",
+    version: 1,
+    createdAt: date,
+    updatedAt: date,
+    expiresAt: "2027-10-25T00:00:00.000Z",
+  };
+  await page.route("**/api/v1/assistant/preferences?*", (r) =>
+    r.fulfill({ json: { items: exists ? [p] : [] } }),
+  );
+  await page.route(`**/api/v1/assistant/preferences/${turnId}`, (r) => {
+    if (r.request().method() === "PUT")
+      return r.fulfill({
+        status: 409,
+        json: { message: "Preference changed. Reload before editing." },
+      });
+    exists = false;
+    return r.fulfill({ json: { status: "forgotten" } });
+  });
+  await page.goto(chatPath);
+  await page
+    .getByLabel("Preference note", { exact: true })
+    .fill("Changed but not committed");
+  await page
+    .getByRole("button", { name: "Save preference changes", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Preference changed");
+  await expect(
+    page.getByText("Preference saved for future questions in this entity.", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Forget preference", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Confirm forgetting preference" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Confirm forget preference", exact: true })
+    .click();
+  await expect(page.getByLabel("Preference note", { exact: true })).toHaveValue(
+    "",
+  );
+  await expect(page.getByLabel("Answer detail", { exact: true })).toHaveValue(
+    "concise",
+  );
+});
+
+test("creation retry retains its UUID only within the same scope after reopening another chat", async ({
+  page,
+}) => {
+  await routes(page);
+  const bodies: {
+    id: string;
+    entityId: string;
+    month: string;
+    currency: string;
+  }[] = [];
+  await page.route("**/api/v1/assistant/conversations", (r) => {
+    bodies.push(r.request().postDataJSON());
+    return r.fulfill({
+      status: 503,
+      json: { message: "Creation response uncertain" },
+    });
+  });
+  await page.goto(
+    `/workspace/assistant/records?entityId=${entityId}&month=2026-08&currency=USD`,
+  );
+  await expect(
+    page.getByRole("button", { name: /2026-09 · USD/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "New conversation", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Creation response uncertain",
+  );
+  await page
+    .getByRole("button", { name: "Retry conversation creation", exact: true })
+    .click();
+  await expect.poll(() => bodies.length).toBe(2);
+  expect(bodies[1]).toEqual(bodies[0]);
+  await expect(
+    page.getByRole("button", {
+      name: "Retry conversation creation",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: /2026-09 · USD/ }).click();
+  await expect(page.getByLabel("Assistant month", { exact: true })).toHaveValue(
+    "2026-09",
+  );
+  await page
+    .getByRole("button", { name: "New conversation", exact: true })
+    .click();
+  await expect.poll(() => bodies.length).toBe(3);
+  expect(bodies[2]).toMatchObject({
+    entityId,
+    month: "2026-09",
+    currency: "USD",
+  });
+  expect(bodies[2].id).not.toBe(bodies[0].id);
+});
+
+test("Ask FinAI opens the working chat in the existing Assistant page without a handoff banner", async ({
+  page,
+}) => {
+  await routes(page, false);
+  await page.goto("/overview");
+  await page.getByRole("button", { name: "Ask FinAI", exact: true }).click();
+  await expect(page).toHaveURL(/\/demo\/assistant$/);
+  await expect(
+    page.getByRole("heading", { name: "FinAI Assistant", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "FinAI chat", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".assistant-disclaimer")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Try free model chat", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "FinAI Assistant demo" }),
+  ).toHaveCount(0);
+});
+
+test("model chooser sends the selected free model and uncertain retries cannot switch it", async ({
+  page,
+}) => {
+  await routes(page);
+  const bodies: { model: string }[] = [];
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversationId}/turns`,
+    (r) => {
+      bodies.push(r.request().postDataJSON());
+      return r.abort();
+    },
+  );
+  await page.goto(chatPath);
+  const picker = page.getByLabel("Chat model", { exact: true });
+  await expect(picker).toHaveValue("controlled-fixture");
+  await picker.selectOption("controlled-alternative:free");
+  await page
+    .getByLabel("Ask FinAI", { exact: true })
+    .fill("What is incomplete?");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Retry same question", exact: true }),
+  ).toBeVisible();
+  await expect(picker).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Retry same question", exact: true })
+    .click();
+  await expect.poll(() => bodies.length).toBe(2);
+  expect(bodies[0].model).toBe("controlled-alternative:free");
+  expect(bodies[1]).toEqual(bodies[0]);
+});
+
+test("catalog failure and empty catalog block sending without inventing model choices", async ({
+  page,
+}) => {
+  await routes(page);
+  await page.route("**/api/v1/assistant/models", (r) =>
+    r.fulfill({ status: 503, json: { message: "Catalog unavailable" } }),
+  );
+  await page.goto(chatPath);
+  await expect(page.getByRole("alert")).toContainText("Catalog unavailable");
+  await page.getByLabel("Ask FinAI", { exact: true }).fill("Cash?");
+  await expect(
+    page.getByRole("button", { name: "Send question", exact: true }),
+  ).toBeDisabled();
+  await page.route("**/api/v1/assistant/models", (r) =>
+    r.fulfill({
+      json: {
+        items: [],
+        retrievedAt: date,
+        defaultModel: null,
+        freeOnly: true,
+      },
+    }),
+  );
+  await page
+    .getByRole("button", { name: "Reload models", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "No compatible free models" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send question", exact: true }),
+  ).toBeDisabled();
+});
+
+test("missing Vercel database configuration stays visible at the session gate", async ({
+  page,
+}) => {
+  await routes(page);
+  await page.route("**/auth/session", (r) =>
+    r.fulfill({
+      status: 503,
+      json: {
+        code: "DEPLOYMENT_NOT_CONFIGURED",
+        message:
+          "The server database is not connected. Configure DATABASE_URL in Vercel.",
+      },
+    }),
+  );
+  await page.goto(chatPath);
+  await expect(page.getByRole("alert")).toContainText(
+    "Configure DATABASE_URL in Vercel",
+  );
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+});

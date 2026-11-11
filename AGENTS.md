@@ -1,9 +1,26 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# FinAI working instructions
 
-# This is NOT the Next.js you know
+Read `context/README.md`, `context/project-state.md`, `context/progress.md`, and the instructions in your target directory before editing. Context files are not automatically loaded memory. Verify summaries against source and contracts. Use `docs/architecture.md` for current product-extension boundaries and `docs/repository-guide.md` for each file's purpose.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+For each task state role, allowed edit paths, acceptance criteria, and expected handoff. Work sequentially unless the user explicitly requests parallel agents. Use the existing isolated checkout; do not create a worktree unless requested. If concurrent implementations are explicitly requested, use independent branches/worktrees with separate role scopes.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+| Role | Owns | Reads | Must not edit |
+| --- | --- | --- | --- |
+| Context coordinator | `context/`, `contracts/`, root and directory agent instructions | Both applications | Application source, secrets, live data |
+| Backend engineer | `backend/`, including its tests and infrastructure | Frontend and contracts | `frontend/`, shared contracts/instructions |
+| Frontend integrator | `frontend/`, including browser tests | Backend and contracts | `backend/`, shared contracts/instructions |
+| Reviewer | Scoped review evidence/report | All scoped work | Unrelated source |
 
-<!-- END:nextjs-agent-rules -->
+Shared contract changes go through the coordinator: propose the delta and compatibility impact, update schema/examples first, then adapt consumers. Routine compatible choices do not need repeated user confirmation. Use `context/agent-boundaries.md` templates.
+
+Keep manifests, lockfiles, environment files and commands separate per application. Preserve existing changes; inspect Git status before work and the full diff afterward. Never revert someone else's work. Paths and review rules are guardrails, not filesystem isolation; no CODEOWNERS or branch protection is configured by these instructions.
+
+Do not merge the separate `connectiot-org/FinAI` or Ledgerlane projects. Demo persona selection is never authentication. Preserve the existing demo and its `finai-demo-v1` storage when adding the separate live checklist. Live errors must stay visible. Never save secrets, private browser state, or real customer data in context or examples.
+
+## Historical implementation milestones
+
+These dated milestones explain earlier work; they do not limit a later explicitly authorized product task. Current application instructions, source/contracts and the current user request define that task.
+
+Prompt 01 supplied the design. Prompt 02 now authorizes the local monthly checklist implementation in sequential coordinator, backend, frontend, and verification roles. Contract 1.0.0 supersedes the provisional proposal. Production deployment remains unauthorized. Run checks suitable for the actual change and record real outcomes.
+
+Current copy/session release work (2026-10-21): contract 1.1.0 and previous-month copying are implemented alongside administratively provisioned PostgreSQL sessions. Read `context/copy-release.md` and `backend/RELEASE.md` for actual current checks, required host/proxy configuration and remaining gates. Production local identity is still rejected. Public deployment, paid resources and publication are not authorized by this work.

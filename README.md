@@ -1,150 +1,73 @@
-# FInAI — AI Finance Platform Homepage
+# FinAI (New-FInAI)
 
-**Multiple AI models. One finance workspace.**
+FinAI combines a public sample finance workspace with separate authenticated company workflows: supplier invoice review/approval/export, checklist tasks, subscription records, imported receivables and a grounded FinAI Assistant. The web app uses React 19/Vite; the API uses NestJS 11, Prisma and PostgreSQL. Each application has its own manifest and lockfile.
 
-A production-quality marketing homepage + AI agent workspace for a multi-model finance product — inspired by the polish of modern editorial SaaS sites (Profound-style whitespace, typography and motion), with a fully original brand identity ("FInAI", Σ mark).
+Start with the [repository and file guide](docs/repository-guide.md) for every folder/file's purpose and the [architecture and new-product guide](docs/architecture.md) for future development. The [latest verification](context/invoice-workspace-refresh.md#final-developertester-verification--4-november-2026) records the final full test matrix, fixes and outstanding hosting gates. The same report also describes the invoice workspace refresh; the [prior broad review](context/production-verification.md) retains its dated evidence. Historical reports describe the version they tested; they are not live deployment status.
 
-The workspace lets finance teams chat with frontier and free-tier models through an OpenRouter gateway with automatic failover, upload and interrogate CSV datasets with deterministic grounding, run interactive analysis views, and compile executive reports.
+## Choose the right entry
 
----
+| Entry | What it does | Requirements |
+| --- | --- | --- |
+| `/demo/invoices` or `/demo/payables/invoices` | Labelled sample invoices, PDFs, roles, approvals and CSV; separate browser persistence | Browser; no sign-in, API or database |
+| `/development/payables/invoices` | Compatibility redirect to sample invoices | Same sample boundary |
+| `/workspace/payables/invoices` | Real company invoice workflow | Configured API/database, provisioned session/AP grants and private scanner |
+| `/workspace/assistant/records` | Authorized financial facts and proposed invoice actions requiring confirmation | Session, authorized sources and approved model/provider settings |
+| `/demo/assistant` or `/assistant` | Separate public general model chat; cannot access company records | Server-only OpenRouter configuration |
+| `/welcome` | Existing Northstar accounting/banking/reporting sample | Browser-only fictional data |
 
-## Highlights — the 15 homepage sections
+The invoice feature supports a manual-entry GBP approval/export workflow. It does not execute payments, post to an external ledger or perform OCR/email ingestion. Original Northstar accounting, banking and automation screens remain sample workflows. A passing local suite does not establish hosted production readiness.
 
-| # | Section | What it does |
-|---|---------|--------------|
-| 1 | Navigation | Sticky nav with dropdowns, mobile menu, CTA |
-| 2 | Hero | "Multiple AI models. One finance workspace." + interactive product mockup |
-| 3 | Product demo | Interactive mockup views: Chat, Analysis, Report, Templates, Run history |
-| 4 | Multi-model AI | GPT / Claude / Gemini / DeepSeek model lineup with switcher |
-| 5 | Financial analysis | Variance, ratios, scenarios, document & spreadsheet understanding |
-| 6 | Report Builder | Chat-to-report flow with outline and export framing |
-| 7 | Error & consistency checking | Flagged mismatches, formula issues, missing periods |
-| 8 | Presentation builder | Report-to-deck flow with slide mockup |
-| 9 | Finance AI agents | Agent cards (variance, reconciliation, filings, validation…) |
-| 10 | Templates & workflows | Reusable finance template gallery + workflow steps |
-| 11 | Intelligent model routing | Animated routing diagram with usage-limit failover (honest, caveat-aware copy) |
-| 12 | Security & trust | Encryption, no-training-on-your-data, SSO/RBAC, audit trail |
-| 13 | Competitor comparison | Verified-facts matrix vs. 5 real competitors + deep-dive accordions |
-| 14 | Final CTA | Conversion block |
-| 15 | Footer | Full sitemap footer |
+## Run the sample app
 
-## Tech stack
+Use Node 24 and npm 11. From the repository root:
 
-- **Next.js 16** (App Router) + **React 19**
-- **TypeScript**
-- **Tailwind CSS 4** + shadcn/ui primitives
-- **Framer Motion** (with `MotionConfig reducedMotion="user"` for accessibility)
-- **Prisma + PostgreSQL** (conversations, usage tracking, audit log)
-- **NextAuth v4** (credentials + optional Google OAuth, scrypt password hashing)
-- **OpenRouter gateway** (streaming SSE, failover chains, circuit breaker)
-
-## Quick start
-
-Requires **Node.js 20+** (or Bun) and a PostgreSQL database for server-backed features (the homepage itself needs no database).
-
-```bash
-# 1) install dependencies
-bun install            # or: npm install
-
-# 2) create your env file
-cp .env.example .env
-#    → set DATABASE_URL (postgres://…), AUTH_SECRET, OPENROUTER_API_KEY
-
-# 3) sync the database schema
-bun run db:push        # or: npm run db:push
-
-# 4) run the dev server
-bun run dev            # or: npm run dev
-
-# 5) open http://localhost:3000
+```sh
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-### Production build
+Open `http://127.0.0.1:5173/demo/invoices`. Use sample documents only. Plain Vite does not start Nest or the Vercel/public-chat API handlers. Public model chat needs its separate server runtime/configuration; a frontend build never embeds provider/database secrets.
 
-```bash
-bun run build          # next build
-bun run start          # serves the build
+For an independent distributable sample: `npm run build:invoice-demo`, then run `node artifacts/invoice-demo/serve.mjs`. This sample bundle is separate from the real company backend.
+
+## Run the local API
+
+Docker Compose must be running. In a second terminal, from the repository root:
+
+```sh
+cd backend
+npm ci
+npm run db:init
+npm run db:up
+npm run generate
+npm run db:migrate
+npm run db:seed
+npm run build
+npm start
 ```
 
-### Configuration (see `.env.example` for the full list)
+These commands initialize **local synthetic development data only**. `db:init` preserves an existing private `.env`; tests use disposable local schemas. Never seed/reset an unknown or company database. Production uses injected server settings, explicitly reviewed migrations and administratively provisioned accounts; follow [backend/RELEASE.md](backend/RELEASE.md) and [frontend/docs/vercel.md](frontend/docs/vercel.md).
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `DATABASE_URL` | For DB features | PostgreSQL URL. When unset, DB-backed endpoints fail gracefully (health reports `db: "unconfigured"`). |
-| `AUTH_SECRET` | In production | NextAuth signing secret (`openssl rand -base64 32`). Never commit. |
-| `OPENROUTER_API_KEY` | For live chat | https://openrouter.ai/keys — no default key exists in the codebase. |
-| `OPENROUTER_BASE_URL` | Optional | Point at an OpenRouter-compatible gateway/proxy. |
-| `STRICT_AUTH` | Optional | `true` gates `/agent` + protected APIs behind a session. |
-| `GOOGLE_CLIENT_ID/SECRET` | Optional | Enables Google sign-in. |
+## Folder map
 
-## Project structure
+| Folder | Responsibility |
+| --- | --- |
+| `frontend/src/` | Browser routes, UI, clients, sample stores and feature screens |
+| `frontend/api/`, `frontend/server/` | Server-only Vercel entry, adapters and public model chat |
+| `frontend/scripts/`, `frontend/tests/` | Build/package utilities, synthetic services and browser/transport tests |
+| `backend/src/` | HTTP composition, identity and authoritative domain services |
+| `backend/prisma/` | Database schema, ordered additive migrations and local synthetic seed |
+| `backend/scripts/`, `backend/test/` | Operator/local setup, recovery utilities and real database/API regressions |
+| `contracts/` | Shared API/source schemas, synthetic examples and validators |
+| `docs/` | Repository navigation and per-file explanations |
+| `context/` | Engineering context, scoped handoffs and dated verification evidence |
+| `.github/workflows/` | CI checks and failure/sample artifacts |
 
-```
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx            # fonts, metadata
-│   │   ├── page.tsx              # composes the 15 homepage sections
-│   │   ├── agent/page.tsx        # workspace (chat, analysis, reports, templates, history)
-│   │   ├── sign-in/page.tsx      # credentials (+ optional Google) auth
-│   │   └── api/
-│   │       ├── auth/[...nextauth]# NextAuth handlers
-│   │       └── v1/
-│   │           ├── chat/stream   # SSE streaming chat (gateway + failover)
-│   │           ├── conversations # CRUD (session-required, ownership-scoped)
-│   │           ├── datasets      # bounded in-memory registry (auth + rate limited)
-│   │           ├── models        # live model registry
-│   │           └── health        # dependency-aware health (503 on DB failure)
-│   ├── components/landing/       # all homepage sections (one file per section)
-│   ├── components/agent/         # workspace components
-│   ├── server/                   # API controllers, services, AI gateway, auth
-│   ├── lib/                      # dataset engine, SSE client, storage, utils
-│   ├── config/                   # model registry + site copy
-│   └── proxy.ts                  # edge middleware (optional strict-auth gate)
-├── prompts/                      # versioned system prompts (markdown)
-├── prisma/schema.prisma          # Postgres schema (users, conversations, usage, audit)
-├── evals/                        # evaluation harness
-└── package.json
-```
+Generated dependencies/builds, private `.env` files and browser artifacts stay outside Git. The [file guide](docs/repository-guide.md) explains their locations and which generated schemas have an authoritative generator. Preserve established import, route, migration and deployment paths when adding features.
 
-## Editing content
+## Validate changes
 
-Almost **all marketing copy lives in one file**: `src/lib/site-data.ts`.
+From the root, run `npm --prefix frontend run test:repository` and `npm --prefix frontend run check:repository` for file-purpose and runtime-import guardrails. Run `npm run typecheck`, `npm run lint`, `npm run build` and `npm test` separately in each application. Frontend `npm test` is the default sample suite; the additional `test:*` scripts cover private modules, built runtimes and invoice transports. See the [complete verification command map](docs/repository-guide.md#verification) and the current report for actual outcomes. Install the configured Chromium browser before browser tests.
 
-- Hero headline, feature copy, agent cards, security items → edit the exported objects.
-- **Competitor data** (Hebbia, AlphaSense, Datarails, Julius AI, Numeric) lives here too, with explicit
-  `verified / partial / unverified` states per fact and a source note. Anything not confirmable from
-  public sources is labeled **"Not publicly verified"** — keep that discipline when you edit.
-
-**Model catalog**: `src/config/models.config.ts` is the source of truth (verified live OpenRouter ids).
-Fallback chains are defined in the same file's `fallbackChainMap`.
-
-## Design system
-
-- **Brand:** FInAI (Σ wordmark) — original identity, no third-party assets.
-- **Palette:** off-white paper background (`#FAFAF9`), stone ink text, deep moss-green accent.
-- **Type:** Geist Sans / Geist Mono + Instrument Serif for italic display accents.
-- **Motion:** subtle scroll reveals and micro-interactions; respects `prefers-reduced-motion`.
-- Tokens and utilities are defined in `src/app/globals.css`.
-
-## Competitor research methodology
-
-The `research/` folder contains the raw research captured while building the comparison section
-(JSON notes per competitor + reference screenshots). Rules applied throughout:
-
-1. Only **public, verifiable** information is used (official product/pricing pages).
-2. Anything not confirmable is explicitly marked **"Not publicly verified."**
-3. Pricing changes frequently — re-verify before publishing claims.
-
-## Security notes
-
-- No secrets are committed; the gateway key and auth secret come from the environment.
-- Chat streaming is rate limited (guests: IP-scoped, users: identity-scoped).
-- Conversation endpoints require a session and enforce per-user ownership.
-- Uploaded dataset payloads are size-capped and ownership-scoped.
-- Untrusted dataset content is fenced before it reaches the model (prompt-injection defense).
-
-## Notes
-
-- "FInAI" is the brand identity for this multi-model finance workspace.
-- GPT, Claude, Gemini, DeepSeek and all competitor names are trademarks of their respective owners;
-  references are for identification and comparison only.
+Operational guides: [invoices/scanner](backend/PAYABLES.md), [identity/deployment](backend/RELEASE.md), [workspace administration/imports](backend/WORKSPACE.md), [private FinAI](backend/ASSISTANT.md), [Vercel runtime](frontend/docs/vercel.md), and [shared contracts](contracts/README.md).

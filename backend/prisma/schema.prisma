@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organisation {
+  id          String       @id @db.Uuid
+  name        String       @db.VarChar(200)
+  entities    Entity[]
+  memberships Membership[]
+  sessions Session[]
+  auditEvents ServerAudit[]
+  importStages ReceivableImportStage[]
+  assistantBudgets AssistantBudget[]
+  assistantDeletions AssistantDeletion[]
+}
+
+model User {
+  id          String       @id @db.Uuid
+  memberships Membership[]
+  account Account?
+  receivableImports ReceivableSnapshot[]
+  auditEvents ServerAudit[]
+  importStages ReceivableImportStage[]
+  ledgerImports LedgerSnapshot[]
+  assistantDeletions AssistantDeletion[]
+}
+
+model Membership {
+  organisationId String         @map("organisation_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  active         Boolean        @default(true)
+  isAdministrator Boolean @default(false) @map("is_administrator")
+  version Int @default(1)
+  organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  access         EntityAccess[]
+  assistantConversations AssistantConversation[]
+  assistantPreferences AssistantPreference[]
+
+  @@id([organisationId, userId])
+}
+
+model Entity {
+  id             String          @id @db.Uuid
+  organisationId String          @map("organisation_id") @db.Uuid
+  name           String          @db.VarChar(200)
+  organisation   Organisation    @relation(fields: [organisationId], references: [id])
+  access         EntityAccess[]
+  apSuppliers ApSupplier[]
+  apInvoices ApInvoice[]
+  apPolicies ApPolicy[]
+  tasks          ChecklistTask[]
+  subscriptions SubscriptionRenewal[]
+  receivableSnapshots ReceivableSnapshot[]
+  auditEvents ServerAudit[]
+  importStages ReceivableImportStage[]
+  assistantConversations AssistantConversation[]
+  assistantPreferences AssistantPreference[]
+  ledgerSnapshots LedgerSnapshot[]
+
+  @@unique([organisationId, id])
+}
+
+model EntityAccess {
+  apGrant ApGrant?
+  organisationId String     @map("organisation_id") @db.Uuid
+  userId         String     @map("user_id") @db.Uuid
+  entityId       String     @map("entity_id") @db.Uuid
+  canWrite       Boolean    @default(false) @map("can_write")
+  canImport Boolean @default(false) @map("can_import")
+  version Int @default(1)
+  membership     Membership @relation(fields: [organisationId, userId], references: [organisationId, userId])
+  entity         Entity     @relation(fields: [organisationId, entityId], references: [organisationId, id])
+
+  @@id([organisationId, userId, entityId])
+}
+
+model ChecklistTask {
+  id             String   @id @db.Uuid
+  organisationId String   @map("organisation_id") @db.Uuid
+  entityId       String   @map("entity_id") @db.Uuid
+  month          DateTime @db.Date
+  title          String   @db.VarChar(200)
+  completed      Boolean  @default(false)
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createDigest   String   @map("create_digest") @db.Char(64)
+  entity         Entity   @relation(fields: [organisationId, entityId], references: [organisationId, id])
+
+  @@index([organisationId, entityId, month, createdAt, id])
+}
+
+model Account {
+  userId String @id @db.Uuid
+  username String @unique @db.VarChar(100)
+  passwordHash String
+  disabled Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sessions Session[]
+}
+model Session {
+  tokenHash String @id @db.Char(64)
+  userId String @db.Uuid
+  organisationId String @db.Uuid
+  csrfHash String @db.Char(64)
+  expiresAt DateTime @db.Timestamptz(3)
+  account Account @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([userId])
+  @@index([expiresAt])
+}
+model RateLimit {
+  key String @id @db.Char(64)
+  window DateTime @db.Timestamptz(3)
+  count Int
+}
+
+model SubscriptionRenewal {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  supplierName String @db.VarChar(200)
+  subscriptionName String @db.VarChar(200)
+  renewalDate DateTime @db.Date
+  cancellationDeadline DateTime? @db.Date
+  notes String? @db.VarChar(2000)
+  archived Boolean @default(false)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  entity Entity @relation(fields: [organisationId, entityId], references: [organisationId, id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([organisationId, entityId, archived, renewalDate, id], map: "SubscriptionRenewal_organisation_id_entity_id_archived_renewal_")
+}
+
+model ReceivableSnapshot {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ version Int
+ sourceName String @map("source_name") @db.VarChar(200)
+ sourceCapturedAt DateTime @map("source_captured_at") @db.Timestamptz(3)
+ importedAt DateTime @default(now()) @map("imported_at") @db.Timestamptz(3)
+ importingActorId String @map("importing_actor_id") @db.Uuid
+ digest String @db.Char(64)
+ rowCount Int @map("row_count")
+ entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ actor User @relation(fields:[importingActorId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ invoices ReceivableSnapshotInvoice[]
+ @@unique([organisationId,entityId,version],map:"receivable_version")
+ @@unique([organisationId,entityId,digest],map:"receivable_digest")
+ @@unique([organisationId,entityId,id],map:"receivable_scope")
+}
+model ReceivableSnapshotInvoice {
+ organisationId String @map("organisation_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ snapshotId String @map("snapshot_id") @db.Uuid
+ invoiceId String @map("invoice_id") @db.VarChar(200)
+ customerId String @map("customer_id") @db.VarChar(200)
+ customerName String? @map("customer_name") @db.VarChar(200)
+ issuedOn DateTime @map("issued_on") @db.Date
+ status String @db.VarChar(10)
+ amountCents BigInt @map("amount_cents")
+ paidCents BigInt @map("paid_cents")
+ snapshot ReceivableSnapshot @relation(fields:[organisationId,entityId,snapshotId],references:[organisationId,entityId,id],onDelete:NoAction,onUpdate:NoAction)
+ @@id([organisationId,entityId,snapshotId,invoiceId],map:"receivable_invoice_pk")
+ @@index([organisationId,entityId,snapshotId,issuedOn,customerId],map:"receivable_invoice_scope_date")
+}
+
+model ServerAudit {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ entityId String? @map("entity_id") @db.Uuid
+ requestId String @map("request_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ action String @db.VarChar(64)
+ reference String @db.VarChar(100)
+ outcome String @db.VarChar(20)
+ metadata Json @db.JsonB
+ organisation Organisation @relation(fields:[organisationId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ actor User @relation(fields:[actorId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ entity Entity? @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ @@index([organisationId,createdAt,id],map:"audit_organisation_time")
+}
+model ReceivableImportStage {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ sessionHash String @map("session_hash") @db.Char(64)
+ expectedVersion Int @map("expected_version")
+ nextVersion Int @map("next_version")
+ digest String @db.Char(64)
+ content Bytes
+ rowCount Int @map("row_count")
+ invoiceCount Int @map("invoice_count")
+ customerCount Int @map("customer_count")
+ totalCents BigInt @map("total_cents")
+ sourceName String @map("source_name") @db.VarChar(200)
+ sourceCapturedAt DateTime @map("source_captured_at") @db.Timestamptz(3)
+ expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+ appliedVersion Int? @map("applied_version")
+ organisation Organisation @relation(fields:[organisationId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ actor User @relation(fields:[actorId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ @@index([organisationId,actorId,expiresAt],map:"import_stage_actor_expiry")
+}
+
+model AssistantConversation {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ month String @db.Char(7)
+ currency String @db.Char(3)
+ version Int @default(1)
+ createDigest String @map("create_digest") @db.Char(64)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+ turns AssistantTurn[]
+ membership Membership @relation(fields:[organisationId,userId],references:[organisationId,userId],onDelete:NoAction,onUpdate:NoAction)
+ entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ @@index([organisationId,userId,entityId,createdAt])
+}
+model AssistantTurn {
+ id String @id @db.Uuid
+ conversationId String @map("conversation_id") @db.Uuid
+ question String @db.VarChar(2000)
+ digest String @db.Char(64)
+ status String @db.VarChar(16)
+ lease String @db.Uuid
+ leaseUntil DateTime @map("lease_until") @db.Timestamptz(3)
+ sessionHash String? @map("session_hash") @db.Char(64)
+ answer Json? @db.JsonB
+ plan Json? @db.JsonB
+ failureCode String? @map("failure_code") @db.VarChar(64)
+ model String @db.VarChar(200)
+ policy String @db.VarChar(64)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+ conversation AssistantConversation @relation(fields:[conversationId],references:[id],onDelete:Cascade,onUpdate:NoAction)
+ @@index([conversationId,createdAt,id])
+ @@index([status,leaseUntil])
+}
+model AssistantPreference {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ detail String @db.VarChar(16)
+ note String @db.VarChar(500)
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+ membership Membership @relation(fields:[organisationId,userId],references:[organisationId,userId],onDelete:NoAction,onUpdate:NoAction)
+ entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ @@unique([organisationId,userId,entityId])
+}
+model AssistantBudget {
+ organisationId String @map("organisation_id") @db.Uuid
+ day DateTime @db.Date
+ tokens Int
+ organisation Organisation @relation(fields:[organisationId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ @@id([organisationId,day])
+}
+model LedgerSnapshot {
+ id String @id @db.Uuid
+ organisationId String @map("organisation_id") @db.Uuid
+ entityId String @map("entity_id") @db.Uuid
+ version Int
+ digest String @db.Char(64)
+ actorId String @map("actor_id") @db.Uuid
+ sourceName String @map("source_name") @db.VarChar(200)
+ capturedAt DateTime @map("captured_at") @db.Timestamptz(3)
+ importedAt DateTime @default(now()) @map("imported_at") @db.Timestamptz(3)
+ content Json @db.JsonB
+ entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+ actor User @relation(fields:[actorId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ @@unique([organisationId,entityId,version])
+ @@unique([organisationId,entityId,digest])
+}
+model AssistantDeletion {
+ id String @db.Uuid
+ kind String @db.VarChar(16)
+ organisationId String @map("organisation_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+ organisation Organisation @relation(fields:[organisationId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ user User @relation(fields:[userId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ @@id([id,kind])
+ @@index([expiresAt])
+}
+
+
+model ApGrant {
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  view Boolean @default(false)
+  review Boolean @default(false)
+  verify Boolean @default(false)
+  approve Boolean @default(false)
+  manage Boolean @default(false)
+  access EntityAccess @relation(fields:[organisationId,userId,entityId],references:[organisationId,userId,entityId],onDelete:Cascade,onUpdate:NoAction)
+  @@id([organisationId,userId,entityId])
+}
+model ApSupplier {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  name String @db.VarChar(200)
+  taxId String @map("tax_id") @db.VarChar(200)
+  active Boolean @default(true)
+  version Int @default(1)
+  createDigest String @map("create_digest")
+  entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+  invoices ApInvoice[]
+  @@unique([organisationId,entityId,id])
+}
+model ApPolicy {
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  version Int @default(1)
+  draft Json
+  published Json?
+  publishedVersion Int? @map("published_version")
+  publishedBy String? @map("published_by") @db.Uuid
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
+  entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+  @@id([organisationId,entityId])
+}
+model ApInvoice {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  supplierId String @map("supplier_id") @db.Uuid
+  referenceKey String @map("reference_key")
+  data Json
+  createDigest String @map("create_digest")
+  version Int @default(1)
+  revision Int @default(1)
+  state String @default("review")
+  correctionReason String? @map("correction_reason")
+  route Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  entity Entity @relation(fields:[organisationId,entityId],references:[organisationId,id],onDelete:NoAction,onUpdate:NoAction)
+  supplier ApSupplier @relation(fields:[organisationId,entityId,supplierId],references:[organisationId,entityId,id],onDelete:NoAction,onUpdate:NoAction)
+  documents ApDocument[]
+  events ApEvent[]
+  exports ApExport[]
+  @@unique([organisationId,entityId,id])
+  @@unique([organisationId,entityId,supplierId,referenceKey])
+  @@index([organisationId,entityId,createdAt(sort:Desc),id(sort:Desc)],map:"ApInvoice_page")
+}
+model ApDocument {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  invoiceId String @map("invoice_id") @db.Uuid
+  revision Int
+  bytes Bytes
+  digest String
+  filename String @db.VarChar(200)
+  scanState String @default("quarantined") @map("scan_state")
+  scanResult Json? @map("scan_result")
+  uploaderId String @map("uploader_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoice ApInvoice @relation(fields:[organisationId,entityId,invoiceId],references:[organisationId,entityId,id],onDelete:NoAction,onUpdate:NoAction)
+}
+model ApEvent {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  invoiceId String @map("invoice_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  revision Int
+  action String
+  snapshot Json
+  reason String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoice ApInvoice @relation(fields:[organisationId,entityId,invoiceId],references:[organisationId,entityId,id],onDelete:NoAction,onUpdate:NoAction)
+}
+model ApOperation {
+  organisationId String @map("organisation_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  id String @db.Uuid
+  digest String
+  result Json
+  @@id([organisationId,userId,id])
+}
+model ApExport {
+  id String @id @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+  entityId String @map("entity_id") @db.Uuid
+  invoiceId String @map("invoice_id") @db.Uuid
+  revision Int
+  bytes Bytes
+  digest String
+  actorId String @map("actor_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoice ApInvoice @relation(fields:[organisationId,entityId,invoiceId],references:[organisationId,entityId,id],onDelete:NoAction,onUpdate:NoAction)
+  @@unique([organisationId,entityId,invoiceId,revision])
+}

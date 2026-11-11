@@ -1,0 +1,53 @@
+# Run only on an authorized host behind its existing TLS ingress.
+services:
+  db:
+    image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: finai
+      POSTGRES_DB: finai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Secure database password required}
+    volumes:
+      - production_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finai -d finai"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    image: ${FINAI_IMAGE:?Immutable tested release image required}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      CHECKLIST_IDENTITY: session
+      API_HOST: 0.0.0.0
+      API_PORT: '3000'
+      DATABASE_URL: ${DATABASE_URL:?Private database connection required}
+      API_TRUSTED_HOST: ${API_TRUSTED_HOST:?Exact backend Host header required}
+      ORGANISATION_TIMEZONES: ${ORGANISATION_TIMEZONES:-}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Exact frontend HTTPS origin required}
+      API_PROXY_TOKEN: ${API_PROXY_TOKEN:?Secure proxy credential required}
+      AP_CLAMD_HOST: ${AP_CLAMD_HOST:-}
+      AP_CLAMD_PORT: ${AP_CLAMD_PORT:-3310}
+      ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-false}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      Openrouter: ${Openrouter:-}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-}
+      ASSISTANT_OPENROUTER_PROVIDERS: ${ASSISTANT_OPENROUTER_PROVIDERS:-}
+      ASSISTANT_DAILY_TOKEN_LIMIT: ${ASSISTANT_DAILY_TOKEN_LIMIT:-}
+      ASSISTANT_MAX_INPUT_PRICE: ${ASSISTANT_MAX_INPUT_PRICE:-}
+      ASSISTANT_MAX_OUTPUT_PRICE: ${ASSISTANT_MAX_OUTPUT_PRICE:-}
+      ASSISTANT_LEDGER_MAPPING_IDS: ${ASSISTANT_LEDGER_MAPPING_IDS:-}
+    ports:
+      - '127.0.0.1:3000:3000'
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 20s
+volumes:
+  production_pgdata:

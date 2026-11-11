@@ -7,11 +7,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/frontend/api/proxy?route=api/$1"
+      "dest": "/api/proxy?route=api/$1"
     },
     {
       "src": "/auth/(.*)",
-      "dest": "/frontend/api/proxy?route=auth/$1"
+      "dest": "/api/proxy?route=auth/$1"
     },
     {
       "handle": "filesystem"
@@ -22,7 +22,7 @@
     }
   ],
   "functions": {
-    "frontend/api/proxy.ts": {
+    "api/proxy.ts": {
       "maxDuration": 60,
       "includeFiles": "frontend/.finai-server/**"
     }

@@ -72,7 +72,7 @@ import { ReceivablesRegister } from "../features/workspace/ReceivablesRegister";
 function Welcome() {
   const sample = useLocation().pathname === "/sample";
   useEffect(() => {
-    document.title = "Welcome · FinAI";
+    document.title = sample ? "Welcome · FinAI" : "Sign in · FinAI";
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute(
@@ -88,7 +88,7 @@ function Welcome() {
   return (
     <div className="welcome">
       <div className="welcome-story">
-        <Link to="/welcome" className="brand">
+        <Link to="/login" className="brand">
           <BrandMark />
           FinAI
         </Link>
@@ -171,18 +171,13 @@ function Welcome() {
             </div>
           </>
         ) : (
-          <>
-            <SessionGate
-              title="Sign in to FinAI"
-              headingLevel={2}
-              requireSession
-            >
-              <Navigate to="/workspace/overview" replace />
-            </SessionGate>
-            <p>
-              <Link to="/sample">Explore sample workspace</Link>
-            </p>
-          </>
+          <SessionGate
+            title="Sign in to FinAI"
+            headingLevel={2}
+            requireSession
+          >
+            <Navigate to="/workspace/overview" replace />
+          </SessionGate>
         )}
       </div>
     </div>
@@ -256,7 +251,8 @@ const router = createBrowserRouter([
       { path: "customers", element: <DemoCustomersPage /> },
     ],
   },
-  { path: "/welcome", element: <Welcome /> },
+  { path: "/login", element: <Welcome /> },
+  { path: "/welcome", element: <Navigate to="/login" replace /> },
   { path: "/sample", element: <Welcome /> },
   ...["/invoices", "/invoice-approvals"].map((path) => ({
     path,
@@ -425,7 +421,7 @@ export class AppBoundary extends Component<
         <button
           onClick={() => {
             localStorage.removeItem("finai-demo-v1");
-            location.assign("/welcome");
+            location.assign("/login");
           }}
         >
           Reset local demo

@@ -64,7 +64,7 @@ Same-project Vercel mode is now implemented; see [frontend/docs/vercel.md](../fr
 
 ## Google and email/password sign-in
 
-`/welcome` is the sign-in entry; the public accounting sample remains at `/sample`. Both password and Google login require an administrator-provided Organisation ID. Email/password uses the existing account endpoint: provision the account name as the user's lowercase email for email login. Its password is a **FinAI password**, never the user's Google password. Existing non-email account names remain compatible. No public registration or password recovery is added.
+`/login` is the sign-in entry (`/welcome` redirects there); the public accounting sample remains at `/sample`. Both password and Google login require an administrator-provided Organisation ID. Email/password uses the existing account endpoint: provision the account name as the user's lowercase email for email login. Its password is a **FinAI password**, never the user's Google password. Existing non-email account names remain compatible. No public registration or password recovery is added.
 
 To enable Google:
 

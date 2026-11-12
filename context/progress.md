@@ -291,3 +291,7 @@ Frontend integrator followed by coordinator/reviewer: removed the homepage hero'
 ## 2026-11-13 — remove remaining homepage proof line
 
 Frontend integrator/coordinator follow-up to the marked-badge request: removed the remaining Connected books. Fictional records. hero line and its wrapper. Browser verification confirms neither requested label is present in the hero. Typecheck, lint, build, repository guard, focused existing marketing identity test and diff check passed. Sign-in links and other sections remain unchanged; live deployment not verified.
+
+## 2026-11-13 — dedicated login entry without sample link
+
+User clarified that the requested new entry is a dedicated /login page, not registration. Frontend integrator then coordinator/reviewer: removed Explore sample workspace entirely from the sign-in page, routed public sign-in buttons to /login, and preserved /welcome bookmarks through a replace redirect. The sample remains separately routable for existing workflows. Updated login title and setup documentation. Typecheck/lint/build, repository guard, three focused marketing/password/controlled-Google tests and diff checks passed. Browser checks verified the redirect, no /sample links on login, and desktop/mobile containment (screenshots /tmp/finai-login-page-*.png). The provided hosted URL could not be inspected because the environment proxy denied CONNECT with 403 before origin; the screenshot's hosted authentication-service error remains undiagnosed. No production configuration or deployment was performed.

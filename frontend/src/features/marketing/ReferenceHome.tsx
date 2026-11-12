@@ -662,7 +662,7 @@ export function ReferenceHome() {
                   Explore a connected FinAI workspace to review the books,
                   follow the numbers, and bring your close together.
                 </p>
-                <Link to="/welcome" className="reference-button">
+                <Link to="/login" className="reference-button">
                   Sign in
                 </Link>
               </div>
@@ -882,7 +882,7 @@ export function ReferenceHome() {
           <h2>Get one step closer to a clearer close</h2>
           <p>Connected books. Reviewable workflows. Numbers you can trace.</p>
           <div>
-            <Link className="reference-button is-white" to="/welcome">
+            <Link className="reference-button is-white" to="/login">
               Sign in
             </Link>
             <button

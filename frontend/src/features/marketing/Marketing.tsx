@@ -60,7 +60,7 @@ const solutionGroups = [
       {
         label: "Growing teams",
         description: "Connected demo workflows",
-        to: "/welcome",
+        to: "/login",
       },
       {
         label: "Multiple entities",
@@ -285,7 +285,7 @@ export function MarketingLayout() {
                   {
                     label: "Sign in",
                     description: "Email/password or Google",
-                    to: "/welcome",
+                    to: "/login",
                   },
                   {
                     label: "Local data and privacy",
@@ -301,7 +301,7 @@ export function MarketingLayout() {
           <Link className="marketing-login" to="/demo/payables/invoices">
             Supplier invoices
           </Link>
-          <Link className="marketing-button dark small" to="/welcome">
+          <Link className="marketing-button dark small" to="/login">
             Sign in
           </Link>
           <button
@@ -427,7 +427,7 @@ export function MarketingLayout() {
             About FinAI
             <ArrowRight size={15} />
           </Link>
-          <Link to="/welcome">
+          <Link to="/login">
             Sign in
             <ArrowRight size={15} />
           </Link>
@@ -441,7 +441,7 @@ function CallToAction() {
     <section className="marketing-final-cta">
       <h2>Get one step closer to a clearer close</h2>
       <p>Connected records. Reviewable workflows. A bigger picture.</p>
-      <Link className="marketing-button light" to="/welcome">
+      <Link className="marketing-button light" to="/login">
         Sign in
         <ArrowRight size={15} />
       </Link>

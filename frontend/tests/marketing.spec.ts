@@ -336,11 +336,14 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
     .getByRole("banner")
     .getByRole("link", { name: "Sign in", exact: true })
     .click();
-  await expect(page).toHaveTitle("Welcome · FinAI");
+  await expect(page).toHaveTitle("Sign in · FinAI");
   await expect(
     page.getByRole("heading", { name: "Sign in to FinAI" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Explore sample workspace" }).click();
+  await expect(
+    page.getByRole("link", { name: "Explore sample workspace" }),
+  ).toHaveCount(0);
+  await page.goto("/sample");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page).toHaveTitle("Overview · FinAI");
 });
@@ -473,6 +476,7 @@ test("welcome offers email/password and an honest unconfigured Google option", a
     route.fulfill({ json: { enabled: false } }),
   );
   await page.goto("/welcome");
+  await expect(page).toHaveURL("/login");
   await expect(
     page.getByRole("heading", { name: "Sign in to FinAI" }),
   ).toBeVisible();
@@ -526,7 +530,7 @@ test("welcome Google selection uses provider credential and organisation, with v
       body: `window.google={accounts:{id:{initialize(options){window.googleTest=options},renderButton(el){const button=document.createElement('button');button.textContent='Continue with Google';button.onclick=()=>window.googleTest.callback({credential:'synthetic-google-proof'});el.appendChild(button)},cancel(){}}}};`,
     }),
   );
-  await page.goto("/welcome");
+  await page.goto("/login");
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Enter the organisation ID",
@@ -545,7 +549,7 @@ test("welcome Google selection uses provider credential and organisation, with v
   await expect(page.getByRole("alert")).toContainText(
     "Your administrator must grant",
   );
-  await expect(page).toHaveURL("/welcome");
+  await expect(page).toHaveURL("/login");
   await page.route("**/auth/google", (route) =>
     route.fulfill({ json: { csrfToken: "a".repeat(64) } }),
   );

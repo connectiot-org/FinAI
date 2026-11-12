@@ -13,7 +13,7 @@ Start with the [repository and file guide](docs/repository-guide.md) for every f
 | `/workspace/payables/invoices` | Real company invoice workflow | Configured API/database, provisioned session/AP grants and private scanner |
 | `/workspace/assistant/records` | Authorized financial facts and proposed invoice actions requiring confirmation | Session, authorized sources and approved model/provider settings |
 | `/demo/assistant` or `/assistant` | Separate public general model chat; cannot access company records | Server-only OpenRouter configuration |
-| `/welcome` | Existing Northstar accounting/banking/reporting sample | Browser-only fictional data |
+| `/sample` | Existing Northstar accounting/banking/reporting sample | Browser-only fictional data |
 
 The invoice feature supports a manual-entry GBP approval/export workflow. It does not execute payments, post to an external ledger or perform OCR/email ingestion. Original Northstar accounting, banking and automation screens remain sample workflows. A passing local suite does not establish hosted production readiness.
 

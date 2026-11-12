@@ -652,11 +652,7 @@ export function ReferenceHome() {
         <div className="reference-container">
           <div className="reference-hero-copy">
             <div className="reference-proof">
-              <span>
-                <ShieldCheck size={17} />
-                LOCAL DEMO
-              </span>
-              <span>Connected books. Fictional records.</span>
+              Connected books. Fictional records.
             </div>
             <div className="reference-hero-columns">
               <h1>

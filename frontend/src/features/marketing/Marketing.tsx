@@ -298,9 +298,6 @@ export function MarketingLayout() {
           />
         </nav>
         <div className="marketing-header-actions">
-          <Link className="marketing-login" to="/demo/payables/invoices">
-            Supplier invoices
-          </Link>
           <Link className="marketing-button dark small" to="/login">
             Sign in
           </Link>

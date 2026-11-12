@@ -406,22 +406,21 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   ).toBeInViewport();
 });
 
-test("supplier invoices are discoverable from homepage, welcome screen and app navigation", async ({
+test("public header keeps sign-in while invoices remain accessible from mobile and sample navigation", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
-  await page
-    .getByRole("banner")
-    .getByRole("link", { name: "Supplier invoices", exact: true })
-    .click();
-  await expect(page).toHaveURL("/demo/payables/invoices");
   await expect(
-    page.getByRole("heading", {
-      name: "Invoices",
-      exact: true,
-    }),
-  ).toBeVisible();
+    page
+      .getByRole("banner")
+      .getByRole("link", { name: "Supplier invoices", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("banner")
+      .getByRole("link", { name: "Sign in", exact: true }),
+  ).toHaveAttribute("href", "/login");
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();

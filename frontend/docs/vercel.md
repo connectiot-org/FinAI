@@ -20,7 +20,7 @@ This release packages the real NestJS API into the existing Vercel API function.
 
 ## Opening supplier invoices
 
-**Supplier invoices** in the public homepage/mobile menu, welcome screen and demo sidebar opens `/demo/payables/invoices` directly. Legacy `/development/payables/*` redirects to the sample route; `/invoices`, `/invoice-approvals` and `/demo/invoices` also open the sample list. The explicit preview needs no account/database and makes no private API/auth requests. Real-company `entityId` query parameters are removed when entering the sample company.
+**Supplier invoices** in the public mobile menu, sample entry and demo sidebar opens `/demo/payables/invoices` directly. Legacy `/development/payables/*` redirects to the sample route; `/invoices`, `/invoice-approvals` and `/demo/invoices` also open the sample list. The explicit preview needs no account/database and makes no private API/auth requests. Real-company `entityId` query parameters are removed when entering the sample company.
 
 Real company invoices remain protected at `/workspace/payables/invoices`. Their configuration errors stay visible; samples never become a private API fallback. `npm run build:invoice-demo` still creates the independent static sample bundle. The sample header has no company sign-in selection. Its compact sample notice and role controls sit inside the invoice workspace navigation; the register uses real queue counts and URL-persisted filters with a clear-filter action. Desktop and phone layouts share the same working invoice workflow.
 

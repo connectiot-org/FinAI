@@ -651,9 +651,6 @@ export function ReferenceHome() {
       <section className="reference-hero reference-grid-background">
         <div className="reference-container">
           <div className="reference-hero-copy">
-            <div className="reference-proof">
-              Connected books. Fictional records.
-            </div>
             <div className="reference-hero-columns">
               <h1>
                 Clearer books.

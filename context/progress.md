@@ -287,3 +287,7 @@ Validation: both applications typecheck/lint/build passed; 91 backend tests pass
 ## 2026-11-13 — screenshot-marked homepage badge
 
 Frontend integrator followed by coordinator/reviewer: removed the homepage hero's LOCAL DEMO badge marked in the user's screenshot. The marked header and hero entry buttons already read Sign in and point to /welcome from 88a112f; they remain so. Kept the adjacent fictional-record disclosure and other site sections/data unchanged. Frontend typecheck/lint/build, purpose/import guard, focused existing marketing identity test and browser assertions at the screenshot width passed. One ad-hoc smoke initially used the wrong accessible heading text; corrected the locator to the actual hero heading and passed. The resulting screenshot is /tmp/finai-home-without-demo-badge.png. No hosted deployment was verified.
+
+## 2026-11-13 — remove remaining homepage proof line
+
+Frontend integrator/coordinator follow-up to the marked-badge request: removed the remaining Connected books. Fictional records. hero line and its wrapper. Browser verification confirms neither requested label is present in the hero. Typecheck, lint, build, repository guard, focused existing marketing identity test and diff check passed. Sign-in links and other sections remain unchanged; live deployment not verified.

@@ -1,4 +1,5 @@
 // Public sample/chat routes and authenticated company routes keep separate data authority.
+import { RouteError } from "./RouteError";
 import { SessionGate } from "../components/SessionGate";
 import { OperationalSource } from "../features/assistant/OperationalSource";
 import { LedgerSource } from "../features/assistant/LedgerSource";
@@ -8,6 +9,7 @@ import { BrandMark } from "../components/shared/BrandMark";
 import { Component, Suspense, lazy, useEffect, type ReactNode } from "react";
 import {
   createBrowserRouter,
+  type RouteObject,
   Navigate,
   RouterProvider,
   useNavigate,
@@ -171,11 +173,7 @@ function Welcome() {
             </div>
           </>
         ) : (
-          <SessionGate
-            title="Sign in to FinAI"
-            headingLevel={2}
-            requireSession
-          >
+          <SessionGate title="Sign in to FinAI" headingLevel={2} requireSession>
             <Navigate to="/workspace/overview" replace />
           </SessionGate>
         )}
@@ -239,7 +237,7 @@ function LegacyPayablesRedirect() {
     />
   );
 }
-const router = createBrowserRouter([
+const routes: RouteObject[] = [
   {
     path: "/",
     element: <MarketingLayout />,
@@ -401,7 +399,10 @@ const router = createBrowserRouter([
       { path: "*", element: <NotFound /> },
     ],
   },
-]);
+];
+const router = createBrowserRouter(
+  routes.map((route) => ({ ...route, errorElement: <RouteError /> })),
+);
 export class AppBoundary extends Component<
   { children: ReactNode },
   { error: boolean }

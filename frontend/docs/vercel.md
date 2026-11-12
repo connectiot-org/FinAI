@@ -80,3 +80,31 @@ Before release, verify exact-head CI, bind the actual database and server Secret
 The primary public Sign in buttons open `/login` (`/welcome` redirects there), which uses the existing password/session endpoints and optionally Google Identity Services. `/sample` preserves the independent browser-only accounting sample; the login page contains no sample-workspace link. Email/account name and Organisation ID refer to administratively provisioned accounts; no public signup or automatic organisation grants are added.
 
 For the embedded backend, set `GOOGLE_CLIENT_ID` and a securely generated, shared `GOOGLE_NONCE_SECRET` (at least 32 characters) in the **server runtime** environment and redeploy. For a remote backend, set it on that backend instead. Create a Google OAuth **Web application** client with authorized JavaScript origin `https://www.finai8.com`; no client secret or application redirect URI is required for the popup ID-token flow. See [Google setup and account provisioning](../../backend/RELEASE.md#google-and-emailpassword-sign-in) for the exact steps and supported identities. No live Google sign-in is claimed until the client is configured and tested on the published origin.
+
+## Invoice page fails to load after a deployment
+
+A tab opened before deployment can request an old hashed invoice module the new deployment no longer serves. Reload once to fetch the current entrypoint. The app now handles Vite preload and route import failures with one automatic reload per tab within a minute, then a recovery screen with a manual Reload page button. It never clears saved data or retries financial mutations. Persistent failures require checking the asset response, connectivity and deployment output; the error alone does not prove a cache issue.
+
+## Find and provision the first administrator
+
+There is no shared/default admin password. A connected database does not create accounts or apply migrations automatically. Production credentials were not available to the coding workspace, so no production admin was created or inspected.
+
+In the database provider's trusted SQL console, find the real organisation UUID using this read-only query:
+
+```sql
+SELECT id, name FROM "Organisation" ORDER BY name;
+```
+
+If the table is missing, apply the reviewed migrations first. If empty, use the trusted real-organisation bootstrap process; never seed synthetic identities into production. From a trusted terminal in `backend`, with the production `DATABASE_URL` securely injected:
+
+```sh
+read -r -p 'Existing organisation UUID: ' FINAI_ORGANISATION_ID
+node --import tsx scripts/accounts.mts create admin "$FINAI_ORGANISATION_ID"
+node --import tsx scripts/workspace-admin.mts "$FINAI_ORGANISATION_ID" admin
+# Review the dry run before applying:
+node --import tsx scripts/workspace-admin.mts "$FINAI_ORGANISATION_ID" admin --apply
+```
+
+Account creation prompts for a hidden FinAI password and confirmation (12–1024 characters). Never place passwords in argv, Git or chat. Do not recreate an existing account; use the trusted password-reset operation if needed. If an enabled admin already exists, ordinary promotion refuses; use that admin or the documented explicit recovery process. Admin membership does not grant entity/payables access automatically; grant appropriate real-entity access through the established policy.
+
+Then sign in at `/login` with account name **admin**, that organisation UUID and the password you set. Until the sign-in service responds correctly, even valid credentials cannot log in. Inspect the Vercel function logs and verify migrations, database connectivity/TLS and the exact `FINAI_PUBLIC_ORIGIN` for `https://www.finai8.com`; other deployment hosts need their own matching configuration.

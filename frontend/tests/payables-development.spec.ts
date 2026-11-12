@@ -631,3 +631,85 @@ test("a duplicate sample invoice can be corrected and saved without discarding e
     page.getByText("Correctable sample invoice", { exact: true }),
   ).toBeVisible();
 });
+
+test("missing invoice chunk recovers without a reload loop or clearing saved records", async ({
+  page,
+}) => {
+  await page.goto("/sample");
+  await page
+    .getByRole("button", { name: "Enter workspace", exact: true })
+    .click();
+  const saved = await page.evaluate(() =>
+    localStorage.getItem("finai-demo-v1"),
+  );
+  expect(saved).not.toBeNull();
+  let chunkRequests = 0;
+  await page.route(
+    "**/src/features/payables/DevelopmentPayables.tsx*",
+    (route) => {
+      chunkRequests++;
+      return route.abort();
+    },
+  );
+  await page.goto("/demo/payables/invoices");
+  await expect(
+    page.getByRole("heading", { name: "Unable to open this page" }),
+  ).toBeVisible();
+  // The first missing module reloads the entrypoint. The second fails visibly.
+  await expect.poll(() => chunkRequests).toBe(2);
+  await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(
+    "Unexpected Application Error",
+  );
+  expect(await page.evaluate(() => localStorage.getItem("finai-demo-v1"))).toBe(
+    saved,
+  );
+  await page.unroute("**/src/features/payables/DevelopmentPayables.tsx*");
+  await page.getByRole("button", { name: "Reload page" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Invoices", exact: true }),
+  ).toBeVisible();
+});
+
+test("Vite preload failure refreshes the current entry once and preserves sample storage", async ({
+  page,
+}) => {
+  await page.goto("/sample");
+  await page
+    .getByRole("button", { name: "Enter workspace", exact: true })
+    .click();
+  const saved = await page.evaluate(() =>
+    localStorage.getItem("finai-demo-v1"),
+  );
+  await Promise.all([
+    page.waitForEvent("framenavigated", {
+      predicate: (frame) => frame === page.mainFrame(),
+    }),
+    page.evaluate(() => {
+      const event = new Event("vite:preloadError", { cancelable: true });
+      Object.assign(event, {
+        payload: new TypeError(
+          "Failed to fetch dynamically imported module: /assets/old-invoices.js",
+        ),
+      });
+      window.dispatchEvent(event);
+    }),
+  ]);
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  const retried = await page.evaluate(() => {
+    const event = new Event("vite:preloadError", { cancelable: true });
+    Object.assign(event, {
+      payload: new TypeError(
+        "Failed to fetch dynamically imported module: /assets/old-invoices.js",
+      ),
+    });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(retried).toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem("finai-demo-v1"))).toBe(
+    saved,
+  );
+});

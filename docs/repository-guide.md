@@ -111,10 +111,12 @@ Each row below describes one exact file. Test source describes intended verifica
 | File | Purpose |
 | --- | --- |
 | `frontend/src/main.tsx` | Mounts React with the demo Redux store, toast provider, global styling and application router. |
+| `frontend/src/app/RouteError.tsx` | Recoverable route error screen for failed page loads, with guarded asset refresh and data-preserving manual reload. |
 | `frontend/src/app/router.tsx` | Defines public/demo/private routes, compatibility redirects, lazy feature loading, entry screens and not-found handling. |
 | `frontend/src/app/Shell.tsx` | Renders the original demo’s sidebar, global entity/period controls, search, Assistant panel and routed content. |
 | `frontend/src/app/navigation.ts` | Declares demo navigation groups, routes/icons and page-title metadata used by the shell. |
 | `frontend/src/lib/api.ts` | Shared typed private JSON client with same-origin configuration checks, CSRF, bounded requests and identity-epoch result fencing. |
+| `frontend/src/lib/asset-recovery.ts` | Handles stale Vite chunk failures with one guarded reload per tab per minute, without clearing application data. |
 | `frontend/src/lib/session.ts` | Validates session responses, deduplicates concurrent checks and invalidates private views across identity changes and browser tabs. |
 
 ### Shared browser controls

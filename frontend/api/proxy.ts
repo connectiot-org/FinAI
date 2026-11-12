@@ -104,7 +104,9 @@ export default async function proxy(req: ProxyRequest, res: ServerResponse) {
   const incoming = new URL(req.url || "/", publicOrigin);
   const route = incoming.searchParams.get("route") || "";
   if (
-    !/^(api\/v1(?:\/[a-zA-Z0-9-]+)*|auth\/(login|logout|session))$/.test(route)
+    !/^(api\/v1(?:\/[a-zA-Z0-9-]+)*|auth\/(login|logout|session|google(?:\/challenge)?))$/.test(
+      route,
+    )
   )
     return fail(404, "API route not found.");
   if (req.headers.host !== publicURL.host) return fail(403, "Untrusted host.");

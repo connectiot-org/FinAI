@@ -391,6 +391,67 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginInput'
+  /auth/google/challenge:
+    post:
+      operationId: googleChallenge
+      summary: Returns optional Google client ID and browser-bound nonce; sets a signed ten-minute HttpOnly cookie. Exact origin and JSON required.
+      security: []
+      responses:
+        '200':
+          description: Google availability and optional challenge.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [enabled]
+                    additionalProperties: false
+                    properties:
+                      enabled: {const: false}
+                  - type: object
+                    required: [enabled, clientId, nonce]
+                    additionalProperties: false
+                    properties:
+                      enabled: {const: true}
+                      clientId: {type: string, minLength: 1}
+                      nonce: {type: string, pattern: '^[a-f0-9]{64}$'}
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Shared challenge rate limit exceeded.
+  /auth/google:
+    post:
+      operationId: googleLogin
+      summary: Verify Google ID token and browser nonce, then issue an ordinary session for an existing active account and organisation membership. No public signup.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [credential, organisationId]
+              properties:
+                credential: {type: string, minLength: 1, maxLength: 12000}
+                organisationId: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Rotated secure session cookie and consumed challenge cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invalid Google credential request.
+        '429':
+          description: Shared login rate limit exceeded.
+        '503':
+          description: Google sign-in is not configured.
   /auth/session:
     get:
       operationId: _auth_sessionget

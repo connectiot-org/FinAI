@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { GoogleSignIn } from "./GoogleSignIn";
 import { Field } from "./ui";
 import { sessionEnabled } from "../lib/api";
 import {
@@ -15,7 +16,12 @@ import {
   expireSession,
 } from "../lib/session";
 const Authenticated = createContext(false);
-type Props = { children: ReactNode; title?: string; headingLevel?: 1 | 2 };
+type Props = {
+  children: ReactNode;
+  title?: string;
+  headingLevel?: 1 | 2;
+  requireSession?: boolean;
+};
 export function SessionGate(props: Props) {
   const inherited = useContext(Authenticated);
   return inherited ? <>{props.children}</> : <OwnedSessionGate {...props} />;
@@ -24,10 +30,13 @@ function OwnedSessionGate({
   children,
   title = "Sign in to your checklist",
   headingLevel = 1,
+  requireSession = false,
 }: Props) {
+  const sessionRequired = requireSession || sessionEnabled;
+  const [organisationId, setOrganisationId] = useState("");
   const Heading = headingLevel === 2 ? "h2" : "h1";
-  const [authenticated, setAuthenticated] = useState(!sessionEnabled),
-    [checking, setChecking] = useState(sessionEnabled),
+  const [authenticated, setAuthenticated] = useState(!sessionRequired),
+    [checking, setChecking] = useState(sessionRequired),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0);
@@ -40,7 +49,7 @@ function OwnedSessionGate({
     return () => window.removeEventListener("finai-session-expired", expired);
   }, []);
   useEffect(() => {
-    if (!sessionEnabled) return;
+    if (!sessionRequired) return;
     const c = new AbortController();
     let active = true;
     setChecking(true);
@@ -65,7 +74,7 @@ function OwnedSessionGate({
       active = false;
       c.abort();
     };
-  }, [retry]);
+  }, [retry, sessionRequired]);
   if (checking) return <p role="status">Checking session…</p>;
   if (!authenticated)
     return (
@@ -111,7 +120,7 @@ function OwnedSessionGate({
             }
           }}
         >
-          <Field label="Account name">
+          <Field label="Email or account name">
             <input
               name="username"
               autoComplete="username"
@@ -120,7 +129,13 @@ function OwnedSessionGate({
             />
           </Field>
           <Field label="Organisation ID">
-            <input name="organisationId" required autoComplete="off" />
+            <input
+              name="organisationId"
+              required
+              autoComplete="off"
+              value={organisationId}
+              onChange={(e) => setOrganisationId(e.target.value)}
+            />
           </Field>
           <Field label="Password">
             <input
@@ -131,10 +146,56 @@ function OwnedSessionGate({
               maxLength={1024}
             />
           </Field>
+          <p>Use your FinAI password, not your Google password.</p>
           <button className="primary" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        <p>Or continue with your Google account.</p>
+        <GoogleSignIn
+          busy={busy}
+          onCredential={async (credential) => {
+            if (busy) return;
+            if (
+              !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
+                organisationId,
+              )
+            ) {
+              setError(
+                "Enter the organisation ID provided by your administrator before signing in with Google.",
+              );
+              return;
+            }
+            setBusy(true);
+            setError("");
+            try {
+              const response = await fetch("/auth/google", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ credential, organisationId }),
+                signal: AbortSignal.timeout(10000),
+              });
+              if (
+                !response.ok ||
+                !sessionSchema.safeParse(await response.json()).success
+              )
+                throw new Error(
+                  "Google sign-in failed. Your administrator must grant this Google email access to the organisation.",
+                );
+              authenticateSession();
+              setAuthenticated(true);
+            } catch (error) {
+              setError(
+                error instanceof Error
+                  ? error.message
+                  : "Google sign-in failed.",
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
         <button
           type="button"
           disabled={busy}
@@ -146,7 +207,7 @@ function OwnedSessionGate({
     );
   return (
     <Authenticated.Provider value={true}>
-      {sessionEnabled && (
+      {sessionRequired && (
         <div className="session-actions">
           <button
             disabled={busy}

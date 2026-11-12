@@ -2733,3 +2733,15 @@ tfoot {
     gap: 10px;
   }
 }
+
+.welcome-entry > .panel {
+  width: 100%;
+  margin: 0;
+}
+.welcome-entry .google-sign-in {
+  margin: 16px 0;
+  max-width: 100%;
+}
+.google-sign-in p {
+  font-size: 13px;
+}

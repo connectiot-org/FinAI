@@ -4,7 +4,7 @@ const state = async (page: Page) =>
     JSON.parse(localStorage.getItem("finai-demo-v1") || "null"),
   );
 async function enter(page: Page) {
-  await page.goto("/welcome");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
@@ -350,7 +350,7 @@ test("roles disable mutations and reset restores consistent seed", async ({
 test("invalid durable state falls back safely and error retry is functional", async ({
   page,
 }) => {
-  await page.goto("/welcome");
+  await page.goto("/sample");
   await page.evaluate(() =>
     localStorage.setItem(
       "finai-demo-v1",

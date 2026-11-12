@@ -243,7 +243,7 @@ async function openState(
   page: import("@playwright/test").Page,
   state = seed(),
 ) {
-  await page.goto("/welcome");
+  await page.goto("/sample");
   await page.evaluate(
     (value) => localStorage.setItem("finai-demo-v1", JSON.stringify(value)),
     state,

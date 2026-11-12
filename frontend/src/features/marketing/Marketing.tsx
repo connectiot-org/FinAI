@@ -283,8 +283,8 @@ export function MarketingLayout() {
                     to: "/about",
                   },
                   {
-                    label: "Public demo",
-                    description: "No credentials required",
+                    label: "Sign in",
+                    description: "Email/password or Google",
                     to: "/welcome",
                   },
                   {
@@ -302,7 +302,7 @@ export function MarketingLayout() {
             Supplier invoices
           </Link>
           <Link className="marketing-button dark small" to="/welcome">
-            Explore the demo
+            Sign in
           </Link>
           <button
             className="marketing-mobile-toggle"
@@ -340,7 +340,7 @@ export function MarketingLayout() {
             <Link to="/resources">Workflow guides</Link>
             <Link to="/resources#interactive-preview">Interactive preview</Link>
             <Link to="/resources#questions">Questions answered</Link>
-            <Link to="/welcome">Public demo</Link>
+            <Link to="/sample">Public demo</Link>
           </div>
           <div>
             <h3>COMPANY</h3>
@@ -428,7 +428,7 @@ export function MarketingLayout() {
             <ArrowRight size={15} />
           </Link>
           <Link to="/welcome">
-            Enter demo workspace
+            Sign in
             <ArrowRight size={15} />
           </Link>
         </nav>
@@ -442,7 +442,7 @@ function CallToAction() {
       <h2>Get one step closer to a clearer close</h2>
       <p>Connected records. Reviewable workflows. A bigger picture.</p>
       <Link className="marketing-button light" to="/welcome">
-        Explore the demo
+        Sign in
         <ArrowRight size={15} />
       </Link>
     </section>
@@ -600,7 +600,7 @@ export function AboutPage() {
           A connected workspace for understanding how financial records,
           decisions, and workflows fit together.
         </p>
-        <Link className="marketing-button dark" to="/welcome">
+        <Link className="marketing-button dark" to="/sample">
           See the idea in action
           <ArrowRight size={15} />
         </Link>

@@ -39,7 +39,7 @@ for (const [mode, port, expected] of [
       await page.goto(origin + "/workspace");
       await expect(page.getByRole("heading",{name:"Workspace configuration required"})).toBeVisible();
       expect(requests).toEqual([]);
-      await page.goto(origin + "/welcome");
+      await page.goto(origin + "/sample");
       await page.getByRole("button", { name: "Enter workspace" }).click();
       const card = page.locator(".outstanding-customers");
       await expect(card.getByRole("alert")).toContainText(expected);

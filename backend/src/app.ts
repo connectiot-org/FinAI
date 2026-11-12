@@ -226,7 +226,7 @@ export async function createApplication(
     options.env || process.env,
   );
   const db = app.get(Database);
-  const auth = new Auth(db);
+  const auth = new Auth(db, options.env || process.env);
   const server = app.getHttpServer();
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
@@ -472,6 +472,19 @@ export async function createApplication(
           await db.$queryRaw`SELECT 1 FROM "LedgerSnapshot" LIMIT 1`;
           await db.$queryRaw`SELECT 1 FROM "ReceivableImportStage" LIMIT 1`;
           res.json({ status: "ready", mode: "session" });
+          return;
+        }
+        if (req.path === "/auth/google/challenge" && req.method === "POST") {
+          await auth.limit(
+            `google-challenge:${req.headers["x-finai-client-ip"] || "unknown"}`,
+            60,
+            900,
+          );
+          auth.googleChallenge(res);
+          return;
+        }
+        if (req.path === "/auth/google" && req.method === "POST") {
+          await auth.googleLogin(req, res);
           return;
         }
         if (req.path === "/auth/login" && req.method === "POST") {

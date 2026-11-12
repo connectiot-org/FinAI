@@ -115,7 +115,7 @@ test("private entry has one gate, no synthetic body/requests before login; publi
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Clearer books",
   );
-  await page.goto("/welcome");
+  await page.goto("/sample");
   await expect(
     page.getByRole("button", { name: "Enter workspace" }),
   ).toBeVisible();

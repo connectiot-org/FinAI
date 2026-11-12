@@ -47,7 +47,7 @@ test("public navigation, product pages and demo entry work on direct refresh", a
     await expect(page.locator("main h1")).toBeVisible();
   }
   await page.getByRole("link", { name: "See the idea in action" }).click();
-  await expect(page).toHaveURL("/welcome");
+  await expect(page).toHaveURL("/sample");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page.locator("main h1")).toHaveText("Overview");
   expect(errors).toEqual([]);
@@ -334,9 +334,13 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
   await expect(page).toHaveTitle("Accounts payable · FinAI");
   await page
     .getByRole("banner")
-    .getByRole("link", { name: "Explore the demo", exact: true })
+    .getByRole("link", { name: "Sign in", exact: true })
     .click();
   await expect(page).toHaveTitle("Welcome · FinAI");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Explore sample workspace" }).click();
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page).toHaveTitle("Overview · FinAI");
 });
@@ -430,7 +434,7 @@ test("supplier invoices are discoverable from homepage, welcome screen and app n
     }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/welcome");
+  await page.goto("/sample");
   const entry = page.getByRole("link", {
     name: "Open supplier invoices",
     exact: true,
@@ -457,4 +461,94 @@ test("supplier invoices are discoverable from homepage, welcome screen and app n
       exact: true,
     }),
   ).toBeVisible();
+});
+
+test("welcome offers email/password and an honest unconfigured Google option", async ({
+  page,
+}) => {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  await page.goto("/welcome");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Google sign-in is not configured yet."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enter workspace" }),
+  ).toHaveCount(0);
+  await page.route("**/auth/login", (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      username: "member@gmail.com",
+      password: "FinAI-password",
+      organisationId: "11111111-1111-4111-8111-111111111111",
+    });
+    return route.fulfill({ json: { csrfToken: "a".repeat(64) } });
+  });
+  await page.getByLabel("Email or account name").fill("member@gmail.com");
+  await page
+    .getByLabel("Organisation ID")
+    .fill("11111111-1111-4111-8111-111111111111");
+  await page.getByLabel("Password", { exact: true }).fill("FinAI-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL("/workspace/overview");
+  expect(
+    await page.evaluate(() => localStorage.getItem("finai-demo-v1")),
+  ).toBeNull();
+});
+
+test("welcome Google selection uses provider credential and organisation, with visible denied access", async ({
+  page,
+}) => {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        clientId: "synthetic.apps.googleusercontent.com",
+        nonce: "a".repeat(64),
+      },
+    }),
+  );
+  await page.route("https://accounts.google.com/gsi/client", (route) =>
+    route.fulfill({
+      contentType: "application/javascript",
+      body: `window.google={accounts:{id:{initialize(options){window.googleTest=options},renderButton(el){const button=document.createElement('button');button.textContent='Continue with Google';button.onclick=()=>window.googleTest.callback({credential:'synthetic-google-proof'});el.appendChild(button)},cancel(){}}}};`,
+    }),
+  );
+  await page.goto("/welcome");
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Enter the organisation ID",
+  );
+  await page
+    .getByLabel("Organisation ID")
+    .fill("11111111-1111-4111-8111-111111111111");
+  await page.route("**/auth/google", (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      credential: "synthetic-google-proof",
+      organisationId: "11111111-1111-4111-8111-111111111111",
+    });
+    return route.fulfill({ status: 401, json: { code: "UNAUTHENTICATED" } });
+  });
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Your administrator must grant",
+  );
+  await expect(page).toHaveURL("/welcome");
+  await page.route("**/auth/google", (route) =>
+    route.fulfill({ json: { csrfToken: "a".repeat(64) } }),
+  );
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await expect(page).toHaveURL("/workspace/overview");
 });

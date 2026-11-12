@@ -1,8 +1,14 @@
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import {
+  randomBytes,
+  createHash,
+  createHmac,
+  timingSafeEqual,
+} from "node:crypto";
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import * as argon2 from "argon2";
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { Database } from "./database";
+import type { PrismaClient } from "@prisma/client";
 import { ApiError } from "./errors";
 import { parse, uuid } from "./validation";
 export const digest = (value: string) =>
@@ -21,8 +27,122 @@ export const passwordOptions = {
 const cookieName = "__Host-finai_session";
 const denied = () =>
   new ApiError(401, "UNAUTHENTICATED", "Sign-in failed or session expired.");
+const googleKeys = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/oauth2/v3/certs"),
+  { timeoutDuration: 5000 },
+);
+export async function googleEmail(
+  credential: string,
+  clientId: string,
+  nonce: string,
+  keys: JWTVerifyGetKey = googleKeys,
+) {
+  const { payload } = await jwtVerify(credential, keys, {
+    algorithms: ["RS256"],
+    audience: clientId,
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    requiredClaims: ["sub", "iat", "exp", "email", "nonce"],
+    maxTokenAge: "10m",
+  });
+  // Google must be authoritative for the email, not just have verified it once.
+  if (
+    payload.email_verified !== true ||
+    typeof payload.email !== "string" ||
+    typeof payload.sub !== "string" ||
+    !payload.sub ||
+    payload.nonce !== nonce ||
+    payload.aud !== clientId ||
+    (payload.azp !== undefined && payload.azp !== clientId) ||
+    (!payload.email.toLowerCase().endsWith("@gmail.com") &&
+      (typeof payload.hd !== "string" || !payload.hd))
+  )
+    throw denied();
+  return payload.email.toLowerCase();
+}
+const googleCookie = "__Host-finai_google";
 export class Auth {
-  constructor(private db: Database) {}
+  constructor(
+    private db: PrismaClient,
+    private env: NodeJS.ProcessEnv = process.env,
+  ) {}
+  googleChallenge(res: Response) {
+    const clientId = this.env.GOOGLE_CLIENT_ID;
+    if (!clientId || (this.env.GOOGLE_NONCE_SECRET || "").length < 32) {
+      res.json({ enabled: false });
+      return;
+    }
+    const nonce = randomBytes(32).toString("hex");
+    const proof = `${nonce}.${Date.now()}`;
+    const signature = createHmac("sha256", this.env.GOOGLE_NONCE_SECRET!)
+      .update(proof)
+      .digest("hex");
+    res.setHeader(
+      "Set-Cookie",
+      `${googleCookie}=${proof}.${signature}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=600`,
+    );
+    res.json({ enabled: true, clientId, nonce });
+  }
+  async googleLogin(req: Request, res: Response) {
+    const input = parse(
+      z.strictObject({
+        credential: z.string().min(1).max(12000),
+        organisationId: uuid,
+      }),
+      req.body,
+    );
+    await this.limit(
+      `login-ip:${req.headers["x-finai-client-ip"] || "unknown"}`,
+      30,
+      900,
+    );
+    if (
+      !this.env.GOOGLE_CLIENT_ID ||
+      (this.env.GOOGLE_NONCE_SECRET || "").length < 32
+    )
+      throw new ApiError(
+        503,
+        "UNAVAILABLE",
+        "Google sign-in is not configured.",
+      );
+    const value =
+      req.headers.cookie
+        ?.split(";")
+        .map((v) => v.trim())
+        .find((v) => v.startsWith(googleCookie + "="))
+        ?.slice(googleCookie.length + 1) || "";
+    const [nonce, timestamp, signature] = value.split(".");
+    const age = Date.now() - Number(timestamp);
+    if (
+      !/^[a-f0-9]{64}$/.test(nonce || "") ||
+      !signature ||
+      !Number.isFinite(age) ||
+      age < 0 ||
+      age > 600000 ||
+      !equal(
+        signature,
+        createHmac("sha256", this.env.GOOGLE_NONCE_SECRET!)
+          .update(`${nonce}.${timestamp}`)
+          .digest("hex"),
+      )
+    )
+      throw denied();
+    let email: string;
+    try {
+      email = await googleEmail(
+        input.credential,
+        this.env.GOOGLE_CLIENT_ID,
+        nonce,
+      );
+    } catch {
+      throw denied();
+    }
+    await this.limit(`login-account:${email}`, 10, 900);
+    const account = await this.db.account.findUnique({
+      where: { username: email },
+    });
+    if (!account || account.disabled) throw denied();
+    await this.issueSession(req, res, account, input.organisationId, true);
+  }
   async limit(key: string, maximum: number, seconds: number) {
     const hash = digest(key),
       window = new Date(
@@ -97,10 +217,19 @@ export class Auth {
       ? await argon2.verify(account.passwordHash, input.password)
       : (await argon2.hash(input.password, passwordOptions), false);
     if (!valid || !account || account.disabled) throw denied();
+    await this.issueSession(req, res, account, input.organisationId);
+  }
+  private async issueSession(
+    req: Request,
+    res: Response,
+    account: { userId: string; passwordHash: string },
+    organisationId: string,
+    clearGoogle = false,
+  ) {
     const member = await this.db.membership.findUnique({
       where: {
         organisationId_userId: {
-          organisationId: input.organisationId,
+          organisationId: organisationId,
           userId: account.userId,
         },
       },
@@ -128,13 +257,18 @@ export class Auth {
         data: {
           tokenHash: digest(token),
           userId: account.userId,
-          organisationId: input.organisationId,
+          organisationId: organisationId,
           csrfHash: digest(csrf),
           expiresAt: new Date(Date.now() + 8 * 3600000),
         },
       });
     });
     this.cookie(res, token);
+    if (clearGoogle)
+      res.setHeader("Set-Cookie", [
+        res.getHeader("Set-Cookie") as string,
+        `${googleCookie}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+      ]);
     res.json({ csrfToken: csrf });
   }
   csrf(req: Request, session: { csrfHash: string }) {

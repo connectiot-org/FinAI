@@ -81,7 +81,7 @@ export function createEmbeddedHandler(options: {
     const incoming = new URL(req.url || "/", origin);
     const route = incoming.searchParams.get("route") || "";
     if (
-      !/^(api\/v1(?:\/[a-zA-Z0-9-]+)*|auth\/(login|logout|session))$/.test(
+      !/^(api\/v1(?:\/[a-zA-Z0-9-]+)*|auth\/(login|logout|session|google(?:\/challenge)?))$/.test(
         route,
       )
     )

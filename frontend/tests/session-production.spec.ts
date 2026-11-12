@@ -39,7 +39,21 @@ test("HTTPS production sign-in, copy, refresh, CSRF denial, cookie flags and log
   await expect(
     page.getByRole("heading", { name: "Sign in to your checklist" }),
   ).toBeVisible();
-  await page.getByLabel("Account name").fill("browser-test");
+  const googleChallenge = await page.request.post(
+    `${info.origin}/auth/google/challenge`,
+    { data: {}, headers: { Origin: info.origin } },
+  );
+  expect(googleChallenge.status()).toBe(200);
+  expect(await googleChallenge.json()).toEqual({ enabled: false });
+  const unavailableGoogle = await page.request.post(
+    `${info.origin}/auth/google`,
+    {
+      data: { credential: "synthetic", organisationId: info.organisationId },
+      headers: { Origin: info.origin },
+    },
+  );
+  expect(unavailableGoogle.status()).toBe(503);
+  await page.getByLabel("Email or account name").fill("browser-test");
   await page.getByLabel("Organisation ID").fill(info.organisationId);
   await page
     .getByLabel("Password", { exact: true })

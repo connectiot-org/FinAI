@@ -670,7 +670,7 @@ export function ReferenceHome() {
                   follow the numbers, and bring your close together.
                 </p>
                 <Link to="/welcome" className="reference-button">
-                  Explore the demo
+                  Sign in
                 </Link>
               </div>
             </div>
@@ -890,7 +890,7 @@ export function ReferenceHome() {
           <p>Connected books. Reviewable workflows. Numbers you can trace.</p>
           <div>
             <Link className="reference-button is-white" to="/welcome">
-              Explore the demo
+              Sign in
             </Link>
             <button
               className="reference-button is-outline"

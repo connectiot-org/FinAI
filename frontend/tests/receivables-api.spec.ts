@@ -45,7 +45,7 @@ async function setup(page: Page) {
     const q = new URL(r.request().url()).searchParams;
     return r.fulfill({ json: ready(q.get("entityId")!, q.get("period")!) });
   });
-  await page.goto("/welcome");
+  await page.goto("/sample");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(card(page).locator("dd")).toHaveText(["$750.00", "1", "1"]);
 }

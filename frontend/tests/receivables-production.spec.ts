@@ -57,7 +57,7 @@ test("built HTTPS frontend -> actual proxy/session backend/DB: persisted imports
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(info.origin + "/welcome");
+  await page.goto(info.origin + "/sample");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   const card = page.getByRole("region", {
     name: "Outstanding by customer",

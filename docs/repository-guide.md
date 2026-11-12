@@ -121,7 +121,8 @@ Each row below describes one exact file. Test source describes intended verifica
 
 | File | Purpose |
 | --- | --- |
-| `frontend/src/components/SessionGate.tsx` | Owns validated sign-in/session checking and logout around private screens; nested consumers inherit the existing gate. |
+| `frontend/src/components/GoogleSignIn.tsx` | Loads the official Google Identity Services button with a server-bound nonce; unavailable providers remain explicit. |
+| `frontend/src/components/SessionGate.tsx` | Owns password/Google sign-in, session checking and logout around private screens; nested consumers inherit the existing gate. |
 | `frontend/src/components/shared/BrandMark.tsx` | Reusable original FinAI mark used across public pages, welcome, previews and workspace headers. |
 | `frontend/src/components/shared/Common.tsx` | Shared demo page headers, tabs, periods, metric cells, back/missing states and bounded document/help presentation. |
 | `frontend/src/components/shared/FinanceSnapshot.tsx` | Shows the original demo’s scoped posted-ledger metrics and approved close progress without implying private live financial data. |
@@ -500,6 +501,7 @@ Prisma applies the eight committed migration folders in chronological order: che
 | File | Responsibility |
 | --- | --- |
 | `backend/test/assistant.test.ts` | Backend regressions for exact ledger imports/calculations, private Assistant grounding/history/budget/provider/model selection, retention and authorization races. |
+| `backend/test/google-auth.test.ts` | Verifies Google JWT signature, claims, issuer/audience/nonce and signed browser-challenge rejection without live Google credentials. |
 | `backend/test/checklist.test.ts` | Real database/API checklist/session/subscription regressions, including isolation, validation, concurrency, copy/retry, CSRF and persistence. |
 | `backend/test/config.test.ts` | Configuration acceptance/rejection boundaries for bounded local runtime settings. |
 | `backend/test/invoice-assistant.test.ts` | Supplier-invoice Assistant service regressions for authorized facts, eligible proposals, confirmed transitions/export, stable retries and revocation before publication/history. |

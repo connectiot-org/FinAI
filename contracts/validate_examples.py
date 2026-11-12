@@ -26,9 +26,18 @@ s = doc['components']['schemas']
 validator(s['ChecklistTaskList']).validate({'items': [], 'summary': {'total': 0, 'completed': 0, 'percent': 0}})
 for value in [{'completed':'true','expectedVersion':1}, {'completed':True,'expectedVersion':0}, {'completed':True,'expectedVersion':1,'role':'Admin'}]:
     assert list(validator(s['SetChecklistCompletion']).iter_errors(value))
-assert set(doc['paths']) == {'/api/v1/entities', '/api/v1/checklist-tasks', '/api/v1/checklist-tasks/{id}', '/api/v1/checklist-tasks/copy-previous-month', '/auth/login', '/auth/session', '/auth/logout'}
+assert set(doc['paths']) == {'/api/v1/entities', '/api/v1/checklist-tasks', '/api/v1/checklist-tasks/{id}', '/api/v1/checklist-tasks/copy-previous-month', '/auth/login', '/auth/session', '/auth/logout', '/auth/google', '/auth/google/challenge'}
 assert 'delete' in doc['paths']['/api/v1/checklist-tasks/{id}']
 print(f'PASS: {count} examples, empty summary, rejected patch payloads, frozen routes')
 
 for value in [{"entityId":"bad","month":"2026-10"},{"entityId":"22222222-2222-4222-8222-222222222222","month":"0001-01"},{"entityId":"22222222-2222-4222-8222-222222222222","month":"2026-10","title":"bad"}]:
     assert list(validator(s["CopyPreviousMonth"]).iter_errors(value))
+
+challenge = validator(doc['paths']['/auth/google/challenge']['post']['responses']['200']['content']['application/json']['schema'])
+challenge.validate({'enabled': False})
+challenge.validate({'enabled': True, 'clientId': 'synthetic.apps.googleusercontent.com', 'nonce': 'a' * 64})
+assert list(challenge.iter_errors({'enabled': True}))
+google = validator(doc['paths']['/auth/google']['post']['requestBody']['content']['application/json']['schema'])
+google.validate({'credential': 'synthetic-proof', 'organisationId': '11111111-1111-4111-8111-111111111111'})
+assert list(google.iter_errors({'credential': 'synthetic-proof', 'organisationId': 'bad', 'role': 'Admin'}))
+print('PASS: Google challenge and credential request schemas')

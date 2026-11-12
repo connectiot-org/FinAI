@@ -811,6 +811,29 @@ test("production sessions: generic login, proxy, CSRF, permissions, expiry, logo
     ).r.status,
     403,
   );
+  const googleDisabled = await call("/auth/google/challenge", "POST", {});
+  assert.equal(googleDisabled.r.status, 200);
+  assert.deepEqual(googleDisabled.data, { enabled: false });
+  assert.equal(
+    (
+      await call("/auth/google", "POST", {
+        credential: "untrusted",
+        organisationId: LOCAL.organisationId,
+      })
+    ).r.status,
+    503,
+  );
+  assert.equal(
+    (
+      await call(
+        "/auth/google/challenge",
+        "POST",
+        {},
+        { Origin: "https://evil.example" },
+      )
+    ).r.status,
+    403,
+  );
   const login = async (password = "synthetic-test-password") =>
     call("/auth/login", "POST", {
       username: "synthetic",
@@ -1342,4 +1365,99 @@ test("subscription timezone fallback and separate inclusive renewal/deadline ind
     "UTC",
   );
   await configured.close();
+});
+
+test("Google login establishes the ordinary persisted session only for active provisioned members", async () => {
+  const { Auth, digest } = await import("../src/auth");
+  const { generateKeyPair, SignJWT, exportJWK } = await import("jose");
+  const { privateKey, publicKey } = await generateKeyPair("RS256");
+  const jwk = await exportJWK(publicKey);
+  const clientId = "synthetic.apps.googleusercontent.com";
+  const username = `google-${randomUUID()}@gmail.com`,
+    userId = randomUUID();
+  await db.user.create({ data: { id: userId } });
+  await db.account.create({
+    data: { userId, username, passwordHash: "not-a-password-proof" },
+  });
+  await db.membership.create({
+    data: { organisationId: LOCAL.organisationId, userId },
+  });
+  const auth = new Auth(db, {
+    GOOGLE_CLIENT_ID: clientId,
+    GOOGLE_NONCE_SECRET: "synthetic-shared-nonce-secret-32-bytes",
+    API_PROXY_TOKEN: randomUUID() + randomUUID(),
+  });
+  const headers = new Map<string, unknown>();
+  let result: any;
+  const res = {
+    setHeader: (key: string, value: unknown) => headers.set(key, value),
+    getHeader: (key: string) => headers.get(key),
+    json: (value: unknown) => {
+      result = value;
+    },
+  } as unknown as import("express").Response;
+  auth.googleChallenge(res);
+  const challenge = result as { nonce: string };
+  const cookie = (headers.get("Set-Cookie") as string).split(";")[0];
+  const credential = await new SignJWT({
+    sub: "synthetic-google-subject",
+    email: username,
+    email_verified: true,
+    nonce: challenge.nonce,
+  })
+    .setProtectedHeader({ alg: "RS256", kid: "test" })
+    .setIssuer("https://accounts.google.com")
+    .setAudience(clientId)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "https://www.googleapis.com/oauth2/v3/certs")
+      return new Response(
+        JSON.stringify({ keys: [{ ...jwk, kid: "test", alg: "RS256" }] }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    return originalFetch(input, init);
+  };
+  try {
+    const req = {
+      headers: { cookie },
+      body: { credential, organisationId: LOCAL.organisationId },
+    } as import("express").Request;
+    // A separate serverless worker has a different private ingress proof.
+    const peer = new Auth(db, {
+      GOOGLE_CLIENT_ID: clientId,
+      GOOGLE_NONCE_SECRET: "synthetic-shared-nonce-secret-32-bytes",
+      API_PROXY_TOKEN: randomUUID(),
+    });
+    await peer.googleLogin(req, res);
+    assert.match(result.csrfToken, /^[a-f0-9]{64}$/);
+    const cookies = headers.get("Set-Cookie") as string[];
+    assert.ok(
+      cookies.some(
+        (v) => v.startsWith("__Host-finai_google=;") && v.includes("Max-Age=0"),
+      ),
+    );
+    const token = cookies[0].split(";")[0].split("=")[1];
+    const session = await db.session.findUniqueOrThrow({
+      where: { tokenHash: digest(token) },
+    });
+    assert.equal(session.userId, userId);
+    assert.equal(session.organisationId, LOCAL.organisationId);
+    assert.equal(session.csrfHash, digest(result.csrfToken));
+    await db.account.update({ where: { userId }, data: { disabled: true } });
+    await assert.rejects(auth.googleLogin(req, res), /Sign-in failed/);
+    await db.account.update({ where: { userId }, data: { disabled: false } });
+    await db.membership.update({
+      where: {
+        organisationId_userId: { organisationId: LOCAL.organisationId, userId },
+      },
+      data: { active: false },
+    });
+    await assert.rejects(auth.googleLogin(req, res), /Sign-in failed/);
+    assert.equal(await db.session.count({ where: { userId } }), 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -48,7 +48,7 @@ test("public navigation, product pages and demo entry work on direct refresh", a
   }
   await page.getByRole("link", { name: "See the idea in action" }).click();
   await expect(page).toHaveURL("/welcome");
-  await page.getByRole("button", { name: "Enter demo workspace" }).click();
+  await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page.locator("main h1")).toHaveText("Overview");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
@@ -337,7 +337,7 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
     .getByRole("link", { name: "Explore the demo", exact: true })
     .click();
   await expect(page).toHaveTitle("Welcome · FinAI");
-  await page.getByRole("button", { name: "Enter demo workspace" }).click();
+  await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page).toHaveTitle("Overview · FinAI");
 });
 

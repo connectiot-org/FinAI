@@ -117,7 +117,7 @@ test("private entry has one gate, no synthetic body/requests before login; publi
   );
   await page.goto("/welcome");
   await expect(
-    page.getByRole("button", { name: "Enter demo workspace" }),
+    page.getByRole("button", { name: "Enter workspace" }),
   ).toBeVisible();
 });
 test("invalid session/login JSON or service failure never authenticates", async ({

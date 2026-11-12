@@ -5,7 +5,7 @@ const state = async (page: Page) =>
   );
 async function enter(page: Page) {
   await page.goto("/welcome");
-  await page.getByRole("button", { name: "Enter demo workspace" }).click();
+  await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();

@@ -46,7 +46,7 @@ async function setup(page: Page) {
     return r.fulfill({ json: ready(q.get("entityId")!, q.get("period")!) });
   });
   await page.goto("/welcome");
-  await page.getByRole("button", { name: "Enter demo workspace" }).click();
+  await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(card(page).locator("dd")).toHaveText(["$750.00", "1", "1"]);
 }
 test("API discovers UUID scope independently, source labels, no demo links/storage, keyboard and mobile", async ({

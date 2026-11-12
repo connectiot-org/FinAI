@@ -75,7 +75,7 @@ function Welcome() {
       .querySelector('meta[name="description"]')
       ?.setAttribute(
         "content",
-        "Enter the FinAI accounting demo with fictional Northstar Analytics records. No sign-in or credentials required.",
+        "Explore the FinAI accounting workspace with fictional Northstar Analytics records. No sign-in or credentials required.",
       );
   }, []);
   const s = useDemo(),
@@ -114,10 +114,9 @@ function Welcome() {
             </div>
           </div>
         </div>
-        <p>Original FinAI demo · Synthetic Northstar Analytics data</p>
+        <p>Synthetic Northstar Analytics data</p>
       </div>
       <div className="welcome-entry">
-        <span className="tag">Demo workspace</span>
         <h2>Make yourself at home.</h2>
         <p>
           Explore Northstar Analytics with six months of connected accounting
@@ -134,7 +133,7 @@ function Welcome() {
           }}
         >
           <label className="field">
-            <span>Your demo name (optional)</span>
+            <span>Your name (optional)</span>
             <input
               name="profile"
               placeholder="Alex Morgan"
@@ -142,7 +141,7 @@ function Welcome() {
             />
           </label>
           <button className="primary" type="submit">
-            Enter demo workspace
+            Enter workspace
             <ArrowRight size={16} />
           </button>
         </form>

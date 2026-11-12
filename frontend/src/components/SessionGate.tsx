@@ -10,6 +10,8 @@ import { Field } from "./ui";
 import { sessionEnabled } from "../lib/api";
 import {
   readSession,
+  signInFailure,
+  paidAccessMessage,
   sessionSchema,
   logoutSchema,
   authenticateSession,
@@ -61,7 +63,7 @@ function OwnedSessionGate({
       .catch((e) => {
         if (active) {
           setAuthenticated(false);
-          if (e?.status !== 401)
+          if (e?.status !== 401 || e?.code === "PAID_ACCESS_REQUIRED")
             setError(
               e instanceof Error ? e.message : "Cannot reach sign-in service.",
             );
@@ -80,7 +82,10 @@ function OwnedSessionGate({
     return (
       <section className="panel">
         <Heading>{title}</Heading>
-        <p>Accounts are provided by your administrator.</p>
+        <p>
+          For paid customers with active access. Your administrator provides
+          your account after payment is confirmed.
+        </p>
         {error && <p role="alert">{error}</p>}
         <form
           onSubmit={async (event) => {
@@ -102,10 +107,7 @@ function OwnedSessionGate({
                 }),
                 signal: AbortSignal.timeout(10000),
               });
-              if (!r.ok)
-                throw new Error(
-                  "Sign-in failed. Check your details or try again later.",
-                );
+              if (!r.ok) throw new Error(await signInFailure(r));
               if (!sessionSchema.safeParse(await r.json()).success)
                 throw new Error(
                   "Sign-in service returned an invalid response.",
@@ -176,12 +178,17 @@ function OwnedSessionGate({
                 body: JSON.stringify({ credential, organisationId }),
                 signal: AbortSignal.timeout(10000),
               });
-              if (
-                !response.ok ||
-                !sessionSchema.safeParse(await response.json()).success
-              )
+              if (!response.ok) {
+                const failure = await signInFailure(response);
                 throw new Error(
-                  "Google sign-in failed. Your administrator must grant this Google email access to the organisation.",
+                  failure === paidAccessMessage
+                    ? failure
+                    : "Google sign-in failed. Your administrator must grant this Google email access to the organisation.",
+                );
+              }
+              if (!sessionSchema.safeParse(await response.json()).success)
+                throw new Error(
+                  "Sign-in service returned an invalid response.",
                 );
               authenticateSession();
               setAuthenticated(true);

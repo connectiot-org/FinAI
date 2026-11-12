@@ -153,3 +153,54 @@ test("HTTPS production sign-in, copy, refresh, CSRF denial, cookie flags and log
     page.getByRole("heading", { name: "Sign in to FinAI" }),
   ).toBeVisible();
 });
+
+async function paidCommand(command: string) {
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      fixture.off("message", receive);
+      reject(new Error("Paid fixture command timed out"));
+    }, 10000);
+    function receive(message: { command?: string; ok?: boolean }) {
+      if (message.command !== command) return;
+      clearTimeout(timeout);
+      fixture.off("message", receive);
+      if (message.ok) resolve();
+      else reject(new Error("Paid fixture command failed"));
+    }
+    fixture.on("message", receive);
+    fixture.send(command);
+  });
+}
+
+test("HTTPS paid-only sign-in rejects unpaid accounts and expired existing sessions", async ({
+  page,
+}) => {
+  await paidCommand("paidOff");
+  await page.goto(`${info.origin}/close/checklist?month=2060-10`);
+  await page.getByLabel("Email or account name").fill("browser-test");
+  await page.getByLabel("Organisation ID").fill(info.organisationId);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-browser-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "An active paid subscription is required",
+  );
+  await expect(
+    page.getByText("Connected backend", { exact: true }),
+  ).toHaveCount(0);
+  await paidCommand("paidOn");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByText("Connected backend", { exact: true }),
+  ).toBeVisible();
+  await paidCommand("paidOff");
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText(
+    "An active paid subscription is required",
+  );
+  await expect(
+    page.getByText("Connected backend", { exact: true }),
+  ).toHaveCount(0);
+  await paidCommand("paidOn");
+});

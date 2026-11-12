@@ -1,6 +1,6 @@
-# Monthly checklist contract 1.1.0
+# Monthly checklist contract 1.2.0
 
-OpenAPI **3.1.1**, contract **1.1.0**, URI `/api/v1`. Reconciled with supplied Prompt 02, replacing 0.1.0-proposal.1 before implementation. Coordinator owns shared schema/examples. Application roles propose deltas before edits; no silent drift. Contract 1.1.0 adds administrative session authentication; target infrastructure and public-release verification remain gated. Local/test identity is still server-owned, explicit and loopback-only.
+OpenAPI **3.1.1**, contract **1.2.0**, URI `/api/v1`. Reconciled with supplied Prompt 02, replacing 0.1.0-proposal.1 before implementation. Coordinator owns shared schema/examples. Application roles propose deltas before edits; no silent drift. Contract 1.2.0 requires active paid customer access in addition to administrative session authentication; target infrastructure and public-release verification remain gated. Local/test identity is still server-owned, explicit and loopback-only.
 
 | Operation | Input | Response |
 | --- | --- | --- |
@@ -85,3 +85,7 @@ Public model test chat is a separate stateless boundary: [public-chat.md](public
 ## Optional Google sign-in (compatible authentication extension)
 
 `POST /auth/google/challenge` returns `{enabled:false}` when unconfigured, otherwise `{enabled:true,clientId,nonce}` plus a signed, ten-minute Secure/HttpOnly browser cookie. `POST /auth/google` accepts `{credential,organisationId}` and returns the existing `SessionResult`. Both use the existing exact-origin/JSON ingress and shared database rate limits. The backend verifies RS256 signature against Google's fixed HTTPS JWKS, issuer, exact audience, optional authorized party, issued-at/expiration, verified authoritative Gmail/Workspace email and nonce. No arbitrary JWKS URL is accepted. Only an existing enabled account whose username matches that email, with an active selected organisation membership, may receive the ordinary eight-hour session. This is not public signup or a new grant system. Cookie rotation, CSRF, logout/revocation and per-request permissions remain unchanged. Unverified/unprovisioned/disabled/foreign accounts fail generically. Existing username/password login remains compatible. No migrations are needed.
+
+## Paid customer access
+
+Authenticated company workspaces require an organisation `paidAccessUntil` later than the server's current time. Default is no paid access; the new additive migration does not mark existing customers as paid. An enabled account and active membership are still required. Password and Google login return 403 `PAID_ACCESS_REQUIRED` after identity proof when paid access is absent/expired; existing session/API checks return 401 with the same code and no private records. Ordinary grants and CSRF still apply. Public samples remain independent. A trusted database operator confirms payment and uses the audited, dry-run-first customer-access tool; company administrators cannot mark themselves paid through the public API. Revocation/expiry blocks subsequent requests; already-authorized in-flight work is not cancelled. No payment processor or automatic charging is added.

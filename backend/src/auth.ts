@@ -192,6 +192,7 @@ export class Auth {
       },
     });
     if (!account || account.disabled || !member?.active) throw denied();
+    await this.paidAccess(this.db, session.organisationId, 401);
     return session;
   }
   async login(req: Request, res: Response) {
@@ -218,6 +219,25 @@ export class Auth {
       : (await argon2.hash(input.password, passwordOptions), false);
     if (!valid || !account || account.disabled) throw denied();
     await this.issueSession(req, res, account, input.organisationId);
+  }
+  private async paidAccess(
+    db: Pick<PrismaClient, "organisation">,
+    organisationId: string,
+    status: 401 | 403,
+  ) {
+    const organisation = await db.organisation.findUnique({
+      where: { id: organisationId },
+      select: { paidAccessUntil: true },
+    });
+    if (
+      !organisation?.paidAccessUntil ||
+      organisation.paidAccessUntil.getTime() <= Date.now()
+    )
+      throw new ApiError(
+        status,
+        "PAID_ACCESS_REQUIRED",
+        "An active paid subscription is required. Contact your administrator to activate or renew access.",
+      );
   }
   private async issueSession(
     req: Request,
@@ -250,6 +270,9 @@ export class Auth {
         current[0].passwordHash !== account.passwordHash
       )
         throw denied();
+      // Serialize issuance against the operator's paid-access update/revocation.
+      await tx.$queryRaw`SELECT id FROM "Organisation" WHERE id=${organisationId}::uuid FOR SHARE`;
+      await this.paidAccess(tx, organisationId, 403);
       await tx.session.deleteMany({
         where: { tokenHash: digest(this.token(req)) },
       });

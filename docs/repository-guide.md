@@ -411,6 +411,7 @@ Prisma applies the eight committed migration folders in chronological order: che
 | `backend/prisma/migrations/202610250002_assistant_deletion_receipts/migration.sql` | Migration 7: adds bounded deletion receipts so stale create retries cannot resurrect deleted Assistant memory. |
 | `backend/prisma/migrations/202611030001_payables/migration.sql` | Migration 8: creates AP grants, suppliers, policies, invoices, private PDF documents, business events, operation receipts and immutable exports. |
 | `backend/prisma/migrations/migration_lock.toml` | Records PostgreSQL as the Prisma migration provider; this is migration metadata, not an application lock. |
+| `backend/prisma/migrations/202611130001_paid_customer_access/migration.sql` | Adds nullable organisation paid-access expiry, denying access until payment is explicitly confirmed. |
 | `backend/prisma/schema.prisma` | Prisma model/relationship definition for every persisted module; generates native and RHEL OpenSSL 3 client targets for local and Vercel runtimes. |
 | `backend/prisma/seed.ts` | Loopback-only development seed that ensures the synthetic local identity and two entities without replacing existing tasks; never a company-data bootstrap. |
 
@@ -418,6 +419,7 @@ Prisma applies the eight committed migration folders in chronological order: che
 
 | File | Responsibility |
 | --- | --- |
+| `backend/scripts/customer-access.mts` | Dry-run-first operator tool for activating, renewing or revoking paid customer access after payment verification. |
 | `backend/scripts/accounts.mts` | Trusted terminal tool for account creation, password reset and explicit session revocation, with hidden password input and no entity grants on creation. |
 | `backend/scripts/build-local-prisma.sh` | Optional development fallback that builds the exact pinned official Prisma engine commit with normal TLS and lockfile checks; writes a local engine selector script. |
 | `backend/scripts/cleanup.mts` | Trusted retention tool with dry-run default and explicit apply mode for expired sessions, rate limits, import stages and Assistant memory/receipts. |
@@ -435,6 +437,7 @@ Prisma applies the eight committed migration folders in chronological order: che
 | --- | --- |
 | `backend/src/app.ts` | Application composition root: Nest providers/controllers, trusted ingress, body limits, sessions/CSRF, raw uploads, health checks and listener-free bootstrap for Vercel. |
 | `backend/src/audit.ts` | Provides request-local support IDs and transaction-scoped server audits with a bounded allowlist of safe metadata. |
+| `backend/src/customer-access.ts` | Trusted operator paid-access updates, session revocation and atomic billing audit; no customer-facing grant endpoint. |
 | `backend/src/auth.ts` | Administrative account sign-in using Argon2id, secure opaque session cookies, CSRF digests, shared rate limiting and logout. |
 | `backend/src/checklist.repository.ts` | Scoped checklist persistence and permission checks, monthly capacity locks, stable create replay, optimistic edits/deletes and atomic previous-month copying. |
 | `backend/src/checklist.service.ts` | Formats checklist dates and API responses, calculates completion summaries and delegates persistent operations to the repository. |
@@ -504,6 +507,7 @@ Prisma applies the eight committed migration folders in chronological order: che
 | --- | --- |
 | `backend/test/assistant.test.ts` | Backend regressions for exact ledger imports/calculations, private Assistant grounding/history/budget/provider/model selection, retention and authorization races. |
 | `backend/test/google-auth.test.ts` | Verifies Google JWT signature, claims, issuer/audience/nonce and signed browser-challenge rejection without live Google credentials. |
+| `backend/test/paid-access.test.ts` | Real database/HTTP paid login, expiry, session enforcement, tenant scope and audited operator-control regressions. |
 | `backend/test/checklist.test.ts` | Real database/API checklist/session/subscription regressions, including isolation, validation, concurrency, copy/retry, CSRF and persistence. |
 | `backend/test/config.test.ts` | Configuration acceptance/rejection boundaries for bounded local runtime settings. |
 | `backend/test/invoice-assistant.test.ts` | Supplier-invoice Assistant service regressions for authorized facts, eligible proposals, confirmed transitions/export, stable retries and revocation before publication/history. |

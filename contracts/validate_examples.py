@@ -4,7 +4,7 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 doc = yaml.safe_load(Path(__file__).with_name('openapi.yaml').read_text())
-assert doc['openapi'] == '3.1.1' and doc['info']['version'] == '1.1.0'
+assert doc['openapi'] == '3.1.1' and doc['info']['version'] == '1.2.0'
 
 def validator(schema):
     root = {**schema, 'components': doc['components']}

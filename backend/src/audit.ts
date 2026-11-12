@@ -18,6 +18,8 @@ const keys = new Set([
   "reasonCode",
   "rowCount",
   "nextVersion",
+  "paidAccessUntil",
+  "previousPaidAccessUntil",
 ]);
 export async function recordAudit(
   tx: Prisma.TransactionClient,

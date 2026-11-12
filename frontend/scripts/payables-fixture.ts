@@ -55,7 +55,11 @@ const actors = ["reviewer", "verifier", "budget-one", "budget-two"].map(
   (username) => ({ username: "ap-" + username, userId: randomUUID() }),
 );
 await db.organisation.create({
-  data: { id: organisationId, name: "Synthetic invoice organisation" },
+  data: {
+    id: organisationId,
+    name: "Synthetic invoice organisation",
+    paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+  },
 });
 for (const [index, id] of [entityId, secondEntityId].entries())
   await db.entity.create({
@@ -103,7 +107,11 @@ const foreignOrg = randomUUID(),
   foreignSupplier = randomUUID(),
   foreignInvoice = randomUUID();
 await db.organisation.create({
-  data: { id: foreignOrg, name: "Other synthetic company" },
+  data: {
+    id: foreignOrg,
+    name: "Other synthetic company",
+    paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+  },
 });
 await db.entity.create({
   data: {

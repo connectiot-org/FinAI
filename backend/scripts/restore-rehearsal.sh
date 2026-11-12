@@ -27,7 +27,7 @@ if(migrated.status!==0)throw new Error('Rehearsal migrations failed');
 const db=new PrismaClient();
 try {
  const org=randomUUID(),entity=randomUUID(),id=randomUUID();
- await db.organisation.create({data:{id:org,name:'Restore rehearsal'}});
+ await db.organisation.create({data:{id:org,name:'Restore rehearsal',paidAccessUntil:new Date('2099-01-01T00:00:00Z')}});
  await db.entity.create({data:{id:entity,organisationId:org,name:'Synthetic entity'}});
  const source={entityId:entity,month:'2060-10',title:'Synthetic copied task'};
  await db.checklistTask.create({data:{id,organisationId:org,entityId:entity,month:new Date('2060-10-01T00:00:00Z'),title:source.title,completed:false,version:1,createDigest:createHash('sha256').update(JSON.stringify([entity,source.month,source.title])).digest('hex')}});
@@ -75,7 +75,9 @@ test "$result" = 1
 schema_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('Account','Session','RateLimit')")
 test "$schema_result" = 3
 migration_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c 'SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL')
-test "$migration_result" = 8
+test "$migration_result" = 9
+paid_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"Organisation\" WHERE paid_access_until='2099-01-01T00:00:00Z'")
+test "$paid_result" = 1
 renewal_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"SubscriptionRenewal\" WHERE \"supplierName\"='Synthetic supplier' AND archived=false AND version=1")
 test "$renewal_result" = 1
 snapshot_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"ReceivableSnapshot\" s JOIN \"ReceivableSnapshotInvoice\" i ON i.snapshot_id=s.id AND i.organisation_id=s.organisation_id AND i.entity_id=s.entity_id WHERE s.version=1 AND s.row_count=1 AND i.amount_cents=100000 AND i.paid_cents=25000")
@@ -94,4 +96,4 @@ SELECT (SELECT count(*) FROM "ApInvoice" WHERE state='approved' AND data->>'refe
 SQL
 )
 test "$ap_result" = t
-printf 'PASS: migrated synthetic application database restored; task/subscription/snapshot/Assistant and approved AP/PDF/export state, auth schema and eight migrations verified\n'
+printf 'PASS: migrated synthetic application database restored; task/subscription/snapshot/Assistant and approved AP/PDF/export state, auth schema and nine migrations verified\n'

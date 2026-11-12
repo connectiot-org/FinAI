@@ -460,6 +460,7 @@ export async function createApplication(
           await db.$queryRaw`SELECT organisation_id, entity_id, snapshot_id, invoice_id, customer_id, customer_name, status, amount_cents, paid_cents, issued_on FROM "ReceivableSnapshotInvoice" LIMIT 1`;
           await db.$queryRaw`SELECT 1 FROM "Session" LIMIT 1`;
           await db.$queryRaw`SELECT 1 FROM "Account" LIMIT 1`;
+          await db.$queryRaw`SELECT paid_access_until FROM "Organisation" LIMIT 1`;
           await db.$queryRaw`SELECT 1 FROM "RateLimit" LIMIT 1`;
           await db.$queryRaw`SELECT is_administrator, version FROM "Membership" LIMIT 1`;
           await db.$queryRaw`SELECT can_import, version FROM "EntityAccess" LIMIT 1`;

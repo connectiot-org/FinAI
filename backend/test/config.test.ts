@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readConfig } from "../src/config";
@@ -25,4 +26,29 @@ test("explicit local configuration accepts only bounded local settings", () => {
     { K_SERVICE: "public-service" },
   ])
     assert.throws(() => readConfig({ ...local, ...overrides }));
+});
+
+test("synthetic seed cannot grant test paid access in production or session mode", () => {
+  for (const overrides of [
+    { NODE_ENV: "production", CHECKLIST_IDENTITY: "session" },
+    { NODE_ENV: "test", CHECKLIST_IDENTITY: "session" },
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", "prisma/seed.ts"],
+      {
+        env: {
+          ...process.env,
+          ...overrides,
+          DATABASE_URL: "postgresql://unused@127.0.0.1:1/unused",
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /Synthetic seed requires local development\/test identity/,
+    );
+  }
 });

@@ -325,7 +325,11 @@ test("strict inputs, same-entity source authorization, foreign organisation and 
     foreignEntity = randomUUID(),
     foreignSource = randomUUID();
   await db.organisation.create({
-    data: { id: foreignOrg, name: "Foreign synthetic organisation" },
+    data: {
+      paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+      id: foreignOrg,
+      name: "Foreign synthetic organisation",
+    },
   });
   await db.entity.create({
     data: {

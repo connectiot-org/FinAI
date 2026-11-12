@@ -25,7 +25,7 @@ npm start
 
 Local API: `http://127.0.0.1:3000`; readiness: `/health/ready`. Explicit development/test identity is server-owned and loopback-only. Production uses administratively provisioned accounts, opaque database sessions, exact trusted hosts/origin, CSRF and scoped membership/permissions. Demo roles and caller identity headers grant no company authority.
 
-Eight ordered additive migrations live under `prisma/migrations/`. Apply them explicitly to a reviewed target; builds/startup do not migrate or seed it. Existing company data and approval history must survive upgrades. [RELEASE.md](RELEASE.md) describes account provisioning, production environment, migration, TLS/ingress and deployment gates.
+Nine ordered additive migrations live under `prisma/migrations/`. Apply them explicitly to a reviewed target; builds/startup do not migrate or seed it. Existing company data and approval history must survive upgrades. [RELEASE.md](RELEASE.md) describes account provisioning, production environment, migration, TLS/ingress and deployment gates.
 
 ## Module boundaries
 

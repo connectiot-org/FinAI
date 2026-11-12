@@ -119,7 +119,11 @@ before(async () => {
   assert.equal(again.status, 0, again.stderr);
   await db.organisation.createMany({
     data: [
-      { id: LOCAL.organisationId, name: "Test A" },
+      {
+        id: LOCAL.organisationId,
+        name: "Test A",
+        paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+      },
       { id: foreign.organisationId, name: "Test B" },
     ],
   });
@@ -1446,6 +1450,20 @@ test("Google login establishes the ordinary persisted session only for active pr
     assert.equal(session.userId, userId);
     assert.equal(session.organisationId, LOCAL.organisationId);
     assert.equal(session.csrfHash, digest(result.csrfToken));
+    await db.organisation.update({
+      where: { id: LOCAL.organisationId },
+      data: { paidAccessUntil: null },
+    });
+    await assert.rejects(
+      peer.googleLogin(req, res),
+      /active paid subscription/,
+    );
+    assert.equal(await db.session.count({ where: { userId } }), 1);
+    await db.organisation.update({
+      where: { id: LOCAL.organisationId },
+      data: { paidAccessUntil: new Date("2099-01-01T00:00:00Z") },
+    });
+
     await db.account.update({ where: { userId }, data: { disabled: true } });
     await assert.rejects(auth.googleLogin(req, res), /Sign-in failed/);
     await db.account.update({ where: { userId }, data: { disabled: false } });

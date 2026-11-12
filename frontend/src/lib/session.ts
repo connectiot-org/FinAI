@@ -3,6 +3,16 @@ export const sessionSchema = z.strictObject({
   csrfToken: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const logoutSchema = z.strictObject({ status: z.literal("signed-out") });
+export const paidAccessMessage =
+  "An active paid subscription is required. Contact your administrator to activate or renew access.";
+export async function signInFailure(response: Response) {
+  const detail = z
+    .object({ code: z.string() })
+    .safeParse(await response.json().catch(() => null));
+  return detail.success && detail.data.code === "PAID_ACCESS_REQUIRED"
+    ? paidAccessMessage
+    : "Sign-in failed. Check your details or try again later.";
+}
 let epoch = 0;
 // Identity changes invalidate private views in other tabs without broadcasting tokens or account data.
 const changes = (() => {
@@ -39,23 +49,27 @@ async function fetchSession() {
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) {
-    let deploymentMessage: string | undefined;
-    if (r.status === 503) {
-      const detail = z
-        .object({
-          code: z.literal("DEPLOYMENT_NOT_CONFIGURED"),
-          message: z.string().max(500),
-        })
-        .safeParse(await r.json().catch(() => null));
-      if (detail.success) deploymentMessage = detail.data.message;
-    }
+    const detail = z
+      .object({ code: z.string(), message: z.string().max(500).optional() })
+      .safeParse(await r.json().catch(() => null));
+    const paid = detail.success && detail.data.code === "PAID_ACCESS_REQUIRED";
+    const message = paid
+      ? paidAccessMessage
+      : detail.success &&
+          r.status === 503 &&
+          detail.data.code === "DEPLOYMENT_NOT_CONFIGURED"
+        ? detail.data.message
+        : undefined;
     const e = new Error(
-      deploymentMessage ||
+      message ||
         (r.status === 401
           ? "Session expired. Sign in again."
           : "Sign-in service is unavailable."),
     );
-    Object.assign(e, { status: r.status });
+    Object.assign(e, {
+      status: r.status,
+      code: paid ? "PAID_ACCESS_REQUIRED" : undefined,
+    });
     throw e;
   }
   const value = sessionSchema.safeParse(await r.json());

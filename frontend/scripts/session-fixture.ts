@@ -38,7 +38,11 @@ const organisationId = randomUUID(),
   userId = randomUUID(),
   entityId = randomUUID();
 await db.organisation.create({
-  data: { id: organisationId, name: "Synthetic session organisation" },
+  data: {
+    id: organisationId,
+    name: "Synthetic session organisation",
+    paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+  },
 });
 await db.user.create({ data: { id: userId } });
 await db.membership.create({
@@ -289,7 +293,7 @@ if (process.env.FINAI_TEST_ASSISTANT) {
 }
 process.send?.({ origin, organisationId, entityId, secondEntityId });
 process.on("message", async (command) => {
-  if (!receivables) return;
+  if (!receivables && command !== "paidOn" && command !== "paidOff") return;
   try {
     if (command === "restart") {
       await app.close();
@@ -336,6 +340,14 @@ process.on("message", async (command) => {
     else if (command === "proxyOff") delete process.env.FINAI_BACKEND_ORIGIN;
     else if (command === "proxyOn")
       process.env.FINAI_BACKEND_ORIGIN = "https://127.0.0.1:18444";
+    else if (command === "paidOff" || command === "paidOn")
+      await db.organisation.update({
+        where: { id: organisationId },
+        data: {
+          paidAccessUntil:
+            command === "paidOn" ? new Date("2099-01-01T00:00:00Z") : null,
+        },
+      });
     else if (command === "expire")
       await db.session.deleteMany({ where: { userId } });
     process.send?.({ command, ok: true });

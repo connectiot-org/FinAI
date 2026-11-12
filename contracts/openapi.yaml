@@ -1,9 +1,9 @@
 openapi: 3.1.1
 info:
   title: FinAI monthly checklist
-  version: 1.1.0
+  version: 1.2.0
   description: Local persistent monthly checklist plus previous-month copying and administratively provisioned
-    session authentication. Public release requires configured same-origin proxy, verified TLS/database
+    session authentication with active paid organisation access. Public release requires configured same-origin proxy, verified TLS/database
     hosting and release gates.
 servers:
 - url: http://127.0.0.1:3000
@@ -363,7 +363,7 @@ paths:
   /auth/login:
     post:
       operationId: _auth_loginpost
-      summary: Administrative account sign-in; username/password/organisationId JSON. Generic 401; PostgreSQL
+      summary: Paid customer account sign-in; username/password/organisationId JSON. Generic 401; PostgreSQL
         rate limit. Returns csrfToken; rotates secure HttpOnly cookie.
       responses:
         '200':
@@ -422,7 +422,7 @@ paths:
   /auth/google:
     post:
       operationId: googleLogin
-      summary: Verify Google ID token and browser nonce, then issue an ordinary session for an existing active account and organisation membership. No public signup.
+      summary: Verify Google ID token and browser nonce, then issue an ordinary session for an existing active account, organisation membership and paid access. No public signup.
       security: []
       requestBody:
         required: true
@@ -455,7 +455,7 @@ paths:
   /auth/session:
     get:
       operationId: _auth_sessionget
-      summary: Returns csrfToken for the current unexpired session; 401 otherwise.
+      summary: Returns csrfToken for the current unexpired session with active paid organisation access; 401 otherwise.
       responses:
         '200':
           description: Successful operation.

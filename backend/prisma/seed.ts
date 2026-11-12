@@ -1,5 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { LOCAL, readConfig } from "../src/config";
+if (
+  !["development", "test"].includes(process.env.NODE_ENV || "") ||
+  process.env.CHECKLIST_IDENTITY !== "local"
+)
+  throw new Error(
+    "Synthetic seed requires local development/test identity; never production or session mode.",
+  );
 readConfig();
 const url = new URL(process.env.DATABASE_URL!);
 if (!["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))
@@ -10,7 +17,11 @@ async function seed() {
     await db.$transaction(async (tx) => {
       await tx.organisation.upsert({
         where: { id: LOCAL.organisationId },
-        create: { id: LOCAL.organisationId, name: "Local checklist workspace" },
+        create: {
+          id: LOCAL.organisationId,
+          name: "Local checklist workspace",
+          paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+        },
         update: {},
       });
       await tx.user.upsert({

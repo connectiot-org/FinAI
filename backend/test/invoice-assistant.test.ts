@@ -165,7 +165,11 @@ test("supplier invoice Assistant: grounded proposals, confirmed transactions, is
     );
     assert.equal(migrated.status, 0, migrated.stderr);
     await db.organisation.create({
-      data: { id: org, name: "Synthetic invoice Assistant" },
+      data: {
+        id: org,
+        name: "Synthetic invoice Assistant",
+        paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+      },
     });
     for (const id of [entity, other])
       await db.entity.create({

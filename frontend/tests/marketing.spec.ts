@@ -555,3 +555,43 @@ test("welcome Google selection uses provider credential and organisation, with v
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await expect(page).toHaveURL("/workspace/overview");
 });
+
+test("login explains paid access and rejects inactive payment for password and session checks", async ({
+  page,
+}) => {
+  const message =
+    "An active paid subscription is required. Contact your administrator to activate or renew access.";
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({
+      status: 401,
+      json: { code: "PAID_ACCESS_REQUIRED", message },
+    }),
+  );
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  await page.route("**/auth/login", (route) =>
+    route.fulfill({
+      status: 403,
+      json: { code: "PAID_ACCESS_REQUIRED", message },
+    }),
+  );
+  await page.goto("/login");
+  await expect(
+    page.getByText("For paid customers with active access.", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveText(message);
+  await page
+    .getByLabel("Email or account name")
+    .fill("unpaid@synthetic.example");
+  await page
+    .getByLabel("Organisation ID")
+    .fill("11111111-1111-4111-8111-111111111111");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText(message);
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeEnabled();
+});

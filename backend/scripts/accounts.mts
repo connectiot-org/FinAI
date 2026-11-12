@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline";
 import { Writable } from "node:stream";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import * as argon2 from "argon2";
 import { Database } from "../dist/src/database.js";
 import { passwordOptions } from "../dist/src/auth.js";
@@ -41,8 +42,15 @@ async function password() {
 }
 try {
   const [command, username, organisationId] = process.argv.slice(2);
-  if (!username || !/^[a-z0-9._-]{1,100}$/.test(username))
-    throw new Error("Use a lowercase account name.");
+  if (
+    !username ||
+    username !== username.toLowerCase() ||
+    (!/^[a-z0-9._-]{1,100}$/.test(username) &&
+      !z.email().max(100).safeParse(username).success)
+  )
+    throw new Error(
+      "Use a lowercase account name or email (maximum 100 characters).",
+    );
   if (command === "create") {
     if (!organisationId)
       throw new Error("Organisation UUID required; it must already exist.");

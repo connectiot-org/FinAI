@@ -75,3 +75,24 @@ To enable Google:
 5. Permit the browser to load `https://accounts.google.com/gsi/client` and Google's sign-in frames; the server needs HTTPS access to `https://www.googleapis.com/oauth2/v3/certs` for cached, rotating signature keys. Keep TLS verification enabled. Test the actual published origin: permitted Google login, wrong organisation/unprovisioned account denial, password login, logout and disabled membership. Local synthetic-provider tests do not verify the live OAuth project's settings or real Google accounts.
 
 Both variables are required. The shared nonce signing key is separate from the embedded runtime’s per-instance ingress proof, so login survives routing between serverless instances. When unconfigured, the page shows Google as unavailable and password sign-in stays available. No Google OAuth client ID was available during implementation.
+
+## Paid customer access (required for company login)
+
+Contract 1.2.0 adds migration `202611130001_paid_customer_access`. After applying all nine migrations, existing organisations have no paid-access expiry and cannot sign in until a trusted operator confirms payment and activates access. This applies to company administrators too; there is no email/domain bypass for `admin@finai8.com`. Do not mark everyone paid during migration. The local seed and test fixtures use explicitly synthetic access only and must never be used in production.
+
+From a trusted operator terminal in `backend`, with the production `DATABASE_URL` securely injected, run the following. The account named for the audit must be an enabled, active organisation administrator, provisioned using the existing account/bootstrap tools; it can be created and promoted offline before paid access is active. Account names may be lowercase email addresses (maximum 100 characters). Passwords remain hidden prompts.
+
+```sh
+read -r -p 'Customer organisation UUID: ' FINAI_CUSTOMER_ORG
+read -r -p 'Existing administrator account: ' FINAI_CUSTOMER_ADMIN
+read -r -p 'Paid access expiry (ISO timestamp with timezone): ' FINAI_PAID_UNTIL
+node --import tsx scripts/customer-access.mts "$FINAI_CUSTOMER_ORG" "$FINAI_CUSTOMER_ADMIN" "$FINAI_PAID_UNTIL"
+# Verify the payment, customer and dry-run result before applying:
+node --import tsx scripts/customer-access.mts "$FINAI_CUSTOMER_ORG" "$FINAI_CUSTOMER_ADMIN" "$FINAI_PAID_UNTIL" --apply
+# To revoke instead, review the dry run then add --apply:
+node --import tsx scripts/customer-access.mts "$FINAI_CUSTOMER_ORG" "$FINAI_CUSTOMER_ADMIN" revoke
+```
+
+Use the same tool with the renewed expiry after the next confirmed payment. Each applied change locks the organisation row, writes a before/after audit and revokes that organisation's sessions in one transaction. An audit failure rolls everything back. All authorised users share the organisation's expiry. The public/customer API has no grant endpoint and ignores no client-controlled payment claim; forged login fields are rejected. New logins require a future expiry, and every existing-session/API check rechecks it. Expired access blocks subsequent requests; work already authorised before expiry is not cancelled. Entity, role and module permissions remain separate. This workflow records manually confirmed access; it does not verify payment independently, charge cards, send invoices or integrate Stripe.
+
+Verify permitted password/Google login, missing/expired access denial, renewal and revocation on the actual hosted target after deployment. Builds do not migrate production or activate customers. An unavailable sign-in service remains a separate hosting/database issue.

@@ -74,7 +74,7 @@ Exports are immutable once per approved revision, balanced expense/nonrecoverabl
 
 ## Recovery and remaining integrations
 
-From the repository root, `bash backend/scripts/payables-storage-check.sh` verifies AP byte preservation and tenant FKs in disposable databases. `bash backend/scripts/restore-rehearsal.sh` additionally runs the real AP service through approval/export, backs up the complete synthetic application, restores it, and verifies documents, exports, policy, approval history and all eight migrations.
+From the repository root, `bash backend/scripts/payables-storage-check.sh` verifies AP byte preservation and tenant FKs in disposable databases. `bash backend/scripts/restore-rehearsal.sh` additionally runs the real AP service through approval/export, backs up the complete synthetic application, restores it, and verifies documents, exports, policy, approval history and all nine migrations.
 
 Use encrypted, access-controlled off-host backups and target restore rehearsals before real-company use. Local tests do not establish production RPO/RTO, scanner health, monitoring, jurisdictional compliance or hosting compatibility. Roll application code back compatibly while retaining additive AP tables/history; never use migrate reset, destructive reseeding or volume deletion.
 

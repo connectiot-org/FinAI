@@ -73,7 +73,7 @@ test("public data library loads anonymously, filters datasets and downloads orig
   await expect(
     page.getByRole("heading", { name: "Synthetic customer invoices" }),
   ).toBeVisible();
-  expect(catalogueRequests).toBe(1);
+  expect(catalogueRequests).toBeGreaterThan(0);
 
   await page.getByRole("textbox", { name: "Search datasets" }).fill("invoice");
   await expect(

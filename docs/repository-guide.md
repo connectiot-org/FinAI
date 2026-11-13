@@ -257,11 +257,20 @@ Each row below describes one exact file. Test source describes intended verifica
 | `frontend/public/favicon.svg` | Original FinAI monogram served as the site icon and referenced by shared branding. |
 | `frontend/public/visuals/finai-city.svg` | Original geometric city illustration used by public marketing artwork; not a competitor photograph. |
 
+### Public downloadable data assets
+
+| File | Purpose |
+| --- | --- |
+| `frontend/public/datasets/chart-of-accounts.csv` | Original illustrative starter chart of accounts distributed as a free, downloadable CSV under the stated CC BY 4.0 licence. |
+| `frontend/public/datasets/synthetic-invoices.csv` | Fictional invoice records for analytics and workflow testing; contains no real customer or company data. |
+| `frontend/public/datasets/synthetic-ledger-transactions.csv` | Balanced fictional double-entry ledger examples for accounting prototypes and tests. |
+
 ### Feature/runbook and historical review documents
 
 | File | Purpose |
 | --- | --- |
 | `frontend/docs/assistant-production.md` | Describes anonymous public chat controls, deployment/provider settings, safe failure behavior and limits of operational verification. |
+| `frontend/docs/public-datasets.md` | Explains public catalogue visibility, synthetic-data/licensing rules, the isolated GET-only API boundary and the additive migration release procedure. |
 | `frontend/docs/assistant.md` | Explains authenticated conversations, source grounding and preferences; its original route/action descriptions need updates for current public/private split and confirmed invoices. |
 | `frontend/docs/checklist.md` | Documents separate checklist modes, local startup, task/copy behavior, verification and production identity boundaries. |
 | `frontend/docs/content-ui-review.md` | Records the historical FinAI content/branding/accessibility review, original-artwork replacements and evidence limits. |

@@ -15,7 +15,7 @@ TXN-0007,1,2026-01-18,1200,Prepaid expenses,Annual software subscription prepaid
 TXN-0007,2,2026-01-18,1010,Operating bank account,Annual software subscription prepaid,0.00,600.00,USD,Northstar Demo Ltd
 TXN-0008,1,2026-01-23,5000,Cost of services,External delivery contractor,450.00,0.00,USD,Northstar Demo Ltd
 TXN-0008,2,2026-01-23,2000,Accounts payable,External delivery contractor,0.00,450.00,USD,Northstar Demo Ltd
-TXN-0009,1,2026-01-26,1010,Operating bank account,Payment to external contractor,450.00,0.00,USD,Northstar Demo Ltd
-TXN-0009,2,2026-01-26,2000,Accounts payable,Payment to external contractor,0.00,450.00,USD,Northstar Demo Ltd
+TXN-0009,1,2026-01-26,2000,Accounts payable,Payment to external contractor,450.00,0.00,USD,Northstar Demo Ltd
+TXN-0009,2,2026-01-26,1010,Operating bank account,Payment to external contractor,0.00,450.00,USD,Northstar Demo Ltd
 TXN-0010,1,2026-01-30,1100,Accounts receivable,February subscription billed in advance,900.00,0.00,USD,Northstar Demo Ltd
 TXN-0010,2,2026-01-30,2300,Deferred revenue,February subscription billed in advance,0.00,900.00,USD,Northstar Demo Ltd

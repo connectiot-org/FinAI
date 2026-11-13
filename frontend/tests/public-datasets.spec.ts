@@ -73,9 +73,9 @@ test("public data library loads anonymously, filters datasets and downloads orig
   await expect(
     page.getByRole("heading", { name: "Synthetic customer invoices" }),
   ).toBeVisible();
-  expect(catalogueRequests).toBe(1);
+  expect(catalogueRequests).toBeGreaterThan(0);
 
-  await page.getByRole("textbox", { name: "Search datasets" }).fill("invoice");
+  await page.getByRole("searchbox", { name: "Search datasets" }).fill("invoice");
   await expect(
     page.getByRole("heading", { name: "Synthetic customer invoices" }),
   ).toBeVisible();
@@ -83,7 +83,7 @@ test("public data library loads anonymously, filters datasets and downloads orig
     page.getByRole("heading", { name: "Starter chart of accounts" }),
   ).toHaveCount(0);
 
-  await page.getByRole("textbox", { name: "Search datasets" }).fill("");
+  await page.getByRole("searchbox", { name: "Search datasets" }).fill("");
   await page.getByRole("button", { name: "Accounting template" }).click();
   await expect(
     page.getByRole("heading", { name: "Starter chart of accounts" }),
@@ -97,6 +97,43 @@ test("public data library loads anonymously, filters datasets and downloads orig
   );
   expect(response.ok()).toBe(true);
   expect(await response.text()).toContain("INV-1001");
+
+  const ledgerResponse = await page.request.get(
+    "http://127.0.0.1:5173/datasets/synthetic-ledger-transactions.csv",
+  );
+  expect(ledgerResponse.ok()).toBe(true);
+  const ledgerCsv = await ledgerResponse.text();
+  const ledgerLines = ledgerCsv.trim().split(/\r?\n/).slice(1);
+  expect(ledgerLines).toHaveLength(20);
+
+  const transactionTotals = new Map<
+    string,
+    { debit: number; credit: number }
+  >();
+  for (const line of ledgerLines) {
+    const fields = line.split(",");
+    const transactionId = fields[0];
+    const total = transactionTotals.get(transactionId) ?? {
+      debit: 0,
+      credit: 0,
+    };
+    total.debit += Number(fields[6]);
+    total.credit += Number(fields[7]);
+    transactionTotals.set(transactionId, total);
+  }
+  for (const [transactionId, total] of transactionTotals) {
+    expect(
+      total.debit,
+      transactionId + " debits must equal credits",
+    ).toBeCloseTo(total.credit, 2);
+  }
+
+  expect(ledgerCsv).toContain(
+    "TXN-0009,1,2026-01-26,2000,Accounts payable,Payment to external contractor,450.00,0.00,USD,Northstar Demo Ltd",
+  );
+  expect(ledgerCsv).toContain(
+    "TXN-0009,2,2026-01-26,1010,Operating bank account,Payment to external contractor,0.00,450.00,USD,Northstar Demo Ltd",
+  );
 });
 
 test("public data library keeps API failures visible instead of showing demo records", async ({

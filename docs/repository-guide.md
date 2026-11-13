@@ -158,11 +158,14 @@ Each row below describes one exact file. Test source describes intended verifica
 
 | File | Purpose |
 | --- | --- |
-| `frontend/src/features/marketing/Marketing.tsx` | Provides public header/footer/layout, product/resource/about/customer pages and the homepage entry using original FinAI branding. |
+| `frontend/src/features/marketing/Marketing.tsx` | Provides public header/footer/layout, product/resource/about/customer/data-library pages and the homepage entry using original FinAI branding. |
+| `frontend/src/features/marketing/Datasets.tsx` | Loads and validates published public dataset metadata, supports search/category filters and links to static CSV downloads without sending session credentials. |
+| `frontend/src/features/marketing/datasets.css` | Styles public dataset cards, filters, loading/error states and responsive layouts. |
 | `frontend/src/features/marketing/ProductDetails.tsx` | Renders product feature sections, illustrations and workflow panels using explicitly fictional local records. |
 | `frontend/src/features/marketing/ProductPreview.tsx` | Renders interactive miniature overview/ledger/receivables/close/Assistant product views for public page demonstrations. |
 | `frontend/src/features/marketing/ReferenceHome.tsx` | Implements the responsive public homepage composition informed by captured public reference geometry, using FinAI content and assets. |
 | `frontend/src/features/marketing/content.ts` | Declares public product copy, routes, preview types, feature descriptions and frequently asked questions. |
+| `frontend/tests/public-datasets.spec.ts` | Verifies anonymous catalogue loading, search/category filters, error handling and public CSV downloads. |
 
 ### Public stateless model chat
 
@@ -400,6 +403,8 @@ Prisma applies the eight committed migration folders in chronological order: che
 
 ### Backend database models, migrations and local seed
 
+| `backend/prisma/migrations/202611130002_public_datasets/migration.sql` | Adds the isolated public dataset catalogue table and three original published metadata rows; leaves tenant finance tables untouched. |
+
 | File | Responsibility |
 | --- | --- |
 | `backend/prisma/migrations/202610190001_checklist/migration.sql` | Migration 1: creates organisations, users, memberships, entities, entity access and versioned checklist tasks with relational scope constraints. |
@@ -430,6 +435,9 @@ Prisma applies the eight committed migration folders in chronological order: che
 | `backend/scripts/payables-storage-check.sh` | Disposable synthetic PostgreSQL backup/restore rehearsal for AP PDF/export bytes, history, routes, grants and tenant foreign keys; not an API acceptance test. |
 | `backend/scripts/restore-rehearsal.sh` | Disposable full application restore rehearsal, including migrated records and a real AP approval/export service journey before backup. |
 | `backend/scripts/workspace-admin.mts` | Trusted operator tool that promotes an existing organisation member to administrator for bootstrap/recovery, with dry-run/apply controls, session revocation and safe audits. |
+
+| `backend/src/public-datasets/controller.ts` | Exposes the exact anonymous read-only catalogue GET route; it does not handle publication or company records. |
+| `backend/src/public-datasets/service.ts` | Selects only explicitly published metadata from the isolated PublicDataset table. |
 
 ### Backend application foundation
 

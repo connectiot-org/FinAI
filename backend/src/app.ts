@@ -5,6 +5,8 @@ import { PayablesController, uploadQuery } from "./payables/controller";
 import { PayablesService } from "./payables/service";
 import { ClamAvScanner } from "./payables/scanner";
 import { AssistantController } from "./assistant/controller";
+import { PublicDatasetController } from "./public-datasets/controller";
+import { PublicDatasetService } from "./public-datasets/service";
 import { AssistantService } from "./assistant/service";
 import { AssistantFacts } from "./assistant/facts";
 import {
@@ -74,6 +76,8 @@ const isPreview = (req: Request) =>
 const isInvoiceUpload = (req: Request) =>
   req.method === "POST" &&
   /^\/api\/v1\/payables\/invoices\/[a-f0-9-]{36}\/documents$/.test(req.path);
+const isPublicDatasetCatalog = (req: Request) =>
+  req.method === "GET" && req.path === "/api/v1/public/datasets";
 const empty = z.strictObject({});
 @Controller("api/v1")
 class ChecklistController {
@@ -161,6 +165,7 @@ class ChecklistController {
     SubscriptionController,
     ReceivablesController,
     ReceivablesDetailController,
+    PublicDatasetController,
   ],
   providers: [
     PayablesService,
@@ -179,6 +184,7 @@ class ChecklistController {
     ReceivablesDetailService,
     ReceivablesDetailRepository,
     ReceivablesChangesRepository,
+    PublicDatasetService,
   ],
 })
 class AppModule {}
@@ -449,6 +455,11 @@ export async function createApplication(
     try {
       if (req.path === "/health/live" && req.method === "GET") {
         res.json({ status: "alive" });
+        return;
+      }
+      // Public metadata reads still pass through the trusted-proxy ingress checks above.
+      if (isPublicDatasetCatalog(req)) {
+        next();
         return;
       }
       if (config.mode === "session") {

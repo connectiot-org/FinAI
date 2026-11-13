@@ -162,7 +162,7 @@ export function DatasetsPage() {
               Browse datasets <ArrowRight size={16} />
             </a>
             <Link to="/sample" className="dataset-secondary-link">
-              Explore the FinAI demo
+              See the idea in action
             </Link>
           </div>
           <div className="dataset-privacy-note">

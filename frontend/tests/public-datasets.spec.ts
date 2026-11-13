@@ -103,7 +103,7 @@ test("public data library loads anonymously, filters datasets and downloads orig
   );
   expect(ledgerResponse.ok()).toBe(true);
   const ledgerCsv = await ledgerResponse.text();
-  const ledgerLines = ledgerCsv.trim().split(/\\r?\\n/).slice(1);
+  const ledgerLines = ledgerCsv.trim().split(/\r?\n/).slice(1);
   expect(ledgerLines).toHaveLength(20);
 
   const transactionTotals = new Map<

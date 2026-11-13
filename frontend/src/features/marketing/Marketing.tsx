@@ -250,6 +250,7 @@ export function MarketingLayout() {
           <PublicMenu label="Product" groups={groups} />
           <PublicMenu label="Solutions" groups={solutionGroups} />
           <Link to="/customers">Customers</Link>
+          <Link to="/datasets">Data library</Link>
           <PublicMenu label="Partners" groups={partnerGroups} />
           <PublicMenu
             label="Resources"
@@ -261,6 +262,11 @@ export function MarketingLayout() {
                     label: "Workflow guides",
                     description: "Explore the accounting demo",
                     to: "/resources",
+                  },
+                  {
+                    label: "Free data library",
+                    description: "Browse downloadable finance datasets",
+                    to: "/datasets",
                   },
                   {
                     label: "Interactive preview",
@@ -335,6 +341,7 @@ export function MarketingLayout() {
           <div>
             <h3>RESOURCES</h3>
             <Link to="/resources">Workflow guides</Link>
+            <Link to="/datasets">Free data library</Link>
             <Link to="/resources#interactive-preview">Interactive preview</Link>
             <Link to="/resources#questions">Questions answered</Link>
             <Link to="/sample">Public demo</Link>
@@ -345,7 +352,7 @@ export function MarketingLayout() {
             <Link to="/resources#demo-details">Local data and privacy</Link>
             <Link to="/settings/preferences">Demo preferences</Link>
             <a
-              href="https://github.com/connectiot-org/New-FInAI"
+              href="https://github.com/connectiot-org/FinAI"
               target="_blank"
               rel="noreferrer"
             >
@@ -381,6 +388,10 @@ export function MarketingLayout() {
         >
           <Link to="/demo/payables/invoices">
             Supplier invoices
+            <ArrowRight size={15} />
+          </Link>
+          <Link to="/datasets">
+            Free data library
             <ArrowRight size={15} />
           </Link>
           {groups.map((group) => (

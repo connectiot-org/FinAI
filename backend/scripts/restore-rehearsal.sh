@@ -75,9 +75,11 @@ test "$result" = 1
 schema_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('Account','Session','RateLimit')")
 test "$schema_result" = 3
 migration_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c 'SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL')
-test "$migration_result" = 9
+test "$migration_result" = 10
 paid_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"Organisation\" WHERE paid_access_until='2099-01-01T00:00:00Z'")
 test "$paid_result" = 1
+public_dataset_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"PublicDataset\" WHERE published=true")
+test "$public_dataset_result" = 3
 renewal_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"SubscriptionRenewal\" WHERE \"supplierName\"='Synthetic supplier' AND archived=false AND version=1")
 test "$renewal_result" = 1
 snapshot_result=$(docker compose exec -T db psql -At -U finai -d "$restore_db" -c "SELECT count(*) FROM \"ReceivableSnapshot\" s JOIN \"ReceivableSnapshotInvoice\" i ON i.snapshot_id=s.id AND i.organisation_id=s.organisation_id AND i.entity_id=s.entity_id WHERE s.version=1 AND s.row_count=1 AND i.amount_cents=100000 AND i.paid_cents=25000")
@@ -96,4 +98,4 @@ SELECT (SELECT count(*) FROM "ApInvoice" WHERE state='approved' AND data->>'refe
 SQL
 )
 test "$ap_result" = t
-printf 'PASS: migrated synthetic application database restored; task/subscription/snapshot/Assistant and approved AP/PDF/export state, auth schema and nine migrations verified\n'
+printf 'PASS: migrated synthetic application database restored; task/subscription/snapshot/Assistant, approved AP/PDF/export state, public dataset catalogue, auth schema and ten migrations verified\n'

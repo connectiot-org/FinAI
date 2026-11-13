@@ -328,3 +328,30 @@ Public job annotations identified standalone invoice demo and same-project Verce
 Validation: standalone invoice suite 17/17, invoice UI 27/27, packaged Vercel 6/6, transport 12/12, real invoice journeys 9/9 across remote/embedded/packaged runtimes; backend 93/93 with zero skipped. Frontend typecheck/lint and build/private packaging passed; backend typecheck/build passed. All 18 repository guard tests and 368-file/104-source purpose/import check passed. Synthetic AP storage restore and tenant FK check passed. Default browser suite had passed 72/72 before these edits; the changed recovery test was rerun against both Vite and the built sample. No hosted CI rerun, push or deployment was performed.
 
 Local engine downloads were policy-blocked, so used the documented official Prisma source fallback at pinned commit c2990dca591cba766e3b7ef5d9e8a84796e47ab7 with TLS/checksum verification retained. Native engines verified; this does not validate RHEL production binaries. Source /workspace/.finai-tools/prisma-env.sh and set npm_config_cache=/workspace/.npm for local commands. Nine migrations, local synthetic seed, live/ready health and local entity API checks passed. Environment installation/startup draft was updated to preserve these verified setup steps. Network additions for binaries.prisma.sh and api.github.com remain draft proposals. Next: commit/push the scoped fixes and inspect rerun CI; existing failed GitHub checks do not change until a new run completes.
+
+
+## 2026-11-13 — public FinAI dataset library (main product)
+
+User clarified that connectiot-org/New-FInAI is only the demo/testing repository and explicitly directed work to the main product connectiot-org/FinAI. The mistaken demo PR #35 was closed without merging. All further implementation is on the main product repository branch feat/public-dataset-library-product, based on main 0b0bd784ed1092e00bf5af49d27a2ab97d95eb38.
+
+### Product scope
+
+Adds a public /datasets catalogue to the existing marketing site, with search/category filters, licence/source/version/date metadata, and direct CSV downloads. Initial files are an illustrative 20-row chart of accounts, 20 balanced synthetic ledger lines (10 double-entry transactions), and 10 fictional invoices. All examples are synthetic/original and explicitly labelled; no tenant or customer records are copied.
+
+### Backend/data boundary
+
+- Adds a separate Prisma PublicDataset table and additive migration 202611130002_public_datasets; the migration adds the table/indexes and three explicit published metadata rows only.
+- Exact anonymous route: GET /api/v1/public/datasets. Only this method/path bypasses session authentication; it remains behind the existing trusted Vercel proxy, Host/public-host, HTTPS and request-origin ingress checks.
+- The endpoint selects only a fixed metadata allowlist and filters published = true. New rows default to unpublished. Public reads are limited to 120 per trusted client IP per minute.
+- Other API routes and all non-GET requests retain existing session and CSRF enforcement. Static CSVs are separate public assets and must remain synthetic.
+- The frontend sends the catalogue request with credentials omitted and validates metadata. API errors remain visible; there is no fallback to demo or customer data.
+
+### Changed areas
+
+backend Prisma schema, the new migration, new backend public-datasets controller/service, backend app composition, backend Assistant HTTP test, public marketing router/layout and styles, new Datasets page, three CSV files, public dataset browser tests, README, repository file guide, and frontend public-datasets release guide.
+
+### Verification and release state
+
+The Vercel final-product project linked to connectiot-org/FinAI began preview builds automatically. Preview deployment for commit 501aa7a6729ab140d6c6cf86bf3a5afcc5d9e4e1 reached READY; its logs show Prisma client generation, backend TypeScript compilation, frontend TypeScript typecheck and Vite production build completed. An earlier intermediate deployment failed because the router import was committed before the new page file existed; that missing page was subsequently added. Later commits added migration/file-guide corrections and the public-IP read limit, so the very latest branch state still needs its own preview build and final status check. GitHub Actions did not report a pull-request workflow run at the time of this note. The new browser/backend tests are committed but not locally executed in this session.
+
+No PR has been opened yet. No production merge, production deployment, Vercel environment variable change, hosted database connection inspection/decryption, migration execution, seed/reset, or customer-record read/write has been performed. The production database must not receive the migration until an authorized operator inspects the intended target and applies the additive migration in the documented release sequence. The build does not run migrations.

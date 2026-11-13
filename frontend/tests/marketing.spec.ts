@@ -40,6 +40,7 @@ test("public navigation, product pages and demo entry work on direct refresh", a
     "/product/assistant",
     "/resources",
     "/about",
+    "/datasets",
   ]) {
     await page.goto(path);
     await expect(page.locator("main h1")).toBeVisible();

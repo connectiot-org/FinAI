@@ -459,6 +459,11 @@ export async function createApplication(
       }
       // Public metadata reads still pass through the trusted-proxy ingress checks above.
       if (isPublicDatasetCatalog(req)) {
+        await auth.limit(
+          `public-datasets:${req.headers["x-finai-client-ip"] || "unknown"}`,
+          120,
+          60,
+        );
         next();
         return;
       }

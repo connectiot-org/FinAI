@@ -75,7 +75,7 @@ test("public data library loads anonymously, filters datasets and downloads orig
   ).toBeVisible();
   expect(catalogueRequests).toBeGreaterThan(0);
 
-  await page.getByRole("textbox", { name: "Search datasets" }).fill("invoice");
+  await page.getByRole("searchbox", { name: "Search datasets" }).fill("invoice");
   await expect(
     page.getByRole("heading", { name: "Synthetic customer invoices" }),
   ).toBeVisible();
@@ -83,7 +83,7 @@ test("public data library loads anonymously, filters datasets and downloads orig
     page.getByRole("heading", { name: "Starter chart of accounts" }),
   ).toHaveCount(0);
 
-  await page.getByRole("textbox", { name: "Search datasets" }).fill("");
+  await page.getByRole("searchbox", { name: "Search datasets" }).fill("");
   await page.getByRole("button", { name: "Accounting template" }).click();
   await expect(
     page.getByRole("heading", { name: "Starter chart of accounts" }),

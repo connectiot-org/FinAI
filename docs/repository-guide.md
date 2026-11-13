@@ -376,7 +376,7 @@ This section covers all tracked backend files, shared contract files and both Gi
 
 ### Database migration order
 
-Prisma applies the eight committed migration folders in chronological order: checklist/tenant foundation → accounts/sessions/rate limits → subscriptions → immutable receivable sources → workspace/admin/audit/import staging → Assistant and ledger persistence → deletion receipts → invoice approvals. `schema.prisma` describes the current client models; SQL migrations retain the actual historical database changes. Preserve migration names/history; use an additive reviewed migration for a new schema change. `seed.ts` only ensures the explicitly local synthetic identity/entities.
+Prisma applies ten committed migration folders in chronological order: checklist/tenant foundation → accounts/sessions/rate limits → subscriptions → immutable receivable sources → workspace/admin/audit/import staging → Assistant and ledger persistence → deletion receipts → invoice approvals → paid-customer access expiry → public dataset catalogue. `schema.prisma` describes the current client models; SQL migrations retain the actual historical database changes. Preserve migration names/history; use an additive reviewed migration for a new schema change. `seed.ts` only ensures the explicitly local synthetic identity/entities.
 
 ### Backend configuration and operator documents
 
@@ -403,8 +403,6 @@ Prisma applies the eight committed migration folders in chronological order: che
 
 ### Backend database models, migrations and local seed
 
-| `backend/prisma/migrations/202611130002_public_datasets/migration.sql` | Adds the isolated public dataset catalogue table and three original published metadata rows; leaves tenant finance tables untouched. |
-
 | File | Responsibility |
 | --- | --- |
 | `backend/prisma/migrations/202610190001_checklist/migration.sql` | Migration 1: creates organisations, users, memberships, entities, entity access and versioned checklist tasks with relational scope constraints. |
@@ -416,7 +414,8 @@ Prisma applies the eight committed migration folders in chronological order: che
 | `backend/prisma/migrations/202610250002_assistant_deletion_receipts/migration.sql` | Migration 7: adds bounded deletion receipts so stale create retries cannot resurrect deleted Assistant memory. |
 | `backend/prisma/migrations/202611030001_payables/migration.sql` | Migration 8: creates AP grants, suppliers, policies, invoices, private PDF documents, business events, operation receipts and immutable exports. |
 | `backend/prisma/migrations/migration_lock.toml` | Records PostgreSQL as the Prisma migration provider; this is migration metadata, not an application lock. |
-| `backend/prisma/migrations/202611130001_paid_customer_access/migration.sql` | Adds nullable organisation paid-access expiry, denying access until payment is explicitly confirmed. |
+| `backend/prisma/migrations/202611130001_paid_customer_access/migration.sql` | Migration 9: adds nullable organisation paid-access expiry, denying access until payment is explicitly confirmed. |
+| `backend/prisma/migrations/202611130002_public_datasets/migration.sql` | Migration 10: adds the isolated public dataset catalogue table and three original published metadata rows; leaves tenant finance tables untouched. |
 | `backend/prisma/schema.prisma` | Prisma model/relationship definition for every persisted module; generates native and RHEL OpenSSL 3 client targets for local and Vercel runtimes. |
 | `backend/prisma/seed.ts` | Loopback-only development seed that ensures the synthetic local identity and two entities without replacing existing tasks; never a company-data bootstrap. |
 
@@ -436,12 +435,12 @@ Prisma applies the eight committed migration folders in chronological order: che
 | `backend/scripts/restore-rehearsal.sh` | Disposable full application restore rehearsal, including migrated records and a real AP approval/export service journey before backup. |
 | `backend/scripts/workspace-admin.mts` | Trusted operator tool that promotes an existing organisation member to administrator for bootstrap/recovery, with dry-run/apply controls, session revocation and safe audits. |
 
-| `backend/src/public-datasets/controller.ts` | Exposes the exact anonymous read-only catalogue GET route; it does not handle publication or company records. |
-| `backend/src/public-datasets/service.ts` | Selects only explicitly published metadata from the isolated PublicDataset table. |
-
 ### Backend application foundation
 
 | File | Responsibility |
+| --- | --- |
+| `backend/src/public-datasets/controller.ts` | Exposes the exact anonymous read-only catalogue GET route; it does not handle publication or company records. |
+| `backend/src/public-datasets/service.ts` | Selects only explicitly published metadata from the isolated PublicDataset table. |
 | --- | --- |
 | `backend/src/app.ts` | Application composition root: Nest providers/controllers, trusted ingress, body limits, sessions/CSRF, raw uploads, health checks and listener-free bootstrap for Vercel. |
 | `backend/src/audit.ts` | Provides request-local support IDs and transaction-scoped server audits with a bounded allowlist of safe metadata. |

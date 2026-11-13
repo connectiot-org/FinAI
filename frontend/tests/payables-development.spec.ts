@@ -644,19 +644,30 @@ test("missing invoice chunk recovers without a reload loop or clearing saved rec
   );
   expect(saved).not.toBeNull();
   let chunkRequests = 0;
-  await page.route(
-    "**/src/features/payables/DevelopmentPayables.tsx*",
-    (route) => {
-      chunkRequests++;
-      return route.abort();
-    },
-  );
+  let entryNavigations = 0;
+  page.on("request", (request) => {
+    if (
+      request.isNavigationRequest() &&
+      request.frame() === page.mainFrame() &&
+      new URL(request.url()).pathname === root
+    )
+      entryNavigations++;
+  });
+  // Exercise recovery in both the Vite server and the standalone build.
+  const invoiceChunk =
+    /\/(?:src\/features\/payables\/DevelopmentPayables\.tsx|assets\/DevelopmentPayables-[^/]+\.js)(?:\?.*)?$/;
+  await page.route(invoiceChunk, (route) => {
+    chunkRequests++;
+    return route.abort();
+  });
   await page.goto("/demo/payables/invoices");
   await expect(
     page.getByRole("heading", { name: "Unable to open this page" }),
   ).toBeVisible();
-  // The first missing module reloads the entrypoint. The second fails visibly.
-  await expect.poll(() => chunkRequests).toBe(2);
+  // Built assets can be requested by both preload and import. Count document
+  // navigations to verify one recovery reload rather than counting fetches.
+  expect(chunkRequests).toBeGreaterThanOrEqual(2);
+  expect(entryNavigations).toBe(2);
   await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText(
     "Unexpected Application Error",
@@ -664,7 +675,7 @@ test("missing invoice chunk recovers without a reload loop or clearing saved rec
   expect(await page.evaluate(() => localStorage.getItem("finai-demo-v1"))).toBe(
     saved,
   );
-  await page.unroute("**/src/features/payables/DevelopmentPayables.tsx*");
+  await page.unroute(invoiceChunk);
   await page.getByRole("button", { name: "Reload page" }).click();
   await expect(
     page.getByRole("heading", { name: "Invoices", exact: true }),

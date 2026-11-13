@@ -164,7 +164,11 @@ test.beforeAll(async () => {
   if (migrated.status !== 0) throw new Error("Synthetic migration failed");
   db = new PrismaClient();
   await db.organisation.create({
-    data: { id: organisationId, name: "Synthetic Vercel organisation" },
+    data: {
+      id: organisationId,
+      name: "Synthetic Vercel organisation",
+      paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
+    },
   });
   await db.user.create({ data: { id: userId } });
   await db.membership.create({ data: { organisationId, userId } });

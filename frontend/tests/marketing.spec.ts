@@ -63,6 +63,37 @@ test("removed data library is unavailable and absent from public navigation", as
     page.getByRole("heading", { name: "Page not found" }),
   ).toBeVisible();
 });
+test("homepage dashboard preview requires sign-in before entering a workspace", async ({
+  page,
+}) => {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  await page.goto("/");
+  const preview = page.locator(".reference-workspace");
+  await expect(
+    preview.getByText("Preview · Sign in to continue"),
+  ).toBeVisible();
+  const links = preview.locator("a");
+  expect(await links.count()).toBeGreaterThan(15);
+  for (const link of await links.all())
+    await expect(link).toHaveAttribute("href", "/login");
+  for (const selector of [
+    ".reference-rail-logo",
+    ".finance-ask",
+    ".finance-metric",
+  ]) {
+    await page.goto("/");
+    await preview.locator(selector).first().click();
+    await expect(page).toHaveURL("/login");
+    await expect(
+      page.getByRole("heading", { name: "Sign in to FinAI" }),
+    ).toBeVisible();
+  }
+});
 test("interactive homepage preview uses real records and search links", async ({
   page,
 }) => {
@@ -518,6 +549,64 @@ test("welcome offers email/password and an honest unconfigured Google option", a
   ).toBeNull();
 });
 
+test("sign-in reports service errors without exposing technical details or entering the workspace", async ({
+  page,
+}) => {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({ status: 401, json: {} }),
+  );
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  let result: "rate" | "unavailable" | "invalid" | "network" = "rate";
+  await page.route("**/auth/login", (route) => {
+    if (result === "network") return route.abort("failed");
+    if (result === "invalid")
+      return route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: "<html>not a session</html>",
+      });
+    return route.fulfill({
+      status: result === "rate" ? 429 : 503,
+      json: { code: "FAIL", message: "internal details" },
+    });
+  });
+  await page.goto("/login");
+  await page.getByLabel("Email or account name").fill("user@example.test");
+  await page.getByLabel("Organisation ID").fill("example-organisation");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
+  for (const [mode, message] of [
+    ["rate", "Too many sign-in attempts"],
+    ["unavailable", "Sign-in service is unavailable"],
+    ["invalid", "Sign-in service returned an invalid response"],
+    ["network", "Sign-in service is unavailable"],
+  ] as const) {
+    result = mode;
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText(message);
+    await expect(page).toHaveURL("/login");
+    await expect(page.getByRole("alert")).not.toContainText("internal details");
+  }
+});
+
+test("an unreachable session service shows a clear error and keeps sign-in available", async ({
+  page,
+}) => {
+  await page.route("**/auth/session", (route) => route.abort("failed"));
+  await page.route("**/auth/google/challenge", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  await page.goto("/login");
+  await expect(page.getByRole("alert")).toContainText(
+    "Sign-in service is unavailable",
+  );
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeEnabled();
+  await expect(page).toHaveURL("/login");
+});
+
 test("welcome Google selection uses provider credential and organisation, with visible denied access", async ({
   page,
 }) => {
@@ -557,6 +646,14 @@ test("welcome Google selection uses provider credential and organisation, with v
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Your administrator must grant",
+  );
+  await expect(page).toHaveURL("/login");
+  await page.route("**/auth/google", (route) =>
+    route.fulfill({ status: 503, json: { code: "UNAVAILABLE" } }),
+  );
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Sign-in service is unavailable",
   );
   await expect(page).toHaveURL("/login");
   await page.route("**/auth/google", (route) =>

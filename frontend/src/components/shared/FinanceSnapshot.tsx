@@ -21,7 +21,13 @@ import { useDemo } from "../../store";
 import { inScope, metrics, money } from "../../demo/selectors";
 import { periods } from "../../demo/seed";
 /** Public-reference dashboard composition, backed by the same canonical books as the app. */
-export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
+export function FinanceSnapshot({
+  compact = false,
+  entryPath,
+}: {
+  compact?: boolean;
+  entryPath?: string;
+}) {
   const s = useDemo(),
     m = metrics(s),
     month = s.period === "all" ? "2026-09" : s.period;
@@ -70,19 +76,27 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
     <div className={`finance-snapshot ${compact ? "is-compact" : ""}`}>
       <div className="finance-snapshot-intro">
         <h2>Rise and reconcile.</h2>
-        <Link to="/demo/assistant" className="finance-ask">
+        <Link to={entryPath ?? "/demo/assistant"} className="finance-ask">
           <span>
             <Sparkles size={15} />
           </span>
-          <span>Ask FinAI a question or explore a local workflow</span>
+          <span>
+            {entryPath
+              ? "Sign in to ask FinAI about your workspace"
+              : "Ask FinAI a question or explore a local workflow"}
+          </span>
           <Paperclip size={12} />
           <Mic size={12} />
         </Link>
         <div className="finance-prompts">
-          <Link to="/close">What’s left on my close?</Link>
-          <Link to="/reports/cash-flow">Explore the cash flow statement</Link>
-          <Link to="/payables/bills">What needs a review?</Link>
-          <Link to="/demo/assistant">Ask a demo question</Link>
+          <Link to={entryPath ?? "/close"}>What’s left on my close?</Link>
+          <Link to={entryPath ?? "/reports/cash-flow"}>
+            Explore the cash flow statement
+          </Link>
+          <Link to={entryPath ?? "/payables/bills"}>What needs a review?</Link>
+          <Link to={entryPath ?? "/demo/assistant"}>
+            {entryPath ? "Ask FinAI" : "Ask a demo question"}
+          </Link>
         </div>
       </div>
       <div className="finance-section-label">
@@ -94,7 +108,7 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="finance-metrics metrics-grid">
         <Link
-          to="/accounting/ledger?account=1000"
+          to={entryPath ?? "/accounting/ledger?account=1000"}
           className="finance-metric large"
         >
           <span>
@@ -111,7 +125,10 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
             From posted demo journals
           </small>
         </Link>
-        <Link to="/reports/profit-and-loss" className="finance-metric large">
+        <Link
+          to={entryPath ?? "/reports/profit-and-loss"}
+          className="finance-metric large"
+        >
           <span>
             <Grip size={10} />
             REVENUE
@@ -145,7 +162,7 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
           </small>
         </Link>
         <div className="finance-metric-column">
-          <Link to="/payables/bills" className="finance-metric">
+          <Link to={entryPath ?? "/payables/bills"} className="finance-metric">
             <span>
               <Grip size={10} />
               EXPENSES
@@ -155,7 +172,10 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
               <ArrowUpRight size={13} />
             </strong>
           </Link>
-          <Link to="/payables/bills?status=Approved" className="finance-metric">
+          <Link
+            to={entryPath ?? "/payables/bills?status=Approved"}
+            className="finance-metric"
+          >
             <span>
               <Grip size={10} />
               OUTSTANDING AP
@@ -167,7 +187,10 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
           </Link>
         </div>
         <div className="finance-metric-column">
-          <Link to="/reports/profit-and-loss" className="finance-metric">
+          <Link
+            to={entryPath ?? "/reports/profit-and-loss"}
+            className="finance-metric"
+          >
             <span>
               <Grip size={10} />
               NET INCOME
@@ -175,7 +198,7 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
             <strong>{money(m.profit)}</strong>
           </Link>
           <Link
-            to="/receivables/invoices?status=Outstanding"
+            to={entryPath ?? "/receivables/invoices?status=Outstanding"}
             className="finance-metric"
           >
             <span>
@@ -197,7 +220,7 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="finance-attention">
             {attention.map((a) => (
-              <Link to={a.to} key={a.label}>
+              <Link to={entryPath ?? a.to} key={a.label}>
                 <i />
                 <span>{a.label}</span>
                 <b>{a.count}</b>
@@ -230,14 +253,14 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
               .filter((t) => t.status !== "Approved")
               .slice(0, 3)
               .map((t) => (
-                <Link to="/close" key={t.id}>
+                <Link to={entryPath ?? "/close"} key={t.id}>
                   <Circle size={12} />
                   <span>{t.title}</span>
                   <b>{t.status.toUpperCase()}</b>
                 </Link>
               ))}
             {done === tasks.length && (
-              <Link to="/close">
+              <Link to={entryPath ?? "/close"}>
                 <Check size={12} />
                 All tasks approved
               </Link>
@@ -272,13 +295,13 @@ export function FinanceSnapshot({ compact = false }: { compact?: boolean }) {
                 icon: ChartNoAxesCombined,
               },
             ].map((r) => (
-              <Link to={r.to} key={r.to}>
+              <Link to={entryPath ?? r.to} key={r.to}>
                 <r.icon size={12} />
                 <span>{r.label}</span>
                 <ArrowRight size={12} />
               </Link>
             ))}
-            <Link to="/reports">
+            <Link to={entryPath ?? "/reports"}>
               <Plus size={12} />
               <span>Explore all reports</span>
             </Link>

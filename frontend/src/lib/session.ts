@@ -5,13 +5,28 @@ export const sessionSchema = z.strictObject({
 export const logoutSchema = z.strictObject({ status: z.literal("signed-out") });
 export const paidAccessMessage =
   "An active paid subscription is required. Contact your administrator to activate or renew access.";
+export const signInUnavailableMessage =
+  "Sign-in service is unavailable. Please try again later or contact your administrator.";
+export const signInRateLimitMessage =
+  "Too many sign-in attempts. Please wait and try again later.";
 export async function signInFailure(response: Response) {
   const detail = z
     .object({ code: z.string() })
     .safeParse(await response.json().catch(() => null));
-  return detail.success && detail.data.code === "PAID_ACCESS_REQUIRED"
-    ? paidAccessMessage
-    : "Sign-in failed. Check your details or try again later.";
+  if (detail.success && detail.data.code === "PAID_ACCESS_REQUIRED")
+    return paidAccessMessage;
+  if (response.status === 429) return signInRateLimitMessage;
+  if (response.status >= 500) return signInUnavailableMessage;
+  return "Sign-in failed. Check your details or try again later.";
+}
+export function signInError(error: unknown) {
+  if (
+    error instanceof TypeError ||
+    (error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError"))
+  )
+    return signInUnavailableMessage;
+  return error instanceof Error ? error.message : "Sign-in failed.";
 }
 let epoch = 0;
 // Identity changes invalidate private views in other tabs without broadcasting tokens or account data.
@@ -72,7 +87,7 @@ async function fetchSession() {
     });
     throw e;
   }
-  const value = sessionSchema.safeParse(await r.json());
+  const value = sessionSchema.safeParse(await r.json().catch(() => null));
   if (!value.success)
     throw new Error("Sign-in service returned an invalid response.");
   return value.data;

@@ -211,9 +211,9 @@ function HeroWorkspace() {
     <div className="reference-workspace">
       <aside className="reference-rail">
         <Link
-          to="/overview"
+          to="/login"
           className="reference-rail-logo"
-          aria-label="Open FinAI overview"
+          aria-label="Sign in to FinAI"
         >
           <BrandMark />
         </Link>
@@ -235,24 +235,26 @@ function HeroWorkspace() {
           { to: "/reports", icon: Layers, label: "Reports" },
           { to: "/close", icon: ListChecks, label: "Close checklist" },
         ].map((l) => (
-          <Link key={l.to} to={l.to} aria-label={l.label} title={l.label}>
+          <Link
+            key={l.to}
+            to="/login"
+            aria-label={`${l.label} — sign in`}
+            title={`${l.label} — sign in`}
+          >
             <l.icon size={14} />
           </Link>
         ))}
         <div className="reference-rail-bottom">
-          <Link to="/audit-log" aria-label="Audit log">
+          <Link to="/login" aria-label="Audit log — sign in">
             <History size={13} />
           </Link>
-          <Link
-            to="/settings/notifications"
-            aria-label="Notification preferences"
-          >
+          <Link to="/login" aria-label="Notification preferences — sign in">
             <Bell size={13} />
           </Link>
           <Link
             className="reference-profile"
-            to="/settings/members"
-            aria-label="Demo personas"
+            to="/login"
+            aria-label="Account — sign in"
           >
             AM
           </Link>
@@ -260,15 +262,15 @@ function HeroWorkspace() {
       </aside>
       <div className="reference-dashboard">
         <div className="reference-dashboard-tools">
-          <span>Local demo</span>
+          <span>Preview · Sign in to continue</span>
           <span>M</span>
           <span>S</span>
           <span>G</span>
-          <Link to="/settings/preferences" aria-label="Demo preferences">
+          <Link to="/login" aria-label="Preferences — sign in">
             <Menu size={11} />
           </Link>
         </div>
-        <FinanceSnapshot compact />
+        <FinanceSnapshot compact entryPath="/login" />
       </div>
     </div>
   );
@@ -659,8 +661,8 @@ export function ReferenceHome() {
               </h1>
               <div>
                 <p>
-                  Explore a connected FinAI workspace to review the books,
-                  follow the numbers, and bring your close together.
+                  Preview a FinAI workspace with fictional figures. Sign in to
+                  review your own records and bring your close together.
                 </p>
                 <Link to="/login" className="reference-button">
                   Sign in

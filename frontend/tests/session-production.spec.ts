@@ -54,7 +54,13 @@ test("HTTPS production sign-in, copy, refresh, CSRF denial, cookie flags and log
   );
   expect(unavailableGoogle.status()).toBe(503);
   await page.getByLabel("Email or account name").fill("browser-test");
-  await page.getByLabel("Organisation ID").fill(info.organisationId);
+  await page.getByLabel("Organisation ID").fill("SESSION-TEST-ORGANISATION");
+  await page.getByLabel("Password", { exact: true }).fill("wrong-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Sign-in failed");
+  expect(
+    (await context.cookies()).some((c) => c.name === "__Host-finai_session"),
+  ).toBe(false);
   await page
     .getByLabel("Password", { exact: true })
     .fill("synthetic-browser-password");

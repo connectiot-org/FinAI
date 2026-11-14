@@ -41,6 +41,7 @@ await db.organisation.create({
   data: {
     id: organisationId,
     name: "Synthetic session organisation",
+    code: "session-test-organisation",
     paidAccessUntil: new Date("2099-01-01T00:00:00Z"),
   },
 });

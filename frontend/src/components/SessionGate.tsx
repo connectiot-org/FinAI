@@ -11,6 +11,7 @@ import { sessionEnabled } from "../lib/api";
 import {
   readSession,
   signInFailure,
+  signInError,
   paidAccessMessage,
   sessionSchema,
   logoutSchema,
@@ -64,9 +65,7 @@ function OwnedSessionGate({
         if (active) {
           setAuthenticated(false);
           if (e?.status !== 401 || e?.code === "PAID_ACCESS_REQUIRED")
-            setError(
-              e instanceof Error ? e.message : "Cannot reach sign-in service.",
-            );
+            setError(signInError(e));
         }
       })
       .finally(() => {
@@ -108,7 +107,10 @@ function OwnedSessionGate({
                 signal: AbortSignal.timeout(10000),
               });
               if (!r.ok) throw new Error(await signInFailure(r));
-              if (!sessionSchema.safeParse(await r.json()).success)
+              if (
+                !sessionSchema.safeParse(await r.json().catch(() => null))
+                  .success
+              )
                 throw new Error(
                   "Sign-in service returned an invalid response.",
                 );
@@ -116,7 +118,7 @@ function OwnedSessionGate({
               authenticateSession();
               setAuthenticated(true);
             } catch (e) {
-              setError(e instanceof Error ? e.message : "Sign-in failed.");
+              setError(signInError(e));
             } finally {
               setBusy(false);
             }
@@ -136,7 +138,7 @@ function OwnedSessionGate({
               required
               autoComplete="off"
               maxLength={64}
-              placeholder="e.g. finai897987897987"
+              placeholder="e.g. your-company-code"
               value={organisationId}
               onChange={(e) => setOrganisationId(e.target.value)}
             />
@@ -150,7 +152,10 @@ function OwnedSessionGate({
               maxLength={1024}
             />
           </Field>
-          <p>Enter your organisation code or the UUID supplied by your administrator.</p>
+          <p>
+            Enter your organisation code or the UUID supplied by your
+            administrator.
+          </p>
           <p>Use your FinAI password, not your Google password.</p>
           <button className="primary" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
@@ -184,23 +189,25 @@ function OwnedSessionGate({
               if (!response.ok) {
                 const failure = await signInFailure(response);
                 throw new Error(
-                  failure === paidAccessMessage
+                  failure === paidAccessMessage ||
+                    response.status === 429 ||
+                    response.status >= 500
                     ? failure
                     : "Google sign-in failed. Your administrator must grant this Google email access to the organisation.",
                 );
               }
-              if (!sessionSchema.safeParse(await response.json()).success)
+              if (
+                !sessionSchema.safeParse(
+                  await response.json().catch(() => null),
+                ).success
+              )
                 throw new Error(
                   "Sign-in service returned an invalid response.",
                 );
               authenticateSession();
               setAuthenticated(true);
             } catch (error) {
-              setError(
-                error instanceof Error
-                  ? error.message
-                  : "Google sign-in failed.",
-              );
+              setError(signInError(error));
             } finally {
               setBusy(false);
             }

@@ -77,7 +77,7 @@ Before release, verify exact-head CI, bind the actual database and server Secret
 
 ## Welcome-page sign-in and Google
 
-The primary public Sign in buttons open `/login` (`/welcome` redirects there), which uses the existing password/session endpoints and optionally Google Identity Services. `/sample` preserves the independent browser-only accounting sample; the login page contains no sample-workspace link. Email/account name and Organisation ID refer to administratively provisioned accounts; no public signup or automatic organisation grants are added.
+The primary public Sign in buttons open `/login` (`/welcome` redirects there), which uses the existing password/session endpoints and optionally Google Identity Services. The login page also links to `/sample`, an independent browser-only fictional accounting workspace that needs no account and grants no company access. Email/account name and Organisation ID refer to administratively provisioned accounts; no public signup or automatic organisation grants are added.
 
 For the embedded backend, set `GOOGLE_CLIENT_ID` and a securely generated, shared `GOOGLE_NONCE_SECRET` (at least 32 characters) in the **server runtime** environment and redeploy. For a remote backend, set it on that backend instead. Create a Google OAuth **Web application** client with authorized JavaScript origin `https://www.finai8.com`; no client secret or application redirect URI is required for the popup ID-token flow. See [Google setup and account provisioning](../../backend/RELEASE.md#google-and-emailpassword-sign-in) for the exact steps and supported identities. No live Google sign-in is claimed until the client is configured and tested on the published origin.
 

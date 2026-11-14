@@ -173,9 +173,18 @@ function Welcome() {
             </div>
           </>
         ) : (
-          <SessionGate title="Sign in to FinAI" headingLevel={2} requireSession>
-            <Navigate to="/workspace/overview" replace />
-          </SessionGate>
+          <>
+            <SessionGate title="Sign in to FinAI" headingLevel={2} requireSession>
+              <Navigate to="/workspace/overview" replace />
+            </SessionGate>
+            <div className="welcome-note">
+              <ShieldCheck size={20} />
+              <p>
+                Showing FinAI to a client? Explore a fictional sample workspace
+                without an account. <Link to="/sample">Open sample workspace</Link>
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>

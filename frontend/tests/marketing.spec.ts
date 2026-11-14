@@ -605,6 +605,13 @@ test("an unreachable session service shows a clear error and keeps sign-in avail
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toBeEnabled();
   await expect(page).toHaveURL("/login");
+  await page.getByRole("link", { name: "Open sample workspace" }).click();
+  await expect(page).toHaveURL("/sample");
+  await expect(page.getByText("Synthetic Northstar Analytics data")).toBeVisible();
+  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await expect(page).toHaveURL("/overview");
+  await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+  await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
 });
 
 test("welcome Google selection uses provider credential and organisation, with visible denied access", async ({

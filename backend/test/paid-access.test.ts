@@ -239,6 +239,8 @@ test("paid customer access denies unpaid and expired logins, rechecks sessions, 
     );
     await updateCustomerAccess(db, organisationId, "billing-test", null, true);
     assert.equal((await call("/api/v1/entities")).r.status, 401);
+    // Simulate a new rate-limit window after the earlier login scenarios.
+    await db.rateLimit.updateMany({ data: { window: new Date(0) } });
     assert.equal((await login()).r.status, 403);
     assert.equal(await db.session.count({ where: { organisationId } }), 0);
     const audits = await db.serverAudit.findMany({

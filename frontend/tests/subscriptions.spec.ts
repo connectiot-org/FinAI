@@ -239,20 +239,50 @@ test("search, status filters, server indicators, pagination and entity isolation
 test("a delayed earlier entity response cannot replace the selected entity", async ({
   page,
 }) => {
+  const created = await fetch(`${api}/subscription-renewals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: crypto.randomUUID(),
+      entityId: entity,
+      supplierName: "Delayed supplier",
+      subscriptionName: "Delayed previous entity",
+      renewalDate: "2030-01-01",
+    }),
+  });
+  expect(created.status).toBe(201);
   let release: () => void = () => {};
+  let intercepted: () => void = () => {};
+  let completed: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
+  });
+  const previousResponseReady = new Promise<void>((resolve) => {
+    intercepted = resolve;
+  });
+  const previousResponseCompleted = new Promise<void>((resolve) => {
+    completed = resolve;
   });
   await page.route("**/subscription-renewals?**", async (route) => {
     const url = new URL(route.request().url());
     const response = await route.fetch();
-    if (url.searchParams.get("entityId") === entity) await gate;
+    if (url.searchParams.get("entityId") === entity) {
+      intercepted();
+      await gate;
+      try {
+        await route.fulfill({ response });
+      } finally {
+        completed();
+      }
+      return;
+    }
     await route.fulfill({ response });
   });
   await page.goto(`/tools/subscriptions?entity=${entity}`);
   await expect(
     page.getByLabel("Subscription entity", { exact: true }),
   ).toBeEnabled();
+  await previousResponseReady;
   await page
     .getByLabel("Subscription entity", { exact: true })
     .selectOption("22222222-2222-4222-8222-222222222223");
@@ -260,10 +290,11 @@ test("a delayed earlier entity response cannot replace the selected entity", asy
     page.getByText("No subscriptions found", { exact: true }),
   ).toBeVisible();
   release();
+  await previousResponseCompleted;
   await expect(
     page.getByText("No subscriptions found", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Edit Pagination 20", exact: true }),
+    page.getByRole("button", { name: "Edit Delayed previous entity", exact: true }),
   ).toHaveCount(0);
 });

@@ -664,9 +664,9 @@ test("missing invoice chunk recovers without a reload loop or clearing saved rec
   await expect(
     page.getByRole("heading", { name: "Unable to open this page" }),
   ).toBeVisible();
-  // Built assets can be requested by both preload and import. Count document
-  // navigations to verify one recovery reload rather than counting fetches.
-  expect(chunkRequests).toBeGreaterThanOrEqual(2);
+  // Browsers may reuse the failed module request during recovery. Verify the
+  // chunk was blocked and count document navigations to prove one reload.
+  expect(chunkRequests).toBeGreaterThanOrEqual(1);
   expect(entryNavigations).toBe(2);
   await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText(

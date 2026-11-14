@@ -26,7 +26,6 @@ import {
   AboutPage,
   DemoCustomersPage,
 } from "../features/marketing/Marketing";
-import { DatasetsPage } from "../features/marketing/Datasets";
 import { useAppDispatch, useDemo, command } from "../store";
 import { Overview } from "../features/Overview";
 import {
@@ -248,7 +247,6 @@ const routes: RouteObject[] = [
       { path: "resources", element: <ResourcesPage /> },
       { path: "about", element: <AboutPage /> },
       { path: "customers", element: <DemoCustomersPage /> },
-      { path: "datasets", element: <DatasetsPage /> },
     ],
   },
   { path: "/login", element: <Welcome /> },

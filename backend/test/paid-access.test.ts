@@ -113,7 +113,7 @@ test("paid customer access denies unpaid and expired logins, rechecks sessions, 
       });
     };
     const login = (
-      org = organisationId,
+      org: string = organisationId,
       password = "synthetic-paid-password",
     ) =>
       call("/auth/login", "POST", {

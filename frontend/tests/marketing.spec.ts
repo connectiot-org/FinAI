@@ -40,7 +40,6 @@ test("public navigation, product pages and demo entry work on direct refresh", a
     "/product/assistant",
     "/resources",
     "/about",
-    "/datasets",
   ]) {
     await page.goto(path);
     await expect(page.locator("main h1")).toBeVisible();
@@ -53,6 +52,16 @@ test("public navigation, product pages and demo entry work on direct refresh", a
   await expect(page.locator("main h1")).toHaveText("Overview");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
+});
+test("removed data library is unavailable and absent from public navigation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator('a[href="/datasets"]')).toHaveCount(0);
+  await page.goto("/datasets");
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
 });
 test("interactive homepage preview uses real records and search links", async ({
   page,

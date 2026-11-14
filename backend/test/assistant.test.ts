@@ -641,19 +641,13 @@ test("real HTTP session/CSRF/private owner guard and revocation during inference
       body?: unknown,
       patch: Record<string, string> = {},
     ) =>
-      new Promise<{ status: number; body: string }>((resolve, reject) => {
+      new Promise<{ status: number }>((resolve, reject) => {
         const r = httpRequest(
           base + path,
           { method: body ? "POST" : "GET", headers: { ...headers, ...patch } },
           (response) => {
-            let responseBody = "";
-            response.setEncoding("utf8");
-            response.on("data", (chunk: string) => {
-              responseBody += chunk;
-            });
-            response.on("end", () =>
-              resolve({ status: response.statusCode!, body: responseBody }),
-            );
+            response.resume();
+            response.on("end", () => resolve({ status: response.statusCode! }));
           },
         );
         r.on("error", reject);
@@ -669,56 +663,7 @@ test("real HTTP session/CSRF/private owner guard and revocation during inference
       ).status,
       401,
     );
-    await db.publicDataset.create({
-      data: {
-        id: randomUUID(),
-        slug: "unpublished-test-fixture",
-        title: "Unpublished test fixture",
-        summary: "Must never appear in the public catalogue.",
-        category: "Test",
-        version: "1.0.0",
-        format: "CSV",
-        license: "CC BY 4.0",
-        licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
-        sourceName: "Backend test fixture",
-        recordCount: 0,
-        published: false,
-      },
-    });
-    const catalogue = await request("/api/v1/public/datasets", undefined, {
-      cookie: "",
-    });
-    assert.equal(catalogue.status, 200);
-    const cataloguePayload = JSON.parse(catalogue.body);
-    assert.equal(cataloguePayload.datasets.length, 3);
-    assert.ok(
-      cataloguePayload.datasets.every(
-        (dataset: { slug: string }) =>
-          dataset.slug !== "unpublished-test-fixture",
-      ),
-    );
-    assert.deepEqual(
-      Object.keys(cataloguePayload.datasets[0]).sort(),
-      [
-        "slug",
-        "title",
-        "summary",
-        "category",
-        "version",
-        "format",
-        "license",
-        "licenseUrl",
-        "sourceName",
-        "sourceUrl",
-        "recordCount",
-        "updatedAt",
-      ].sort(),
-    );
-    assert.equal(
-      (await request("/api/v1/public/datasets", {}, { cookie: "" })).status,
-      401,
-      "catalogue mutations must remain authenticated",
-    );
+    assert.equal((await request("/api/v1/public/datasets", undefined, { cookie: "" })).status, 401);
     const input = {
       id: randomUUID(),
       entityId: LOCAL.entityId,

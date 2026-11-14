@@ -14,9 +14,7 @@ Start with the [repository and file guide](docs/repository-guide.md) for every f
 | `/workspace/assistant/records` | Authorized financial facts and proposed invoice actions requiring confirmation | Session, authorized sources and approved model/provider settings |
 | `/demo/assistant` or `/assistant` | Separate public general model chat; cannot access company records | Server-only OpenRouter configuration |
 | `/sample` | Existing Northstar accounting/banking/reporting sample | Browser-only fictional data |
-| `/datasets` | Free downloadable accounting templates and synthetic finance examples | Public catalogue API and static CSV files; no customer login |
 
-The public `/datasets` library contains original templates and synthetic examples only; it does not expose company records. See [the dataset release guide](frontend/docs/public-datasets.md).
 
 The invoice feature supports a manual-entry GBP approval/export workflow. It does not execute payments, post to an external ledger or perform OCR/email ingestion. Original Northstar accounting, banking and automation screens remain sample workflows. A passing local suite does not establish hosted production readiness.
 

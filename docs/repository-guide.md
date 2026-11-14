@@ -159,13 +159,10 @@ Each row below describes one exact file. Test source describes intended verifica
 | File | Purpose |
 | --- | --- |
 | `frontend/src/features/marketing/Marketing.tsx` | Provides public header/footer/layout, product/resource/about/customer/data-library pages and the homepage entry using original FinAI branding. |
-| `frontend/src/features/marketing/Datasets.tsx` | Loads and validates published public dataset metadata, supports search/category filters and links to static CSV downloads without sending session credentials. |
-| `frontend/src/features/marketing/datasets.css` | Styles public dataset cards, filters, loading/error states and responsive layouts. |
 | `frontend/src/features/marketing/ProductDetails.tsx` | Renders product feature sections, illustrations and workflow panels using explicitly fictional local records. |
 | `frontend/src/features/marketing/ProductPreview.tsx` | Renders interactive miniature overview/ledger/receivables/close/Assistant product views for public page demonstrations. |
 | `frontend/src/features/marketing/ReferenceHome.tsx` | Implements the responsive public homepage composition informed by captured public reference geometry, using FinAI content and assets. |
 | `frontend/src/features/marketing/content.ts` | Declares public product copy, routes, preview types, feature descriptions and frequently asked questions. |
-| `frontend/tests/public-datasets.spec.ts` | Verifies anonymous catalogue loading, search/category filters, error handling and public CSV downloads. |
 
 ### Public stateless model chat
 
@@ -261,16 +258,12 @@ Each row below describes one exact file. Test source describes intended verifica
 
 | File | Purpose |
 | --- | --- |
-| `frontend/public/datasets/chart-of-accounts.csv` | Original illustrative starter chart of accounts distributed as a free, downloadable CSV under the stated CC BY 4.0 licence. |
-| `frontend/public/datasets/synthetic-invoices.csv` | Fictional invoice records for analytics and workflow testing; contains no real customer or company data. |
-| `frontend/public/datasets/synthetic-ledger-transactions.csv` | Balanced fictional double-entry ledger examples for accounting prototypes and tests. |
 
 ### Feature/runbook and historical review documents
 
 | File | Purpose |
 | --- | --- |
 | `frontend/docs/assistant-production.md` | Describes anonymous public chat controls, deployment/provider settings, safe failure behavior and limits of operational verification. |
-| `frontend/docs/public-datasets.md` | Explains public catalogue visibility, synthetic-data/licensing rules, the isolated GET-only API boundary and the additive migration release procedure. |
 | `frontend/docs/assistant.md` | Explains authenticated conversations, source grounding and preferences; its original route/action descriptions need updates for current public/private split and confirmed invoices. |
 | `frontend/docs/checklist.md` | Documents separate checklist modes, local startup, task/copy behavior, verification and production identity boundaries. |
 | `frontend/docs/content-ui-review.md` | Records the historical FinAI content/branding/accessibility review, original-artwork replacements and evidence limits. |
@@ -385,7 +378,7 @@ This section covers all tracked backend files, shared contract files and both Gi
 
 ### Database migration order
 
-Prisma applies ten committed migration folders in chronological order: checklist/tenant foundation → accounts/sessions/rate limits → subscriptions → immutable receivable sources → workspace/admin/audit/import staging → Assistant and ledger persistence → deletion receipts → invoice approvals → paid-customer access expiry → public dataset catalogue. `schema.prisma` describes the current client models; SQL migrations retain the actual historical database changes. Preserve migration names/history; use an additive reviewed migration for a new schema change. `seed.ts` only ensures the explicitly local synthetic identity/entities.
+Prisma applies eleven committed migration folders in chronological order: checklist/tenant foundation → accounts/sessions/rate limits → subscriptions → immutable receivable sources → workspace/admin/audit/import staging → Assistant and ledger persistence → deletion receipts → invoice approvals → paid-customer access expiry → public dataset catalogue → organisation login codes. `schema.prisma` describes the current client models; SQL migrations retain the actual historical database changes. Preserve migration names/history; use an additive reviewed migration for a new schema change. `seed.ts` only ensures the explicitly local synthetic identity/entities.
 
 ### Backend configuration and operator documents
 
@@ -425,6 +418,7 @@ Prisma applies ten committed migration folders in chronological order: checklist
 | `backend/prisma/migrations/migration_lock.toml` | Records PostgreSQL as the Prisma migration provider; this is migration metadata, not an application lock. |
 | `backend/prisma/migrations/202611130001_paid_customer_access/migration.sql` | Migration 9: adds nullable organisation paid-access expiry, denying access until payment is explicitly confirmed. |
 | `backend/prisma/migrations/202611130002_public_datasets/migration.sql` | Migration 10: adds the isolated public dataset catalogue table and three original published metadata rows; leaves tenant finance tables untouched. |
+| `backend/prisma/migrations/202611140001_organisation_login_codes/migration.sql` | Migration 11: adds unique organisation login codes. |
 | `backend/prisma/schema.prisma` | Prisma model/relationship definition for every persisted module; generates native and RHEL OpenSSL 3 client targets for local and Vercel runtimes. |
 | `backend/prisma/seed.ts` | Loopback-only development seed that ensures the synthetic local identity and two entities without replacing existing tasks; never a company-data bootstrap. |
 
@@ -447,9 +441,6 @@ Prisma applies ten committed migration folders in chronological order: checklist
 ### Backend application foundation
 
 | File | Responsibility |
-| --- | --- |
-| `backend/src/public-datasets/controller.ts` | Exposes the exact anonymous read-only catalogue GET route; it does not handle publication or company records. |
-| `backend/src/public-datasets/service.ts` | Selects only explicitly published metadata from the isolated PublicDataset table. |
 | --- | --- |
 | `backend/src/app.ts` | Application composition root: Nest providers/controllers, trusted ingress, body limits, sessions/CSRF, raw uploads, health checks and listener-free bootstrap for Vercel. |
 | `backend/src/audit.ts` | Provides request-local support IDs and transaction-scoped server audits with a bounded allowlist of safe metadata. |

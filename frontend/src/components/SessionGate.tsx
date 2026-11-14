@@ -135,6 +135,8 @@ function OwnedSessionGate({
               name="organisationId"
               required
               autoComplete="off"
+              maxLength={64}
+              placeholder="e.g. finai897987897987"
               value={organisationId}
               onChange={(e) => setOrganisationId(e.target.value)}
             />
@@ -148,6 +150,7 @@ function OwnedSessionGate({
               maxLength={1024}
             />
           </Field>
+          <p>Enter your organisation code or the UUID supplied by your administrator.</p>
           <p>Use your FinAI password, not your Google password.</p>
           <button className="primary" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
@@ -159,8 +162,8 @@ function OwnedSessionGate({
           onCredential={async (credential) => {
             if (busy) return;
             if (
-              !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
-                organisationId,
+              !/^(?:[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}|[a-z][a-z0-9-]{2,63})$/i.test(
+                organisationId.trim(),
               )
             ) {
               setError(

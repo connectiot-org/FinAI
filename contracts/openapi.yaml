@@ -363,7 +363,7 @@ paths:
   /auth/login:
     post:
       operationId: _auth_loginpost
-      summary: Paid customer account sign-in; username/password/organisationId JSON. Generic 401; PostgreSQL
+      summary: Paid customer account sign-in; accepts an organisation UUID or friendly organisation code. Generic 401; PostgreSQL
         rate limit. Returns csrfToken; rotates secure HttpOnly cookie.
       responses:
         '200':
@@ -434,7 +434,7 @@ paths:
               required: [credential, organisationId]
               properties:
                 credential: {type: string, minLength: 1, maxLength: 12000}
-                organisationId: {type: string, format: uuid}
+                organisationId: {type: string, maxLength: 64, pattern: '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|[A-Za-z][A-Za-z0-9-]{2,63})$'}
       responses:
         '200':
           description: Rotated secure session cookie and consumed challenge cookie.
@@ -750,7 +750,9 @@ components:
           writeOnly: true
         organisationId:
           type: string
-          format: uuid
+          maxLength: 64
+          pattern: '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|[A-Za-z][A-Za-z0-9-]{2,63})$'
+          description: Existing organisation UUID or case-insensitive friendly organisation code.
     SessionResult:
       type: object
       additionalProperties: false

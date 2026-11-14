@@ -42,7 +42,7 @@ test("paid customer access denies unpaid and expired logins, rechecks sessions, 
       userId = randomUUID();
     await db.organisation.createMany({
       data: [
-        { id: organisationId, name: "Synthetic paid customer" },
+        { id: organisationId, code: "finai897987897987", name: "Synthetic paid customer" },
         { id: otherOrganisation, name: "Synthetic unpaid customer" },
       ],
     });
@@ -176,8 +176,13 @@ test("paid customer access denies unpaid and expired logins, rechecks sessions, 
     assert.equal(JSON.parse(cliApply.stdout.split("\n")[0]).applied, true);
     const paid = await login();
     assert.equal(paid.r.status, 200);
-    cookie = paid.r.headers.get("set-cookie")!.split(";")[0];
-    csrf = paid.data.csrfToken!;
+    const friendlyCodeLogin = await login("FINAI897987897987");
+    assert.equal(friendlyCodeLogin.r.status, 200);
+    const friendlySession = await db.session.findFirstOrThrow();
+    assert.equal(friendlySession.organisationId, organisationId);
+    assert.equal((await login("finai-unknown-organisation")).r.status, 401);
+    cookie = friendlyCodeLogin.r.headers.get("set-cookie")!.split(";")[0];
+    csrf = friendlyCodeLogin.data.csrfToken!;
     assert.equal((await call("/auth/session")).r.status, 200);
     assert.equal((await call("/api/v1/entities")).r.status, 200);
     assert.equal((await login(otherOrganisation)).r.status, 403);

@@ -60,6 +60,17 @@ export async function googleEmail(
   return payload.email.toLowerCase();
 }
 const googleCookie = "__Host-finai_google";
+const organisationIdentifier = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .transform((value) => value.toLowerCase())
+  .refine(
+    (value) =>
+      uuid.safeParse(value).success || /^[a-z][a-z0-9-]{2,63}$/.test(value),
+    "Enter a valid organisation UUID or organisation code.",
+  );
 export class Auth {
   constructor(
     private db: PrismaClient,
@@ -86,7 +97,7 @@ export class Auth {
     const input = parse(
       z.strictObject({
         credential: z.string().min(1).max(12000),
-        organisationId: uuid,
+        organisationId: organisationIdentifier,
       }),
       req.body,
     );
@@ -141,7 +152,8 @@ export class Auth {
       where: { username: email },
     });
     if (!account || account.disabled) throw denied();
-    await this.issueSession(req, res, account, input.organisationId, true);
+    const organisationId = await this.resolveOrganisationId(input.organisationId);
+    await this.issueSession(req, res, account, organisationId, true);
   }
   async limit(key: string, maximum: number, seconds: number) {
     const hash = digest(key),
@@ -200,7 +212,7 @@ export class Auth {
       z.strictObject({
         username: z.string().min(1).max(100),
         password: z.string().min(1).max(1024),
-        organisationId: uuid,
+        organisationId: organisationIdentifier,
       }),
       req.body,
     );
@@ -218,7 +230,22 @@ export class Auth {
       ? await argon2.verify(account.passwordHash, input.password)
       : (await argon2.hash(input.password, passwordOptions), false);
     if (!valid || !account || account.disabled) throw denied();
-    await this.issueSession(req, res, account, input.organisationId);
+    const organisationId = await this.resolveOrganisationId(input.organisationId);
+    await this.issueSession(req, res, account, organisationId);
+  }
+  private async resolveOrganisationId(identifier: string) {
+    const isUuid = uuid.safeParse(identifier).success;
+    const organisation = isUuid
+      ? await this.db.organisation.findUnique({
+          where: { id: identifier },
+          select: { id: true },
+        })
+      : await this.db.organisation.findUnique({
+          where: { code: identifier },
+          select: { id: true },
+        });
+    if (!organisation) throw denied();
+    return organisation.id;
   }
   private async paidAccess(
     db: Pick<PrismaClient, "organisation">,

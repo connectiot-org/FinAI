@@ -94,6 +94,46 @@ test("homepage dashboard preview requires sign-in before entering a workspace", 
     ).toBeVisible();
   }
 });
+test("every public page offers sign-in instead of direct workspace entry", async ({
+  page,
+}) => {
+  // Any anchor on a public page must be a sign-in entry, an informational
+  // page, the labelled sample tour, an in-page anchor, or the footer GitHub
+  // link. Direct links into workspace functions are the bypass this guards.
+  const allowed =
+    /^(\/login|\/|\/product\/|\/sample|\/customers|\/resources|\/about|#|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
+  for (const path of [
+    "/",
+    "/resources",
+    "/customers",
+    "/about",
+    "/product/assistant",
+    "/product/automated-general-ledger",
+    "/product/accounts-receivable",
+    "/product/accounts-payable",
+    "/product/financial-reporting",
+    "/product/month-end-close",
+    "/product/bank-reconciliation",
+    "/product/native-integrations",
+    "/product/advanced-revenue-recognition",
+    "/product/multi-entity",
+    "/product/security-permissions",
+    "/product/real-time-reporting",
+  ]) {
+    await page.goto(path);
+    const hrefs = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href")),
+    );
+    expect(hrefs.length, `${path} exposes links`).toBeGreaterThan(10);
+    const offenders = hrefs.filter((href) => href && !allowed.test(href));
+    expect(offenders, `${path} must not link into the workspace`).toEqual([]);
+    const signInEntries = hrefs.filter((href) => href === "/login");
+    expect(
+      signInEntries.length,
+      `${path} must offer sign-in entries`,
+    ).toBeGreaterThan(0);
+  }
+});
 test("interactive homepage preview uses real records and search links", async ({
   page,
 }) => {
@@ -113,8 +153,10 @@ test("interactive homepage preview uses real records and search links", async ({
     .getByRole("textbox", { name: "Search product preview" })
     .fill("INV-1001");
   await preview.locator("tbody a").first().click();
-  await expect(page).toHaveURL(/\/accounting\/journals\//);
-  await expect(page.locator("main h1")).toContainText("INV-1001");
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
   await page.goto("/resources#interactive-preview");
   await page.getByRole("tab", { name: "Receivables", exact: true }).click();
   await expect(
@@ -140,8 +182,13 @@ test("guided walkthrough, FAQ keyboard behavior and missing product recovery", a
   await page
     .getByRole("button", { name: "Bring a close together", exact: true })
     .click();
-  await page.getByRole("link", { name: "Start this walkthrough" }).click();
-  await expect(page).toHaveURL("/close");
+  await page
+    .getByRole("link", { name: "Sign in to start this walkthrough" })
+    .click();
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
   await page.goto("/resources#questions");
   const question = page
     .locator("summary")
@@ -341,10 +388,12 @@ test("product feature cards, source story and related-workflow carousel remain f
     page.getByRole("button", { name: "Previous related workflows" }),
   ).toBeEnabled();
   await page
-    .getByRole("link", { name: "Explore the record", exact: true })
+    .getByRole("link", { name: "Sign in to explore the record", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/accounting\/journals\//);
-  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
 });
 
 test("FinAI identity, fictional companies and owned artwork replace endorsement cues", async ({
@@ -366,11 +415,13 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
   );
   await expect(page.locator(".reference-integration-grid a")).toHaveCount(6);
   await expect(
-    page.getByRole("link", { name: "Explore Banking demo integrations" }),
-  ).toHaveAttribute("href", "/integrations");
+    page.getByRole("link", { name: "Explore Banking integrations — sign in" }),
+  ).toHaveAttribute("href", "/login");
   await page.locator(".reference-company-grid a").first().click();
-  await expect(page.locator("main h1")).toBeVisible();
-  await expect(page).toHaveURL(/receivables\/customers\//);
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
   await page.goto("/product/accounts-payable");
   await expect(page).toHaveTitle("Accounts payable · FinAI");
   await page
@@ -434,7 +485,10 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   const dialog = page.getByRole("dialog");
   await dialog.locator("summary").filter({ hasText: "By workspace" }).click();
   await dialog.getByRole("link", { name: "Multiple entities" }).click();
-  await expect(page).toHaveURL("/entities");
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
+  ).toBeVisible();
   await expect(dialog).toHaveCount(0);
   for (const route of ["/", "/resources", "/overview"]) {
     await page.goto(route);
@@ -447,7 +501,7 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   ).toBeInViewport();
 });
 
-test("public header keeps sign-in while invoices remain accessible from mobile and sample navigation", async ({
+test("public header keeps sign-in while mobile navigation entries require sign-in", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -469,12 +523,9 @@ test("public header keeps sign-in while invoices remain accessible from mobile a
     .getByRole("navigation", { name: "Mobile public navigation" })
     .getByRole("link", { name: "Supplier invoices", exact: true })
     .click();
-  await expect(page).toHaveURL("/demo/payables/invoices");
+  await expect(page).toHaveURL("/login");
   await expect(
-    page.getByRole("heading", {
-      name: "Invoices",
-      exact: true,
-    }),
+    page.getByRole("heading", { name: "Sign in to FinAI" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/sample");

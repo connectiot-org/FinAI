@@ -33,6 +33,9 @@ const coreSlugs = [
   "native-integrations",
   "financial-reporting",
 ];
+// Public navigation offers sign-in entries instead of direct workspace access:
+// every function destination on the public site is /login until a paid session
+// is validated.
 const solutionGroups = [
   {
     title: "By role",
@@ -40,17 +43,17 @@ const solutionGroups = [
       {
         label: "Finance leaders",
         description: "Explore financial statements",
-        to: "/reports",
+        to: "/login",
       },
       {
         label: "Accountants",
         description: "Follow the ledger and journals",
-        to: "/accounting/ledger",
+        to: "/login",
       },
       {
         label: "Reviewers",
         description: "Bring approvals into view",
-        to: "/close",
+        to: "/login",
       },
     ],
   },
@@ -65,12 +68,12 @@ const solutionGroups = [
       {
         label: "Multiple entities",
         description: "Separate books and a group view",
-        to: "/entities",
+        to: "/login",
       },
       {
         label: "SaaS business",
         description: "Customers, contracts, and revenue",
-        to: "/revenue/contracts",
+        to: "/login",
       },
     ],
   },
@@ -326,10 +329,10 @@ export function MarketingLayout() {
           </div>
           <div>
             <h3>SOLUTIONS</h3>
-            <Link to="/reports">Finance leaders</Link>
-            <Link to="/accounting/ledger">Accountants</Link>
-            <Link to="/close">Reviewers</Link>
-            <Link to="/entities">Multi-entity teams</Link>
+            <Link to="/login">Finance leaders</Link>
+            <Link to="/login">Accountants</Link>
+            <Link to="/login">Reviewers</Link>
+            <Link to="/login">Multi-entity teams</Link>
             <Link to="/customers">Demo customers</Link>
           </div>
           <div>
@@ -343,7 +346,7 @@ export function MarketingLayout() {
             <h3>COMPANY</h3>
             <Link to="/about">About FinAI</Link>
             <Link to="/resources#demo-details">Local data and privacy</Link>
-            <Link to="/settings/preferences">Demo preferences</Link>
+            <Link to="/login">Workspace preferences</Link>
             <a
               href="https://github.com/connectiot-org/FinAI"
               target="_blank"
@@ -379,7 +382,7 @@ export function MarketingLayout() {
           className="marketing-mobile-nav"
           aria-label="Mobile public navigation"
         >
-          <Link to="/demo/payables/invoices">
+          <Link to="/login">
             Supplier invoices
             <ArrowRight size={15} />
           </Link>
@@ -476,12 +479,12 @@ export function ProductPage() {
           </span>
           <h1>{product.title}</h1>
           <p>{product.description}</p>
-          <Link className="marketing-button dark" to={product.to}>
-            Try this workflow
+          <Link className="marketing-button dark" to="/login">
+            Sign in to try this workflow
             <ArrowRight size={15} />
           </Link>
           <span className="marketing-product-note">
-            Interactive local demo · No credentials required
+            Paid FinAI workspace · Sign-in required
           </span>
         </section>
         <div className="marketing-product-page-preview">
@@ -517,8 +520,8 @@ export function ResourcesPage() {
           through the numbers.
         </h1>
         <p>
-          Hands-on starting points for the FinAI demo. Every guide takes you
-          directly into a connected local workflow.
+          Hands-on starting points for FinAI. Every guide begins with a secure
+          sign-in to your own workspace.
         </p>
       </section>
       <section className="marketing-section marketing-resource-guides">
@@ -532,8 +535,8 @@ export function ResourcesPage() {
                 <li key={title}>{title}</li>
               ))}
             </ol>
-            <Link className="marketing-text-link" to={p.to}>
-              Open this workflow
+            <Link className="marketing-text-link" to="/login">
+              Sign in to open this workflow
               <ArrowRight size={14} />
             </Link>
           </article>
@@ -556,8 +559,8 @@ export function ResourcesPage() {
           are never uploaded. You can restore the original dataset at any time
           through Settings → Preferences → Reset demo.
         </p>
-        <Link className="marketing-text-link" to="/settings/preferences">
-          Open demo preferences
+        <Link className="marketing-text-link" to="/login">
+          Sign in to open workspace preferences
           <ArrowRight size={14} />
         </Link>
       </section>
@@ -653,7 +656,7 @@ export function DemoCustomersPage() {
         {s.customers
           .filter((c) => c.entity === s.entity)
           .map((c) => (
-            <Link to={`/receivables/customers/${c.id}`} key={c.id}>
+            <Link to="/login" key={c.id}>
               <span className="demo-company-mark">{c.name[0]}</span>
               <h2>{c.name}</h2>
               <p>{c.contact}</p>
@@ -671,7 +674,7 @@ export function DemoCustomersPage() {
                 outstanding
               </strong>
               <span>
-                View demo profile
+                Sign in to view
                 <ArrowRight size={14} />
               </span>
             </Link>

@@ -31,8 +31,7 @@ export const products = [
         "Clarity at every level",
         "Switch entity and period without losing sight of the details.",
       ],
-    ],
-    to: "/accounting/ledger",
+    ]
   },
   {
     slug: "accounts-receivable",
@@ -56,8 +55,7 @@ export const products = [
         "Every receipt has a source",
         "Follow the connection from an invoice to cash and receivable journal entries.",
       ],
-    ],
-    to: "/receivables/invoices",
+    ]
   },
   {
     slug: "accounts-payable",
@@ -81,8 +79,7 @@ export const products = [
         "Nothing gets lost in the handoff",
         "Inspect approval history, source journals, and outstanding balances.",
       ],
-    ],
-    to: "/payables/bills",
+    ]
   },
   {
     slug: "financial-reporting",
@@ -106,8 +103,7 @@ export const products = [
         "Follow the number",
         "Drill into an account or export a real CSV for your own analysis.",
       ],
-    ],
-    to: "/reports",
+    ]
   },
   {
     slug: "month-end-close",
@@ -131,8 +127,7 @@ export const products = [
         "Confidence before the lock",
         "Request a review, approve the work, and use a local period lock.",
       ],
-    ],
-    to: "/close",
+    ]
   },
   {
     slug: "assistant",
@@ -156,8 +151,7 @@ export const products = [
         "You make the final call",
         "Inspect a proposed local action and choose whether to approve it.",
       ],
-    ],
-    to: "/assistant",
+    ]
   },
 ];
 export const questions = [
@@ -202,8 +196,7 @@ products.push(
         "Match, then inspect",
         "Confirm a local match and trace its journal without changing source history.",
       ],
-    ],
-    to: "/banking/reconciliation",
+    ]
   },
   {
     slug: "native-integrations",
@@ -227,8 +220,7 @@ products.push(
         "Inspect the activity",
         "Every simulated connection has a local sync log.",
       ],
-    ],
-    to: "/integrations",
+    ]
   },
   {
     slug: "advanced-revenue-recognition",
@@ -252,8 +244,7 @@ products.push(
         "See the source",
         "Open the customer, invoice, or ledger behind a schedule.",
       ],
-    ],
-    to: "/revenue/schedules",
+    ]
   },
   {
     slug: "multi-entity",
@@ -277,8 +268,7 @@ products.push(
         "Trace the details",
         "Follow results into the active entity and its underlying books.",
       ],
-    ],
-    to: "/entities",
+    ]
   },
   {
     slug: "security-permissions",
@@ -302,8 +292,7 @@ products.push(
         "Review before acting",
         "Assistant proposals and accounting actions require explicit local decisions.",
       ],
-    ],
-    to: "/settings/members",
+    ]
   },
   {
     slug: "real-time-reporting",
@@ -324,7 +313,6 @@ products.push(
         "Select an entity and accounting period, then compare the results.",
       ],
       ["Share the details", "Export an actual CSV or print a statement."],
-    ],
-    to: "/reports",
+    ]
   },
 );

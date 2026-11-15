@@ -126,20 +126,8 @@ export function ProductPreview({
                 <span>YOUR FINANCES, CONNECTED</span>
                 <h3>{title}</h3>
               </div>
-              <Link
-                to={
-                  view === "ledger"
-                    ? "/accounting/ledger"
-                    : view === "receivables"
-                      ? "/receivables/invoices"
-                      : view === "close"
-                        ? "/close"
-                        : view === "assistant"
-                          ? "/assistant"
-                          : "/overview"
-                }
-              >
-                Open workspace
+              <Link to="/login">
+                Sign in to open workspace
                 <ArrowUpRight size={12} />
               </Link>
             </div>
@@ -213,7 +201,7 @@ export function ProductPreview({
                   <ArrowDownLeft size={18} />
                   <span>Accounts receivable</span>
                   <b>{money(m.receivables)}</b>
-                  <Link to="/receivables/invoices">
+                  <Link to="/login">
                     View invoices
                     <ArrowUpRight size={12} />
                   </Link>
@@ -263,9 +251,7 @@ export function ProductPreview({
                         ? lines.map((l) => (
                             <tr key={l.id}>
                               <td>
-                                <Link to={`/accounting/journals/${l.journal}`}>
-                                  {l.journal}
-                                </Link>
+                                <Link to="/login">{l.journal}</Link>
                               </td>
                               <td>{l.memo}</td>
                               <td>
@@ -277,9 +263,7 @@ export function ProductPreview({
                         : invoices.map((i) => (
                             <tr key={i.id}>
                               <td>
-                                <Link to={`/receivables/invoices/${i.id}`}>
-                                  {i.id}
-                                </Link>
+                                <Link to="/login">{i.id}</Link>
                               </td>
                               <td>
                                 {
@@ -311,7 +295,7 @@ export function ProductPreview({
             ) : view === "close" ? (
               <div className="preview-close-list">
                 {tasks.map((t) => (
-                  <Link key={t.id} to="/close">
+                  <Link key={t.id} to="/login">
                     <i className={t.status === "Approved" ? "done" : ""}>
                       {t.status === "Approved" && <Check size={12} />}
                     </i>
@@ -335,13 +319,13 @@ export function ProductPreview({
                   Closing cash is <b>{money(m.cash)}</b>. Explore the supporting
                   ledger entries to see the full picture.
                 </p>
-                <Link to="/accounting/ledger?account=1000">
+                <Link to="/login">
                   Cash ledger
                   <ArrowUpRight size={12} />
                 </Link>
                 <div>Demo responses · No model connection</div>
-                <Link className="preview-ask" to="/assistant">
-                  Ask in the demo
+                <Link className="preview-ask" to="/login">
+                  Sign in to ask FinAI
                   <Sparkles size={14} />
                 </Link>
               </div>

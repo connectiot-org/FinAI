@@ -24,7 +24,7 @@ import { products } from "./content";
 
 type Product = (typeof products)[number];
 
-function RecordIllustration({ product }: { product: Product }) {
+function RecordIllustration() {
   const s = useDemo();
   const rows = ledger(s).slice(0, 4);
   return (
@@ -43,7 +43,7 @@ function RecordIllustration({ product }: { product: Product }) {
           <span>Debit</span>
         </div>
         {rows.map((row) => (
-          <Link key={row.id} to={`/accounting/journals/${row.journal}`}>
+          <Link key={row.id} to="/login">
             <span>
               {row.journal}
               <small>{row.memo}</small>
@@ -55,8 +55,8 @@ function RecordIllustration({ product }: { product: Product }) {
         <div className="product-art-bottom">
           <Check size={12} />
           Canonical local records
-          <Link to={product.to}>
-            Open workflow <ArrowUpRight size={12} />
+          <Link to="/login">
+            Sign in to open workflow <ArrowUpRight size={12} />
           </Link>
         </div>
       </div>
@@ -87,7 +87,7 @@ function ReviewIllustration() {
           <strong>A clear review path</strong>
         </div>
         {tasks.map((task) => (
-          <Link className="product-art-task" key={task.id} to="/close">
+          <Link className="product-art-task" key={task.id} to="/login">
             <span
               className={
                 task.status === "Approved" || task.status === "Complete"
@@ -150,7 +150,7 @@ function EntityIllustration() {
       </div>
       <div className="product-art-entity-nodes">
         {s.entities.map((e) => (
-          <Link to="/entities" key={e.id}>
+          <Link to="/login" key={e.id}>
             <Building2 size={17} />
             <span>
               {e.id.toUpperCase()}
@@ -191,9 +191,9 @@ function HistoryIllustration() {
           ))}
         </div>
       </div>
-      <Link className="product-art-history-link" to="/accounting/journals">
+      <Link className="product-art-history-link" to="/login">
         <BookOpen size={14} />
-        Inspect the journals
+        Sign in to inspect the journals
         <ArrowUpRight size={13} />
       </Link>
     </div>
@@ -238,7 +238,7 @@ export function ProductDetails({ product }: { product: Product }) {
           {featureCopy.map(([title, description], index) => (
             <article key={title}>
               {index === 0 ? (
-                <RecordIllustration product={product} />
+                <RecordIllustration />
               ) : index === 1 ? (
                 <ReviewIllustration />
               ) : index === 2 ? (
@@ -283,10 +283,8 @@ export function ProductDetails({ product }: { product: Product }) {
                 <strong>A workflow you can inspect</strong>
                 <small>No customer endorsement or live account</small>
               </span>
-              <Link
-                to={journal ? `/accounting/journals/${journal.id}` : product.to}
-              >
-                Explore the record <ArrowRight size={14} />
+              <Link to="/login">
+                Sign in to explore the record <ArrowRight size={14} />
               </Link>
             </div>
           </div>

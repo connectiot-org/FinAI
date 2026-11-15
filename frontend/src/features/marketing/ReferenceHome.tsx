@@ -134,29 +134,26 @@ const platform = [
     to: "/product/security-permissions",
   },
 ];
+// Public marketing copy only. Every workflow entry on the public site is a
+// sign-in entry: unauthenticated visitors reach the login page first, and the
+// paid workspace opens only after a validated session.
 const journeys = [
   {
     title: "Follow a number",
     description:
       "Filter the ledger, open a journal, then inspect its source record.",
-    view: "ledger" as PreviewView,
-    to: "/accounting/ledger",
     icon: BookOpen,
   },
   {
     title: "Bring a close together",
     description:
       "Add evidence, request a review, and approve a close task locally.",
-    view: "close" as PreviewView,
-    to: "/close",
     icon: CheckSquare,
   },
   {
     title: "Ask a demo question",
     description:
       "Explore deterministic answers, linked evidence, and explicit local approval.",
-    view: "assistant" as PreviewView,
-    to: "/assistant",
     icon: Sparkles,
   },
 ];
@@ -176,8 +173,8 @@ export function ReferenceWalkthrough({
       onOpenChange={onOpenChange}
     >
       <p className="reference-tour-note">
-        Choose a workflow and follow its records, reviews, and next steps in the
-        fictional Northstar Analytics workspace.
+        Choose a workflow and sign in to follow its records, reviews, and next
+        steps in your FinAI workspace.
       </p>
       <div className="reference-tour-tabs">
         {journeys.map((j, i) => (
@@ -196,10 +193,10 @@ export function ReferenceWalkthrough({
         <p>{current.description}</p>
         <Link
           className="button primary"
-          to={current.to}
+          to="/login"
           onClick={() => onOpenChange(false)}
         >
-          Start this walkthrough
+          Sign in to start this walkthrough
           <ArrowRight size={14} />
         </Link>
       </div>
@@ -461,6 +458,8 @@ function PlatformArt({ kind }: { kind: string }) {
     </div>
   );
 }
+// The `to` targets of these sections are sign-in entries: no public page may
+// open a workspace function without a validated paid session.
 const aiSections = [
   {
     id: "assistant",
@@ -468,7 +467,6 @@ const aiSections = [
     title: "Ask anything",
     description:
       "Explore cash, revenue, open invoices, and close tasks. Supported demo answers link to the records behind the number.",
-    to: "/assistant",
   },
   {
     id: "agents",
@@ -476,7 +474,6 @@ const aiSections = [
     title: "Review repeatable work",
     description:
       "Set a trigger, choose an amount condition, and preview which local records a rule will flag before running it.",
-    to: "/automations",
   },
   {
     id: "close",
@@ -484,7 +481,6 @@ const aiSections = [
     title: "Keep the whole close in view",
     description:
       "See tasks, evidence, owners, and reviews together. Your team decides when a task is complete and ready to approve.",
-    to: "/close",
   },
   {
     id: "records",
@@ -492,7 +488,6 @@ const aiSections = [
     title: "Follow the source",
     description:
       "Move from a financial statement to an account, journal, invoice, or bill in the same connected demo workspace.",
-    to: "/reports",
   },
 ];
 function AssistantIllustration({ index }: { index: number }) {
@@ -552,15 +547,12 @@ function AssistantIllustration({ index }: { index: number }) {
 }
 function WorkflowStories() {
   const [active, setActive] = useState(0);
-  const s = useDemo(),
-    invoice = s.invoices.find((i) => i.entity === s.entity)!;
   const stories = [
     {
       tag: "RECEIVABLES",
       title: "An invoice. A receipt. A clear trail.",
       description:
         "Open a customer invoice and trace the source journals. Apply a demo receipt to see the cash and receivable balances change together.",
-      to: `/receivables/invoices/${invoice.id}`,
       label: "Open the invoice",
       icon: Receipt,
     },
@@ -569,7 +561,6 @@ function WorkflowStories() {
       title: "A number with a source behind it.",
       description:
         "Follow every posted line to a journal, inspect its accounts, and see the local actions that shaped it in the audit log.",
-      to: "/accounting/ledger",
       label: "Explore the ledger",
       icon: BookOpen,
     },
@@ -578,7 +569,6 @@ function WorkflowStories() {
       title: "Evidence stays with the work.",
       description:
         "Bring the checklist, supporting note, and review into one clear sequence. Approvals update the close progress across the demo.",
-      to: "/close",
       label: "Open the close",
       icon: CheckSquare,
     },
@@ -618,7 +608,7 @@ function WorkflowStories() {
           <span>{story.tag} · LOCAL DEMO</span>
           <h3>{story.title}</h3>
           <p>{story.description}</p>
-          <Link to={story.to}>
+          <Link to="/login">
             {story.label}
             <ArrowUpRight size={15} />
           </Link>
@@ -683,7 +673,7 @@ export function ReferenceHome() {
         <div className="reference-company-grid">
           {companies.map((c, i) => (
             <Link
-              to={`/receivables/customers/${c.id}`}
+              to="/login"
               className={
                 i % 3 === 1
                   ? "company-geometric"
@@ -790,8 +780,8 @@ export function ReferenceHome() {
                     <span>{a.label}</span>
                     <h3>{a.title}</h3>
                     <p>{a.description}</p>
-                    <Link to={a.to}>
-                      Explore this workflow
+                    <Link to="/login">
+                      Sign in to explore this workflow
                       <ArrowUpRight size={13} />
                     </Link>
                   </div>
@@ -832,9 +822,9 @@ export function ReferenceHome() {
             return category ? (
               <Link
                 key={i}
-                to="/integrations"
+                to="/login"
                 className="integration-tile"
-                aria-label={`Explore ${category.name} demo integrations`}
+                aria-label={`Explore ${category.name} integrations — sign in`}
               >
                 <category.icon size={22} aria-hidden="true" />
               </Link>
@@ -845,8 +835,8 @@ export function ReferenceHome() {
         </div>
         <div className="reference-integrations-more">
           <span>Want to see how connections work?</span>
-          <Link to="/integrations">
-            View all demo integrations
+          <Link to="/login">
+            Sign in to view the integrations
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -856,26 +846,23 @@ export function ReferenceHome() {
         {[
           {
             label: "Balanced journals",
-            to: "/accounting/trial-balance",
             icon: BookOpen,
           },
           {
             label: "Connected invoices",
-            to: "/receivables/invoices",
             icon: Receipt,
           },
           {
             label: "Local approvals",
-            to: "/payables/bills",
             icon: CheckSquare,
           },
-          { label: "Reviewable actions", to: "/assistant", icon: Sparkles },
-          { label: "Traceable history", to: "/audit-log", icon: FileCheck2 },
+          { label: "Reviewable actions", icon: Sparkles },
+          { label: "Traceable history", icon: FileCheck2 },
         ].map((v) => (
-          <Link key={v.label} to={v.to}>
+          <Link key={v.label} to="/login">
             <v.icon size={25} />
             <span>{v.label}</span>
-            <small>DEMO WORKFLOW</small>
+            <small>SIGN IN TO EXPLORE</small>
           </Link>
         ))}
       </div>

@@ -118,6 +118,7 @@ Each row below describes one exact file. Test source describes intended verifica
 | `frontend/src/lib/api.ts` | Shared typed private JSON client with same-origin configuration checks, CSRF, bounded requests and identity-epoch result fencing. |
 | `frontend/src/lib/asset-recovery.ts` | Handles stale Vite chunk failures with one guarded reload per tab per minute, without clearing application data. |
 | `frontend/src/lib/session.ts` | Validates session responses, deduplicates concurrent checks and invalidates private views across identity changes and browser tabs. |
+| `frontend/src/lib/workspace-access.ts` | Browser-local log-in credential store for the public entry: PBKDF2-HMAC-SHA256 salted stretching, password policy, fixed-time verification and an escalating persisted lockout ledger. |
 
 ### Shared browser controls
 
@@ -650,6 +651,7 @@ Current source, versioned contracts and executable runbooks determine behavior. 
 | [context/invoice-workspace-refresh.md](../context/invoice-workspace-refresh.md) | Invoice workspace layout/filtering refresh and appended final full-matrix review from merged main `43b0481`, fixes, regression checks and delivery limits. | Latest verification and UI delivery record; the referenced Moss page and hosted origin were inaccessible, so no exact visual copy or hosted production success is claimed. |
 | [context/request-demo-release.md](../context/request-demo-release.md) | Public demo-request funnel replacing every public sign-in entry, reference-parity product catalogue, premium motion layer and funnel test rewrite. | Current public-site direction on branch `feat/request-demo-experience`; paid workspace gates and backend auth remain provisioned-customer only. |
 | [context/login-entry.md](../context/login-entry.md) | Public log-in entry on branch `feat/login-entry`: header/mobile/footer Log in, email session into the workspace dashboard, conditional provisioned-customer gate; demo funnel unchanged. | Supersedes the funnel release for the public entry itself; funnel and paid workspace boundaries stay as recorded. |
+| [context/login-password-security.md](../context/login-password-security.md) | Password security refinement of the public log-in entry: PBKDF2 browser-local credentials, create/verify modes, escalating lockout and browser-local reset; sample tour and session mode unchanged. | Current security direction for the public entry; the honest browser-local threat model and its limits are stated there. |
 
 ### Architecture and navigation documents
 

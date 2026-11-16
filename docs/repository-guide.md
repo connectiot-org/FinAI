@@ -158,6 +158,7 @@ Each row below describes one exact file. Test source describes intended verifica
 
 | File | Purpose |
 | --- | --- |
+| `frontend/src/features/marketing/LogIn.tsx` | Renders the public log-in entry: an email workspace session straight into the dashboard, plus the provisioned-customer session gate when authenticated API mode is configured. |
 | `frontend/src/features/marketing/Marketing.tsx` | Provides public header/footer/layout, product/resource/about/customer pages and the homepage entry using original FinAI branding. |
 | `frontend/src/features/marketing/ProductDetails.tsx` | Renders product feature sections, illustrations and workflow panels using explicitly fictional local records. |
 | `frontend/src/features/marketing/ProductPreview.tsx` | Renders interactive miniature overview/ledger/receivables/close/Assistant product views for public page demonstrations. |
@@ -245,6 +246,7 @@ Each row below describes one exact file. Test source describes intended verifica
 | File | Purpose |
 | --- | --- |
 | `frontend/src/styles/global.css` | Defines global design tokens, base layout/forms/tables/dialogs and original demo styles including print/accessibility behavior. |
+| `frontend/src/styles/log-in.css` | Extends the shared welcome split-screen with log-in entry details: divider, provisioned section and reduced-motion-safe card entrance. |
 | `frontend/src/styles/marketing.css` | Loads self-hosted typefaces and styles shared public page layout, navigation, product cards and footer. |
 | `frontend/src/styles/motion.css` | Adds the premium motion layer: scroll reveals, hero entrances, hover micro-interactions and reduced-motion safety, without changing layout. |
 | `frontend/src/styles/product-reference.css` | Styles public product-detail section geometry and FinAI feature artwork informed by public visual references. |
@@ -647,6 +649,7 @@ Current source, versioned contracts and executable runbooks determine behavior. 
 | [context/production-verification.md](../context/production-verification.md) | Prior review from merged main `73f76dd`: independent findings, coordinated corrections, checks and release disposition. | Full-codebase review record for `fix/production-verification`. Read its measured results and deployment gates alongside the newer invoice UI report; do not infer production readiness from the filename. |
 | [context/invoice-workspace-refresh.md](../context/invoice-workspace-refresh.md) | Invoice workspace layout/filtering refresh and appended final full-matrix review from merged main `43b0481`, fixes, regression checks and delivery limits. | Latest verification and UI delivery record; the referenced Moss page and hosted origin were inaccessible, so no exact visual copy or hosted production success is claimed. |
 | [context/request-demo-release.md](../context/request-demo-release.md) | Public demo-request funnel replacing every public sign-in entry, reference-parity product catalogue, premium motion layer and funnel test rewrite. | Current public-site direction on branch `feat/request-demo-experience`; paid workspace gates and backend auth remain provisioned-customer only. |
+| [context/login-entry.md](../context/login-entry.md) | Public log-in entry on branch `feat/login-entry`: header/mobile/footer Log in, email session into the workspace dashboard, conditional provisioned-customer gate; demo funnel unchanged. | Supersedes the funnel release for the public entry itself; funnel and paid workspace boundaries stay as recorded. |
 
 ### Architecture and navigation documents
 

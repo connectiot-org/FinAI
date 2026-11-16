@@ -1,0 +1,11 @@
+# Public log-in entry — 16 November 2026 (Asia/Dhaka)
+
+The founder direction changed again after the demo-funnel release: the public site gets a visible **Log in** entry (branch `feat/login-entry`). Anyone can log in with an email and immediately use the connected workspace dashboard — Overview, accounting, receivables, payables, banking, close, reports and the FinAI Assistant. This entry-point request supersedes the "no public sign-in anywhere" rule from `request-demo-release.md` for the entry itself, while the demo-request funnel (`/request-demo`, Google Form embed) remains unchanged and keeps its role as the path for teams wanting their own provisioned workspace.
+
+Scope:
+
+- New public route `/login` (`frontend/src/features/marketing/LogIn.tsx` + `frontend/src/styles/log-in.css`) reusing the established welcome split-screen. The email form opens the honest browser-local Northstar demo workspace (`command {kind:"enter"}` → `/overview`) with a visible local-session note; the entered email only derives the workspace persona. When `VITE_AUTH_MODE=session` (authenticated API configured) the same page additionally shows the provisioned-customer `SessionGate` (password + Google) leading to `/workspace/overview`; in the default build that section is absent and a "request access through a demo" note appears instead. No backend change: `/auth/*`, sessions and the paid workspace gate are untouched.
+- Header, mobile navigation and footer expose the Log in entry (`Marketing.tsx`); `.marketing-login` header styles added in `marketing.css` (hidden below 990 px, where the mobile nav takes over, matching the previous header pattern). `/welcome` now redirects to `/login`; `/sample` keeps its account-free entry and gains a "Log in with your email" link. The homepage preview, product pages and every demo-request CTA are unchanged.
+- Tests: `tests/marketing.spec.ts` updated — the login flow (header icon → `/login` → email → dashboard with full navigation), funnel separation, `/login` added to the public-page link audit, and mobile navigation coverage. Other suites are untouched because workspace/checklist/assistant gates are unchanged.
+
+Verification outcomes are recorded in `progress.md` under the same date.

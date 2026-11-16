@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   Check,
+  LogIn,
   Menu,
   ShieldCheck,
   Users,
@@ -329,6 +330,10 @@ export function MarketingLayout() {
           />
         </nav>
         <div className="marketing-header-actions">
+          <Link className="marketing-login" to="/login">
+            <LogIn size={14} />
+            Log in
+          </Link>
           <Link className="marketing-button dark small" to={DEMO_REQUEST_PATH}>
             Request a demo
           </Link>
@@ -371,6 +376,7 @@ export function MarketingLayout() {
             <Link to="/resources#interactive-preview">Interactive preview</Link>
             <Link to="/resources#questions">Questions answered</Link>
             <Link to="/sample">Public demo</Link>
+            <Link to="/login">Log in</Link>
           </div>
           <div>
             <h3>COMPANY</h3>
@@ -414,6 +420,11 @@ export function MarketingLayout() {
         >
           <Link to={DEMO_REQUEST_PATH}>
             Request a demo
+            <ArrowRight size={15} />
+          </Link>
+          <Link to="/login">
+            <LogIn size={17} />
+            Log in
             <ArrowRight size={15} />
           </Link>
           {groups.map((group) => (

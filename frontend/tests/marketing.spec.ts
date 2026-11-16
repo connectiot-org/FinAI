@@ -136,7 +136,9 @@ test("every public page offers a demo request and the log-in entry beside it", a
   ]) {
     await page.goto(path);
     const hrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href")),
+      Array.from(document.querySelectorAll("a")).map((a) =>
+        a.getAttribute("href"),
+      ),
     );
     // The log-in page is intentionally a focused entry card (brand link plus
     // the sign-in form); every other public page stays a rich marketing
@@ -560,9 +562,7 @@ test("public header offers a demo request with the log-in entry and mobile navig
       .getByRole("link", { name: "Request a demo", exact: true }),
   ).toHaveAttribute("href", "/request-demo");
   await expect(
-    page
-      .getByRole("banner")
-      .getByRole("link", { name: "Log in", exact: true }),
+    page.getByRole("banner").getByRole("link", { name: "Log in", exact: true }),
   ).toHaveAttribute("href", "/login");
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/");
@@ -572,8 +572,10 @@ test("public header offers a demo request with the log-in entry and mobile navig
     .getByRole("link", { name: "Log in", exact: true })
     .click();
   await expect(page).toHaveURL("/login");
+  // A fresh browser starts in create mode (the same-day security
+  // refinement); "Welcome back." only appears once a sign-in exists.
   await expect(
-    page.getByRole("heading", { name: "Welcome back.", exact: true }),
+    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
   ).toBeVisible();
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();
@@ -618,7 +620,7 @@ test("public header offers a demo request with the log-in entry and mobile navig
   ).toBeVisible();
 });
 
-test("log-in entry opens the workspace dashboard for any visitor", async ({
+test("log-in entry secures the workspace behind a password", async ({
   page,
 }) => {
   await page.goto("/");
@@ -629,28 +631,158 @@ test("log-in entry opens the workspace dashboard for any visitor", async ({
   await headerLogin.click();
   await expect(page).toHaveURL("/login");
   await expect(page).toHaveTitle("Log in · FinAI");
+  // First visit on a fresh browser: the entry asks to create the sign-in.
   await expect(
-    page.getByRole("heading", { name: "Welcome back.", exact: true }),
+    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
   ).toBeVisible();
+  const email = page.getByLabel("Email", { exact: true });
+  const password = page.getByLabel("Password", { exact: true });
+  await email.fill("jordan.lee@northstar.example");
+  // The reveal toggle can show the typed password before it is committed.
+  await password.fill("northstar-2026");
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide password" }).click();
+  await expect(password).toHaveAttribute("type", "password");
+  // A weak password is refused with actionable guidance and no navigation.
+  await password.fill("short");
   await page
-    .getByLabel("Email", { exact: true })
-    .fill("jordan.lee@northstar.example");
-  await page.getByRole("button", { name: "Log in", exact: true }).click();
+    .getByRole("button", { name: "Create sign-in", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("at least 8 characters");
+  await expect(page).toHaveURL("/login");
+  // A compliant password creates the sign-in and opens the workspace.
+  await password.fill("northstar-2026");
+  await page
+    .getByRole("button", { name: "Create sign-in", exact: true })
+    .click();
   await expect(page).toHaveURL("/overview");
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   // The whole workspace is usable after logging in.
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(nav.getByRole("link", { name: "General ledger" })).toHaveAttribute(
-    "href",
-    "/accounting/ledger",
-  );
-  await expect(nav.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(
+    nav.getByRole("link", { name: "General ledger" }),
+  ).toHaveAttribute("href", "/accounting/ledger");
+  await expect(
+    nav.getByRole("link", { name: "Reports", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
+  // The credential is stored salted and stretched: no clear-text password
+  // anywhere in browser storage.
+  const dumped = await page.evaluate(() => JSON.stringify(localStorage));
+  expect(dumped).toContain("finai-access-v1");
+  expect(dumped).not.toContain("northstar-2026");
+  // Returning to the entry now requires the password: a wrong one is
+  // refused without a hint about which part was wrong.
+  await page.goto("/login");
+  await expect(
+    page.getByRole("heading", { name: "Welcome back.", exact: true }),
+  ).toBeVisible();
+  await expect(email).toHaveValue("jordan.lee@northstar.example");
+  await password.fill("wrong-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Incorrect email or password.",
+  );
+  await expect(page).toHaveURL("/login");
+  // The correct password opens the workspace again.
+  await password.fill("northstar-2026");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL("/overview");
   // The legacy sign-in path still lands on the log-in entry.
   await page.goto("/welcome");
   await expect(page).toHaveURL("/login");
+});
+
+test("repeated wrong passwords lock the log-in entry temporarily", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("dana@northstar.example");
+  await page.getByLabel("Password", { exact: true }).fill("northstar-2026");
+  await page
+    .getByRole("button", { name: "Create sign-in", exact: true })
+    .click();
+  await expect(page).toHaveURL("/overview");
+  await page.goto("/login");
+  // Four wrong passwords each earn the same non-committal reply.
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    await page.getByLabel("Password", { exact: true }).fill(`no-${attempt}`);
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Incorrect email or password.",
+    );
+  }
+  // The fifth arms a cooldown that survives reloads.
+  await page.getByLabel("Password", { exact: true }).fill("no-5");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  const lockout = page.getByText(/Too many attempts\. Try again in \d+s\./);
+  await expect(lockout).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Log in", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByLabel("Email", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Password", { exact: true })).toBeDisabled();
+  const ledger = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("finai-access-attempts-v1") || "null"),
+  );
+  expect(ledger.lockedUntil).toBeGreaterThan(Date.now());
+  // The countdown runs down while the entry stays closed.
+  const first = await lockout.textContent();
+  await page.waitForTimeout(1300);
+  const second = await lockout.textContent();
+  expect(Number(second?.match(/(\d+)s/)?.[1])).toBeLessThan(
+    Number(first?.match(/(\d+)s/)?.[1]),
+  );
+  // Reloading during the cooldown does not sidestep it.
+  await page.reload();
+  await expect(
+    page.getByText(/Too many attempts\. Try again in \d+s\./),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Log in", exact: true }),
+  ).toBeDisabled();
+});
+
+test("a forgotten password can be reset on this browser only", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("dana@northstar.example");
+  await page.getByLabel("Password", { exact: true }).fill("northstar-2026");
+  await page
+    .getByRole("button", { name: "Create sign-in", exact: true })
+    .click();
+  await expect(page).toHaveURL("/overview");
+  await page.goto("/login");
+  // The forgot panel explains the browser-local recovery and clears the
+  // saved credential so a new password can be set.
+  await page.getByRole("button", { name: "Forgot your password?" }).click();
+  await page
+    .getByRole("button", { name: "Reset access on this browser" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create sign-in", exact: true }),
+  ).toBeVisible();
+  // A different password now guards the workspace, and neither the old nor
+  // the new one is ever stored in clear text.
+  await page.getByLabel("Password", { exact: true }).fill("replacement-2026");
+  await page
+    .getByRole("button", { name: "Create sign-in", exact: true })
+    .click();
+  await expect(page).toHaveURL("/overview");
+  const dumped = await page.evaluate(() => JSON.stringify(localStorage));
+  expect(dumped).not.toContain("northstar-2026");
+  expect(dumped).not.toContain("replacement-2026");
 });
 
 test("demo request funnel stays intact and separate from the log-in entry", async ({
@@ -665,9 +797,7 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   );
   await expect(frame).toHaveAttribute("title", "FinAI book a demo form");
   await expect(
-    page
-      .getByRole("link", { name: /Open the form in a new tab/ })
-      .first(),
+    page.getByRole("link", { name: /Open the form in a new tab/ }).first(),
   ).toHaveAttribute("href", "https://forms.gle/qFhgN6g52xw4P17D7");
   // The funnel itself stays a pure booking page: no account controls here.
   await expect(
@@ -677,10 +807,12 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toHaveCount(0);
-  // The log-in page shows only the sign-in-to-workspace option (founder
-  // refinement, 16 November 2026): no demo paragraph, no divider, no second
-  // provisioned sign-in section. The demo funnel stays available on every
-  // other public page, the sample tour and the workspace itself.
+  // The log-in page shows only the sign-in-to-your-workspace option (founder
+  // refinement, 16 November 2026), and since the same-day security
+  // refinement that option itself asks for a password: create it on first
+  // use, verify it afterwards. Still no third-party or SSO controls, no
+  // divider, no second provisioned sign-in section. The demo funnel stays
+  // available on every other public page, the sample tour and the workspace.
   await page.goto("/login");
   await expect(
     page.getByRole("link", { name: "Request access through a demo" }),
@@ -691,11 +823,14 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   await expect(
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toHaveCount(0);
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create sign-in", exact: true }),
+  ).toBeVisible();
 });
 
 test("sample workspace stays open without an account and offers a demo for the real thing", async ({
@@ -703,9 +838,7 @@ test("sample workspace stays open without an account and offers a demo for the r
 }) => {
   await page.goto("/request-demo");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await page
-    .getByRole("link", { name: "Explore the product first" })
-    .click();
+  await page.getByRole("link", { name: "Explore the product first" }).click();
   await expect(page).toHaveURL("/product/assistant");
   await page.goto("/sample");
   await expect(

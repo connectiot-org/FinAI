@@ -2,12 +2,138 @@
    login-specific details and an entrance for the entry card. Transform/opacity
    only and fully disabled under prefers-reduced-motion, matching motion.css.
    Per the founder refinement (16 November 2026) the card shows only the
-   sign-in-to-workspace option. */
+   sign-in-to-your-workspace option; the security refinement the same day
+   added the password step (create on first use, verify after that). */
 .log-in .welcome-entry {
   max-width: 420px;
 }
 .log-in .welcome-entry h2 {
   margin-top: 0;
+}
+
+/* --- Password field with reveal toggle --- */
+.login-password {
+  position: relative;
+  display: block;
+}
+.login-password input {
+  width: 100%;
+  padding-right: 42px;
+}
+.login-reveal {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  translate: 0 -50%;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+.login-reveal:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+/* --- Live password requirements (create mode) --- */
+.login-requirements {
+  list-style: none;
+  display: grid;
+  gap: 5px;
+  margin: -12px 0 18px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.login-requirements li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 0.2s ease;
+}
+.login-requirements li > span {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  box-sizing: border-box;
+  flex: none;
+}
+.login-requirements li.ok {
+  color: var(--positive);
+}
+.login-requirements li.ok > svg {
+  color: var(--positive);
+}
+
+/* --- Inline errors and the lockout countdown --- */
+.login-alert,
+.login-lockout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.login-alert {
+  background: #fbf1f0;
+  border: 1px solid #ecd0cd;
+  color: var(--error);
+}
+.login-lockout {
+  background: #faf5ea;
+  border: 1px solid #ecdfc4;
+  color: var(--warning);
+}
+.login-lockout svg {
+  flex: none;
+}
+
+/* --- Forgot-password / local reset panel (verify mode) --- */
+.login-forgot {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: -14px 0 22px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login-forgot:hover {
+  color: var(--accent);
+}
+.login-reset {
+  display: grid;
+  gap: 12px;
+  margin: -14px 0 22px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--accent-light);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.login-reset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.login-reset-actions .primary {
+  min-height: 32px;
+  padding: 6px 12px;
+}
+.login-reset-cancel {
+  min-height: 32px;
+  padding: 6px 12px;
+  background: transparent;
 }
 
 /* --- Entrance: the entry card settles in on first paint --- */

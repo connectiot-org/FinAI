@@ -21,6 +21,8 @@ import {
   shortMoney,
 } from "../../demo/selectors";
 import { products } from "./content";
+import { DEMO_REQUEST_PATH } from "./demo";
+import { Reveal } from "./motion";
 
 type Product = (typeof products)[number];
 
@@ -43,7 +45,7 @@ function RecordIllustration() {
           <span>Debit</span>
         </div>
         {rows.map((row) => (
-          <Link key={row.id} to="/login">
+          <Link key={row.id} to={DEMO_REQUEST_PATH}>
             <span>
               {row.journal}
               <small>{row.memo}</small>
@@ -55,8 +57,8 @@ function RecordIllustration() {
         <div className="product-art-bottom">
           <Check size={12} />
           Canonical local records
-          <Link to="/login">
-            Sign in to open workflow <ArrowUpRight size={12} />
+          <Link to={DEMO_REQUEST_PATH}>
+            Request a demo to open workflow <ArrowUpRight size={12} />
           </Link>
         </div>
       </div>
@@ -87,7 +89,7 @@ function ReviewIllustration() {
           <strong>A clear review path</strong>
         </div>
         {tasks.map((task) => (
-          <Link className="product-art-task" key={task.id} to="/login">
+          <Link className="product-art-task" key={task.id} to={DEMO_REQUEST_PATH}>
             <span
               className={
                 task.status === "Approved" || task.status === "Complete"
@@ -150,7 +152,7 @@ function EntityIllustration() {
       </div>
       <div className="product-art-entity-nodes">
         {s.entities.map((e) => (
-          <Link to="/login" key={e.id}>
+          <Link to={DEMO_REQUEST_PATH} key={e.id}>
             <Building2 size={17} />
             <span>
               {e.id.toUpperCase()}
@@ -191,9 +193,9 @@ function HistoryIllustration() {
           ))}
         </div>
       </div>
-      <Link className="product-art-history-link" to="/login">
+      <Link className="product-art-history-link" to={DEMO_REQUEST_PATH}>
         <BookOpen size={14} />
-        Sign in to inspect the journals
+        Request a demo to inspect the journals
         <ArrowUpRight size={13} />
       </Link>
     </div>
@@ -236,21 +238,23 @@ export function ProductDetails({ product }: { product: Product }) {
         </div>
         <div className="product-reference-feature-grid">
           {featureCopy.map(([title, description], index) => (
-            <article key={title}>
-              {index === 0 ? (
-                <RecordIllustration />
-              ) : index === 1 ? (
-                <ReviewIllustration />
-              ) : index === 2 ? (
-                <EntityIllustration />
-              ) : (
-                <HistoryIllustration />
-              )}
-              <div className="product-reference-feature-copy">
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </div>
-            </article>
+            <Reveal key={title} delay={(index % 2) * 90}>
+              <article>
+                {index === 0 ? (
+                  <RecordIllustration />
+                ) : index === 1 ? (
+                  <ReviewIllustration />
+                ) : index === 2 ? (
+                  <EntityIllustration />
+                ) : (
+                  <HistoryIllustration />
+                )}
+                <div className="product-reference-feature-copy">
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </div>
+              </article>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -283,8 +287,8 @@ export function ProductDetails({ product }: { product: Product }) {
                 <strong>A workflow you can inspect</strong>
                 <small>No customer endorsement or live account</small>
               </span>
-              <Link to="/login">
-                Sign in to explore the record <ArrowRight size={14} />
+              <Link to={DEMO_REQUEST_PATH}>
+                Request a demo to explore the record <ArrowRight size={14} />
               </Link>
             </div>
           </div>

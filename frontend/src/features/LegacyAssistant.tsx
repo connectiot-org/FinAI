@@ -97,12 +97,16 @@ export function LegacyAssistant({
       <p>
         <Link
           className="primary"
-          to="/workspace/assistant"
+          to="/demo/assistant"
           onClick={onNavigate}
         >
           Try free model chat
         </Link>{" "}
-        without sign-in, or open the financial Assistant from your workspace.
+        or{" "}
+        <Link to="/request-demo" onClick={onNavigate}>
+          request a demo
+        </Link>{" "}
+        to explore the financial Assistant with your own workspace.
       </p>
       {!answers.length && (
         <div className="assistant-intro">

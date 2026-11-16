@@ -1,0 +1,247 @@
+/* Premium motion layer: entrance reveals, hover micro-interactions and gentle
+   ambience. Pure transform/opacity only (GPU friendly, no layout thrash), and
+   everything is disabled for visitors who prefer reduced motion. No class
+   here changes the measured layout of the page. */
+
+/* --- Scroll reveal (driven by the Reveal component + IntersectionObserver) --- */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal-item.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- Hero entrance on first paint --- */
+@keyframes finai-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reference-hero .reference-hero-columns > h1,
+.reference-hero .reference-hero-columns > div,
+.marketing-product-hero > .marketing-kicker,
+.marketing-product-hero > h1,
+.marketing-product-hero > p,
+.marketing-product-hero > .marketing-button,
+.marketing-product-hero > .marketing-text-link,
+.request-demo-hero .marketing-kicker,
+.request-demo-hero h1,
+.request-demo-hero p,
+.request-demo-hero-actions {
+  animation: finai-hero-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reference-hero .reference-hero-columns > div {
+  animation-delay: 0.12s;
+}
+.reference-hero .reference-hero-art {
+  animation: finai-hero-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+.marketing-product-hero > h1 {
+  animation-delay: 0.08s;
+}
+.marketing-product-hero > p {
+  animation-delay: 0.16s;
+}
+.marketing-product-hero > .marketing-button,
+.marketing-product-hero > .marketing-text-link {
+  animation-delay: 0.24s;
+}
+.request-demo-hero h1 {
+  animation-delay: 0.08s;
+}
+.request-demo-hero p {
+  animation-delay: 0.16s;
+}
+.request-demo-hero-actions {
+  animation-delay: 0.24s;
+}
+
+/* --- Subtle ambient drift on the hero grid backdrop --- */
+@keyframes finai-grid-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      32px 32px,
+      32px 32px;
+  }
+}
+.reference-hero.reference-grid-background:before {
+  animation: finai-grid-drift 26s linear infinite;
+}
+
+/* --- Hover micro-interactions --- */
+.reference-platform-card,
+.product-reference-feature-grid > article,
+.marketing-benefits > div,
+.marketing-resource-guides > article,
+.marketing-customers-grid > a,
+.reference-story-window,
+.integration-tile {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+.reference-platform-card:hover,
+.marketing-customers-grid > a:hover,
+.reference-story-window:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -24px #18181b40;
+}
+.product-reference-feature-grid > article:hover,
+.marketing-benefits > div:hover,
+.marketing-resource-guides > article:hover {
+  transform: translateY(-3px);
+}
+.integration-tile {
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+.integration-tile:hover {
+  transform: translateY(-3px) scale(1.05);
+}
+
+/* Button icon slide */
+.reference-button,
+.marketing-button,
+.marketing-text-link,
+.request-demo-form-foot a {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+.reference-button:hover svg,
+.marketing-button:hover svg,
+.marketing-text-link:hover svg,
+.request-demo-form-foot a:hover svg {
+  transform: translateX(3px);
+}
+
+/* --- Product preview: bars grow, metrics settle --- */
+@keyframes finai-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.preview-bars > div > i {
+  transform-origin: bottom;
+  animation: finai-bar-grow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.preview-bars > div:nth-child(2) > i {
+  animation-delay: 0.06s;
+}
+.preview-bars > div:nth-child(3) > i {
+  animation-delay: 0.12s;
+}
+.preview-bars > div:nth-child(4) > i {
+  animation-delay: 0.18s;
+}
+.preview-bars > div:nth-child(5) > i {
+  animation-delay: 0.24s;
+}
+.preview-bars > div:nth-child(6) > i {
+  animation-delay: 0.3s;
+}
+
+/* Close progress track fills smoothly */
+.finance-close-track > i {
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Gentle floating accents --- */
+@keyframes finai-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.product-art-floating,
+.product-art-review-stamp,
+.reference-live-demo .reference-button svg {
+  animation: finai-float 5.5s ease-in-out infinite;
+}
+.product-art-review-stamp {
+  animation-delay: 0.8s;
+}
+
+/* --- Demo form card settles in --- */
+.request-demo-form-card {
+  animation: finai-hero-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+/* --- Reduced motion: switch everything off --- */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .reference-hero .reference-hero-columns > h1,
+  .reference-hero .reference-hero-columns > div,
+  .reference-hero .reference-hero-art,
+  .marketing-product-hero > .marketing-kicker,
+  .marketing-product-hero > h1,
+  .marketing-product-hero > p,
+  .marketing-product-hero > .marketing-button,
+  .marketing-product-hero > .marketing-text-link,
+  .request-demo-hero .marketing-kicker,
+  .request-demo-hero h1,
+  .request-demo-hero p,
+  .request-demo-hero-actions,
+  .request-demo-form-card,
+  .preview-bars > div > i,
+  .product-art-floating,
+  .product-art-review-stamp,
+  .reference-live-demo .reference-button svg,
+  .reference-hero.reference-grid-background:before {
+    animation: none;
+  }
+  .reference-platform-card,
+  .product-reference-feature-grid > article,
+  .marketing-benefits > div,
+  .marketing-resource-guides > article,
+  .marketing-customers-grid > a,
+  .reference-story-window,
+  .integration-tile,
+  .reference-button,
+  .marketing-button,
+  .marketing-text-link,
+  .request-demo-form-foot a {
+    transition: none;
+  }
+  .reference-platform-card:hover,
+  .product-reference-feature-grid > article:hover,
+  .marketing-benefits > div:hover,
+  .marketing-resource-guides > article:hover,
+  .marketing-customers-grid > a:hover,
+  .reference-story-window:hover,
+  .integration-tile:hover {
+    transform: none;
+  }
+}

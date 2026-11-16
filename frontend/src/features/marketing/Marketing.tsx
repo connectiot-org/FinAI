@@ -17,63 +17,96 @@ import { useDemo } from "../../store";
 import { money, inScope } from "../../demo/selectors";
 import { ProductPreview } from "./ProductPreview";
 import { ProductDetails } from "./ProductDetails";
-import { products, questions, type PreviewView } from "./content";
+import { products, questions, productNavGroups, type PreviewView } from "./content";
+import { DEMO_REQUEST_PATH } from "./demo";
 import { ReferenceHome, PreviewExplorer } from "./ReferenceHome";
 import "../../styles/marketing.css";
 import "../../styles/reference-home.css";
 import "../../styles/product-reference.css";
+import "../../styles/motion.css";
 
 type PublicItem = { label: string; description: string; to: string };
-const coreSlugs = [
-  "automated-general-ledger",
-  "accounts-receivable",
-  "accounts-payable",
-  "bank-reconciliation",
-  "month-end-close",
-  "native-integrations",
-  "financial-reporting",
-];
-// Public navigation offers sign-in entries instead of direct workspace access:
-// every function destination on the public site is /login until a paid session
-// is validated.
+// Public navigation routes every function entry to a demo request: the site
+// offers no public sign-in, and paid workspaces are provisioned by the FinAI
+// team after a demo conversation.
 const solutionGroups = [
   {
     title: "By role",
     items: [
       {
-        label: "Finance leaders",
-        description: "Explore financial statements",
-        to: "/login",
+        label: "CFO",
+        description: "Real-time visibility, investor-ready reporting",
+        to: DEMO_REQUEST_PATH,
       },
       {
-        label: "Accountants",
-        description: "Follow the ledger and journals",
-        to: "/login",
+        label: "Controller",
+        description: "Continuous close and review controls",
+        to: DEMO_REQUEST_PATH,
       },
       {
-        label: "Reviewers",
-        description: "Bring approvals into view",
-        to: "/login",
+        label: "Accounting firms",
+        description: "Multi-client workflows at a glance",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Private equity",
+        description: "Portfolio reporting across entities",
+        to: DEMO_REQUEST_PATH,
       },
     ],
   },
   {
-    title: "By workspace",
+    title: "By company size",
     items: [
       {
-        label: "Growing teams",
-        description: "Connected demo workflows",
-        to: "/login",
+        label: "Startup",
+        description: "Books that scale from day one",
+        to: DEMO_REQUEST_PATH,
       },
       {
-        label: "Multiple entities",
-        description: "Separate books and a group view",
-        to: "/login",
+        label: "Mid-size",
+        description: "Multi-entity close and controls",
+        to: DEMO_REQUEST_PATH,
       },
       {
-        label: "SaaS business",
-        description: "Customers, contracts, and revenue",
-        to: "/login",
+        label: "Enterprise",
+        description: "Consolidation and audit trails",
+        to: DEMO_REQUEST_PATH,
+      },
+    ],
+  },
+  {
+    title: "By industry",
+    items: [
+      {
+        label: "SaaS",
+        description: "Revenue recognition and deferred revenue",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Financial services",
+        description: "Compliance-ready, traceable records",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Healthcare",
+        description: "Controlled processes with evidence",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Logistics",
+        description: "High-volume payables, organized",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Professional services",
+        description: "Project billing, cleanly connected",
+        to: DEMO_REQUEST_PATH,
+      },
+      {
+        label: "Ecommerce",
+        description: "Marketplace and payment reconciliation",
+        to: DEMO_REQUEST_PATH,
       },
     ],
   },
@@ -204,6 +237,7 @@ export function MarketingLayout() {
           "/resources": "Workflow guides",
           "/customers": "Fictional demo companies",
           "/about": "About FinAI",
+          "/request-demo": "Request a demo",
         } as Record<string, string>
       )[location.pathname] ||
       "Page unavailable";
@@ -213,32 +247,26 @@ export function MarketingLayout() {
       ?.setAttribute(
         "content",
         product?.description ||
+          (
+            {
+              "/request-demo":
+                "Book a tailored FinAI walkthrough. See the connected accounting workspace, close checklist, and FinAI Assistant in action.",
+            } as Record<string, string>
+          )[location.pathname] ||
           "Explore connected accounting workflows in FinAI. Interactive demo with fictional records, local reviews, and traceable financial statements.",
       );
   }, [location.pathname]);
-  const groups = [
-    {
-      title: "Core features",
-      items: products
-        .filter((p) => coreSlugs.includes(p.slug))
-        .sort((a, b) => coreSlugs.indexOf(a.slug) - coreSlugs.indexOf(b.slug))
-        .map((p) => ({
-          label: p.name,
-          description: p.short,
-          to: `/product/${p.slug}`,
-        })),
-    },
-    {
-      title: "Advanced features",
-      items: products
-        .filter((p) => !coreSlugs.includes(p.slug))
-        .map((p) => ({
-          label: p.name,
-          description: p.short,
-          to: `/product/${p.slug}`,
-        })),
-    },
-  ];
+  const groups = productNavGroups.map((group) => ({
+    title: group.title,
+    items: group.slugs
+      .map((slug) => products.find((p) => p.slug === slug))
+      .filter((p): p is (typeof products)[number] => Boolean(p))
+      .map((p) => ({
+        label: p.name,
+        description: p.short,
+        to: `/product/${p.slug}`,
+      })),
+  }));
   return (
     <div className="marketing-site">
       <a className="marketing-skip" href="#marketing-content">
@@ -286,9 +314,9 @@ export function MarketingLayout() {
                     to: "/about",
                   },
                   {
-                    label: "Sign in",
-                    description: "Email/password or Google",
-                    to: "/login",
+                    label: "Request a demo",
+                    description: "Book a tailored walkthrough",
+                    to: DEMO_REQUEST_PATH,
                   },
                   {
                     label: "Local data and privacy",
@@ -301,8 +329,8 @@ export function MarketingLayout() {
           />
         </nav>
         <div className="marketing-header-actions">
-          <Link className="marketing-button dark small" to="/login">
-            Sign in
+          <Link className="marketing-button dark small" to={DEMO_REQUEST_PATH}>
+            Request a demo
           </Link>
           <button
             className="marketing-mobile-toggle"
@@ -329,14 +357,16 @@ export function MarketingLayout() {
           </div>
           <div>
             <h3>SOLUTIONS</h3>
-            <Link to="/login">Finance leaders</Link>
-            <Link to="/login">Accountants</Link>
-            <Link to="/login">Reviewers</Link>
-            <Link to="/login">Multi-entity teams</Link>
+            <Link to={DEMO_REQUEST_PATH}>CFO</Link>
+            <Link to={DEMO_REQUEST_PATH}>Controller</Link>
+            <Link to={DEMO_REQUEST_PATH}>Accounting firms</Link>
+            <Link to={DEMO_REQUEST_PATH}>Private equity</Link>
+            <Link to={DEMO_REQUEST_PATH}>Startup · Mid-size · Enterprise</Link>
             <Link to="/customers">Demo customers</Link>
           </div>
           <div>
             <h3>RESOURCES</h3>
+            <Link to={DEMO_REQUEST_PATH}>Request a demo</Link>
             <Link to="/resources">Workflow guides</Link>
             <Link to="/resources#interactive-preview">Interactive preview</Link>
             <Link to="/resources#questions">Questions answered</Link>
@@ -346,7 +376,7 @@ export function MarketingLayout() {
             <h3>COMPANY</h3>
             <Link to="/about">About FinAI</Link>
             <Link to="/resources#demo-details">Local data and privacy</Link>
-            <Link to="/login">Workspace preferences</Link>
+            <Link to={DEMO_REQUEST_PATH}>Talk to our team</Link>
             <a
               href="https://github.com/connectiot-org/FinAI"
               target="_blank"
@@ -382,12 +412,12 @@ export function MarketingLayout() {
           className="marketing-mobile-nav"
           aria-label="Mobile public navigation"
         >
-          <Link to="/login">
-            Supplier invoices
+          <Link to={DEMO_REQUEST_PATH}>
+            Request a demo
             <ArrowRight size={15} />
           </Link>
           {groups.map((group) => (
-            <details key={group.title} open={group.title === "Core features"}>
+            <details key={group.title} open={group.title === "General ledger"}>
               <summary>
                 {group.title}
                 <ChevronDown size={15} />
@@ -427,8 +457,8 @@ export function MarketingLayout() {
             About FinAI
             <ArrowRight size={15} />
           </Link>
-          <Link to="/login">
-            Sign in
+          <Link to={DEMO_REQUEST_PATH}>
+            Request a demo
             <ArrowRight size={15} />
           </Link>
         </nav>
@@ -441,8 +471,8 @@ function CallToAction() {
     <section className="marketing-final-cta">
       <h2>Get one step closer to a clearer close</h2>
       <p>Connected records. Reviewable workflows. A bigger picture.</p>
-      <Link className="marketing-button light" to="/login">
-        Sign in
+      <Link className="marketing-button light" to={DEMO_REQUEST_PATH}>
+        Request a demo
         <ArrowRight size={15} />
       </Link>
     </section>
@@ -479,12 +509,12 @@ export function ProductPage() {
           </span>
           <h1>{product.title}</h1>
           <p>{product.description}</p>
-          <Link className="marketing-button dark" to="/login">
-            Sign in to try this workflow
+          <Link className="marketing-button dark" to={DEMO_REQUEST_PATH}>
+            Request a demo to try this workflow
             <ArrowRight size={15} />
           </Link>
           <span className="marketing-product-note">
-            Paid FinAI workspace · Sign-in required
+            FinAI workspace · Provisioned for your team after the demo
           </span>
         </section>
         <div className="marketing-product-page-preview">
@@ -520,8 +550,8 @@ export function ResourcesPage() {
           through the numbers.
         </h1>
         <p>
-          Hands-on starting points for FinAI. Every guide begins with a secure
-          sign-in to your own workspace.
+          Hands-on starting points for FinAI. Every guide pairs with a
+          personalized demo of your own workflow.
         </p>
       </section>
       <section className="marketing-section marketing-resource-guides">
@@ -535,8 +565,8 @@ export function ResourcesPage() {
                 <li key={title}>{title}</li>
               ))}
             </ol>
-            <Link className="marketing-text-link" to="/login">
-              Sign in to open this workflow
+            <Link className="marketing-text-link" to={DEMO_REQUEST_PATH}>
+              Request a demo to open this workflow
               <ArrowRight size={14} />
             </Link>
           </article>
@@ -559,8 +589,8 @@ export function ResourcesPage() {
           are never uploaded. You can restore the original dataset at any time
           through Settings → Preferences → Reset demo.
         </p>
-        <Link className="marketing-text-link" to="/login">
-          Sign in to open workspace preferences
+        <Link className="marketing-text-link" to={DEMO_REQUEST_PATH}>
+          Request a demo to shape your own workspace
           <ArrowRight size={14} />
         </Link>
       </section>
@@ -656,7 +686,7 @@ export function DemoCustomersPage() {
         {s.customers
           .filter((c) => c.entity === s.entity)
           .map((c) => (
-            <Link to="/login" key={c.id}>
+            <Link to={DEMO_REQUEST_PATH} key={c.id}>
               <span className="demo-company-mark">{c.name[0]}</span>
               <h2>{c.name}</h2>
               <p>{c.contact}</p>
@@ -674,7 +704,7 @@ export function DemoCustomersPage() {
                 outstanding
               </strong>
               <span>
-                Sign in to view
+                Request a demo to view
                 <ArrowRight size={14} />
               </span>
             </Link>

@@ -3,6 +3,11 @@ import { test, expect } from "@playwright/test";
 test("public navigation, product pages and demo entry work on direct refresh", async ({
   page,
 }) => {
+  // This case deliberately performs about forty full document loads (every
+  // public path opened and then refreshed), which already needs ~42s on a
+  // healthy CI runner. The suite default of 45s leaves no headroom for
+  // runner variance, so allow a generous per-test budget.
+  test.setTimeout(120_000);
   const errors: string[] = [],
     external: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));

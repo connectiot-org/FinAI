@@ -52,6 +52,9 @@ const routes = [
 test("all route deep links render and refresh without runtime or backend requests", async ({
   page,
 }) => {
+  // Every workspace deep link is opened as its own document load; observed
+  // at ~27s on CI, which is uncomfortably close to the 45s suite default.
+  test.setTimeout(90_000);
   const errors: string[] = [],
     remote: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));

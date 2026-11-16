@@ -471,6 +471,66 @@ test("invoice workspace filters stay organized through refresh and clear without
   ).toHaveCount(0);
 });
 
+test("rapid filter changes in a single interaction never drop each other", async ({
+  page,
+}) => {
+  // Regression: changeView used to compose from the render snapshot while
+  // React Router commits location updates in a deferred transition, so
+  // machine-speed changes (CI fills, assistive tech, fast keyboard use)
+  // silently dropped the previous change. Fire all four filter events in
+  // one JavaScript task to prove every change survives and persists.
+  await open(page);
+  await page.evaluate(() => {
+    const setNativeValue = (
+      control: HTMLInputElement | HTMLSelectElement,
+      value: string,
+    ) => {
+      const proto =
+        control instanceof HTMLSelectElement
+          ? HTMLSelectElement.prototype
+          : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(
+        control,
+        value,
+      );
+      control.dispatchEvent(
+        new Event(control instanceof HTMLSelectElement ? "change" : "input", {
+          bubbles: true,
+        }),
+      );
+    };
+    const control = (label: string) => {
+      const match = Array.from(document.querySelectorAll("label")).find((l) =>
+        l.textContent?.includes(label),
+      );
+      if (!match) throw new Error("missing control " + label);
+      return match.querySelector("input, select") as
+        | HTMLInputElement
+        | HTMLSelectElement;
+    };
+    setNativeValue(control("Search"), "DEV-1006");
+    setNativeValue(control("Invoice month"), "2026-11");
+    setNativeValue(control("Status"), "review");
+    setNativeValue(control("Due on or before"), "2026-12-31");
+  });
+  await expect(page).toHaveURL(/search=DEV-1006/);
+  await expect(page).toHaveURL(/month=2026-11/);
+  await expect(page).toHaveURL(/status=review/);
+  await expect(page).toHaveURL(/dueBefore=2026-12-31/);
+  await expect(
+    page.getByRole("link", { name: /Sample Office Supplies DEV-1006/ }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByPlaceholder("Supplier or invoice reference"),
+  ).toHaveValue("DEV-1006");
+  await expect(page.getByLabel("Invoice month")).toHaveValue("2026-11");
+  await expect(page.getByLabel("Status", { exact: true })).toHaveValue(
+    "review",
+  );
+  await expect(page.getByLabel("Due on or before")).toHaveValue("2026-12-31");
+});
+
 test("workspace queue summaries open the actual export workflow", async ({
   page,
 }) => {

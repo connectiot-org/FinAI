@@ -665,13 +665,20 @@ test("missing invoice chunk recovers without a reload loop or clearing saved rec
     page.getByRole("heading", { name: "Unable to open this page" }),
   ).toBeVisible();
   // Browsers may reuse the failed module request during recovery. Verify the
-  // chunk was blocked and count document navigations to prove one reload.
+  // chunk was blocked. The recovery reload is triggered from an effect after
+  // the error page paints, so wait for that navigation instead of racing it.
   expect(chunkRequests).toBeGreaterThanOrEqual(1);
-  expect(entryNavigations).toBe(2);
+  await expect.poll(() => entryNavigations, { timeout: 10_000 }).toBe(2);
   await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText(
     "Unexpected Application Error",
   );
+  // The per-tab guard must be armed on the recovered document, which is what
+  // keeps the counter at exactly one automatic recovery reload.
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("finai:asset-reload")),
+  ).toBeTruthy();
+  expect(entryNavigations).toBe(2);
   expect(await page.evaluate(() => localStorage.getItem("finai-demo-v1"))).toBe(
     saved,
   );

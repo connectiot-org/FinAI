@@ -38,6 +38,10 @@ test("public navigation, product pages and demo entry work on direct refresh", a
     "/product/financial-reporting",
     "/product/month-end-close",
     "/product/assistant",
+    "/product/continuous-close",
+    "/product/audit-compliance",
+    "/product/implementation",
+    "/product/flexible-gaap-reporting",
     "/resources",
     "/about",
   ]) {
@@ -63,24 +67,18 @@ test("removed data library is unavailable and absent from public navigation", as
     page.getByRole("heading", { name: "Page not found" }),
   ).toBeVisible();
 });
-test("homepage dashboard preview requires sign-in before entering a workspace", async ({
+test("homepage dashboard preview routes every entry to a demo request", async ({
   page,
 }) => {
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({ status: 401, json: {} }),
-  );
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
   await page.goto("/");
   const preview = page.locator(".reference-workspace");
   await expect(
-    preview.getByText("Preview · Sign in to continue"),
+    preview.getByText("Preview · Request a demo to continue"),
   ).toBeVisible();
   const links = preview.locator("a");
   expect(await links.count()).toBeGreaterThan(15);
   for (const link of await links.all())
-    await expect(link).toHaveAttribute("href", "/login");
+    await expect(link).toHaveAttribute("href", "/request-demo");
   for (const selector of [
     ".reference-rail-logo",
     ".finance-ask",
@@ -88,25 +86,29 @@ test("homepage dashboard preview requires sign-in before entering a workspace", 
   ]) {
     await page.goto("/");
     await preview.locator(selector).first().click();
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/request-demo");
     await expect(
-      page.getByRole("heading", { name: "Sign in to FinAI" }),
+      page.getByRole("heading", {
+        name: "See FinAI work with your own eyes.",
+      }),
     ).toBeVisible();
   }
 });
-test("every public page offers sign-in instead of direct workspace entry", async ({
+test("every public page offers a demo request instead of direct workspace entry", async ({
   page,
 }) => {
-  // Any anchor on a public page must be a sign-in entry, an informational
-  // page, the labelled sample tour, an in-page anchor, or the footer GitHub
-  // link. Direct links into workspace functions are the bypass this guards.
+  // Any anchor on a public page must be a demo request, an informational
+  // page, the labelled sample tour, an in-page anchor, the booking form, or
+  // the footer GitHub link. Direct links into workspace functions or a
+  // public sign-in are the bypasses this guards.
   const allowed =
-    /^(\/login|\/|\/product\/|\/sample|\/customers|\/resources|\/about|#|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
+    /^(\/request-demo|\/|\/product\/|\/sample|\/customers|\/resources|\/about|#|https:\/\/forms\.gle\/qFhgN6g52xw4P17D7$|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
   for (const path of [
     "/",
     "/resources",
     "/customers",
     "/about",
+    "/request-demo",
     "/product/assistant",
     "/product/automated-general-ledger",
     "/product/accounts-receivable",
@@ -119,6 +121,10 @@ test("every public page offers sign-in instead of direct workspace entry", async
     "/product/multi-entity",
     "/product/security-permissions",
     "/product/real-time-reporting",
+    "/product/continuous-close",
+    "/product/audit-compliance",
+    "/product/implementation",
+    "/product/flexible-gaap-reporting",
   ]) {
     await page.goto(path);
     const hrefs = await page.evaluate(() =>
@@ -127,10 +133,14 @@ test("every public page offers sign-in instead of direct workspace entry", async
     expect(hrefs.length, `${path} exposes links`).toBeGreaterThan(10);
     const offenders = hrefs.filter((href) => href && !allowed.test(href));
     expect(offenders, `${path} must not link into the workspace`).toEqual([]);
-    const signInEntries = hrefs.filter((href) => href === "/login");
     expect(
-      signInEntries.length,
-      `${path} must offer sign-in entries`,
+      hrefs.filter((href) => href === "/login"),
+      `${path} must not expose a public sign-in`,
+    ).toEqual([]);
+    const demoEntries = hrefs.filter((href) => href === "/request-demo");
+    expect(
+      demoEntries.length,
+      `${path} must offer demo request entries`,
     ).toBeGreaterThan(0);
   }
 });
@@ -153,9 +163,11 @@ test("interactive homepage preview uses real records and search links", async ({
     .getByRole("textbox", { name: "Search product preview" })
     .fill("INV-1001");
   await preview.locator("tbody a").first().click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await page.goto("/resources#interactive-preview");
   await page.getByRole("tab", { name: "Receivables", exact: true }).click();
@@ -183,11 +195,13 @@ test("guided walkthrough, FAQ keyboard behavior and missing product recovery", a
     .getByRole("button", { name: "Bring a close together", exact: true })
     .click();
   await page
-    .getByRole("link", { name: "Sign in to start this walkthrough" })
+    .getByRole("link", { name: "Request a demo to start this walkthrough" })
     .click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await page.goto("/resources#questions");
   const question = page
@@ -376,7 +390,7 @@ test("product feature cards, source story and related-workflow carousel remain f
   expect(Math.abs(feature!.width - 653.55)).toBeLessThan(2);
   expect(Math.abs(feature!.height - 605.33)).toBeLessThan(2);
   const rail = page.locator(".product-reference-related-rail");
-  await expect(rail.locator(":scope > a")).toHaveCount(11);
+  await expect(rail.locator(":scope > a")).toHaveCount(15);
   await expect(
     page.getByRole("button", { name: "Previous related workflows" }),
   ).toBeDisabled();
@@ -388,11 +402,16 @@ test("product feature cards, source story and related-workflow carousel remain f
     page.getByRole("button", { name: "Previous related workflows" }),
   ).toBeEnabled();
   await page
-    .getByRole("link", { name: "Sign in to explore the record", exact: true })
+    .getByRole("link", {
+      name: "Request a demo to explore the record",
+      exact: true,
+    })
     .click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
 });
 
@@ -415,22 +434,28 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
   );
   await expect(page.locator(".reference-integration-grid a")).toHaveCount(6);
   await expect(
-    page.getByRole("link", { name: "Explore Banking integrations — sign in" }),
-  ).toHaveAttribute("href", "/login");
+    page.getByRole("link", {
+      name: "Explore Banking integrations — request a demo",
+    }),
+  ).toHaveAttribute("href", "/request-demo");
   await page.locator(".reference-company-grid a").first().click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await page.goto("/product/accounts-payable");
   await expect(page).toHaveTitle("Accounts payable · FinAI");
   await page
     .getByRole("banner")
-    .getByRole("link", { name: "Sign in", exact: true })
+    .getByRole("link", { name: "Request a demo", exact: true })
     .click();
-  await expect(page).toHaveTitle("Sign in · FinAI");
+  await expect(page).toHaveTitle("Request a demo · FinAI");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Explore sample workspace" }),
@@ -483,11 +508,16 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.locator("summary").filter({ hasText: "By workspace" }).click();
-  await dialog.getByRole("link", { name: "Multiple entities" }).click();
-  await expect(page).toHaveURL("/login");
+  await dialog
+    .locator("summary")
+    .filter({ hasText: "By company size" })
+    .click();
+  await dialog.getByRole("link", { name: "Mid-size" }).click();
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await expect(dialog).toHaveCount(0);
   for (const route of ["/", "/resources", "/overview"]) {
@@ -501,7 +531,7 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   ).toBeInViewport();
 });
 
-test("public header keeps sign-in while mobile navigation entries require sign-in", async ({
+test("public header offers a demo request and mobile navigation routes to it", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -514,18 +544,21 @@ test("public header keeps sign-in while mobile navigation entries require sign-i
   await expect(
     page
       .getByRole("banner")
-      .getByRole("link", { name: "Sign in", exact: true }),
-  ).toHaveAttribute("href", "/login");
+      .getByRole("link", { name: "Request a demo", exact: true }),
+  ).toHaveAttribute("href", "/request-demo");
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();
   await page
     .getByRole("navigation", { name: "Mobile public navigation" })
-    .getByRole("link", { name: "Supplier invoices", exact: true })
+    .getByRole("link", { name: "Request a demo", exact: true })
+    .first()
     .click();
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/sample");
@@ -557,206 +590,61 @@ test("public header keeps sign-in while mobile navigation entries require sign-i
   ).toBeVisible();
 });
 
-test("welcome offers email/password and an honest unconfigured Google option", async ({
+test("login redirects to the embedded demo request funnel with no public sign-in", async ({
   page,
 }) => {
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({ status: 401, json: {} }),
-  );
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
   await page.goto("/welcome");
-  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveURL("/request-demo");
+  await page.goto("/login");
+  await expect(page).toHaveURL("/request-demo");
   await expect(
-    page.getByRole("heading", { name: "Sign in to FinAI" }),
+    page.getByRole("heading", {
+      name: "See FinAI work with your own eyes.",
+    }),
   ).toBeVisible();
+  await expect(page).toHaveTitle("Request a demo · FinAI");
+  const frame = page.locator(".request-demo-form-card iframe");
+  await expect(frame).toHaveAttribute(
+    "src",
+    "https://docs.google.com/forms/d/e/1FAIpQLSfo91sNqa9f49OhyAvsmp07ErR3ip8XB_AiqclQn5Kr9l5i3w/viewform?embedded=true&hl=en",
+  );
+  await expect(frame).toHaveAttribute("title", "FinAI book a demo form");
+  await expect(
+    page
+      .getByRole("link", { name: /Open the form in a new tab/ })
+      .first(),
+  ).toHaveAttribute("href", "https://forms.gle/qFhgN6g52xw4P17D7");
+  // No public sign-in remains anywhere on the funnel.
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
-  ).toBeDisabled();
-  await expect(
-    page.getByText("Google sign-in is not configured yet."),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Enter workspace" }),
   ).toHaveCount(0);
-  await page.route("**/auth/login", (route) => {
-    expect(route.request().postDataJSON()).toEqual({
-      username: "member@gmail.com",
-      password: "FinAI-password",
-      organisationId: "11111111-1111-4111-8111-111111111111",
-    });
-    return route.fulfill({ json: { csrfToken: "a".repeat(64) } });
-  });
-  await page.getByLabel("Email or account name").fill("member@gmail.com");
+});
+
+test("sample workspace stays open without an account and offers a demo for the real thing", async ({
+  page,
+}) => {
+  await page.goto("/request-demo");
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await page
-    .getByLabel("Organisation ID")
-    .fill("11111111-1111-4111-8111-111111111111");
-  await page.getByLabel("Password", { exact: true }).fill("FinAI-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL("/workspace/overview");
-  expect(
-    await page.evaluate(() => localStorage.getItem("finai-demo-v1")),
-  ).toBeNull();
-});
-
-test("sign-in reports service errors without exposing technical details or entering the workspace", async ({
-  page,
-}) => {
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({ status: 401, json: {} }),
-  );
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
-  let result: "rate" | "unavailable" | "invalid" | "network" = "rate";
-  await page.route("**/auth/login", (route) => {
-    if (result === "network") return route.abort("failed");
-    if (result === "invalid")
-      return route.fulfill({
-        status: 200,
-        contentType: "text/html",
-        body: "<html>not a session</html>",
-      });
-    return route.fulfill({
-      status: result === "rate" ? 429 : 503,
-      json: { code: "FAIL", message: "internal details" },
-    });
-  });
-  await page.goto("/login");
-  await page.getByLabel("Email or account name").fill("user@example.test");
-  await page.getByLabel("Organisation ID").fill("example-organisation");
-  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
-  for (const [mode, message] of [
-    ["rate", "Too many sign-in attempts"],
-    ["unavailable", "Sign-in service is unavailable"],
-    ["invalid", "Sign-in service returned an invalid response"],
-    ["network", "Sign-in service is unavailable"],
-  ] as const) {
-    result = mode;
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText(message);
-    await expect(page).toHaveURL("/login");
-    await expect(page.getByRole("alert")).not.toContainText("internal details");
-  }
-});
-
-test("an unreachable session service shows a clear error and keeps sign-in available", async ({
-  page,
-}) => {
-  await page.route("**/auth/session", (route) => route.abort("failed"));
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
-  await page.goto("/login");
-  await expect(page.getByRole("alert")).toContainText(
-    "Sign-in service is unavailable",
-  );
+    .getByRole("link", { name: "Explore the product first" })
+    .click();
+  await expect(page).toHaveURL("/product/assistant");
+  await page.goto("/sample");
   await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
-  ).toBeEnabled();
-  await expect(page).toHaveURL("/login");
-  await page.getByRole("link", { name: "Open sample workspace" }).click();
-  await expect(page).toHaveURL("/sample");
-  await expect(page.getByText("Synthetic Northstar Analytics data")).toBeVisible();
+    page.getByText("Synthetic Northstar Analytics data"),
+  ).toBeVisible();
+  const demoEntry = page.getByRole("link", {
+    name: "Request a demo for your own workspace",
+  });
+  await expect(demoEntry).toHaveAttribute("href", "/request-demo");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await expect(page).toHaveURL("/overview");
-  await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
-  await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
-});
-
-test("welcome Google selection uses provider credential and organisation, with visible denied access", async ({
-  page,
-}) => {
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({ status: 401, json: {} }),
-  );
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({
-      json: {
-        enabled: true,
-        clientId: "synthetic.apps.googleusercontent.com",
-        nonce: "a".repeat(64),
-      },
-    }),
-  );
-  await page.route("https://accounts.google.com/gsi/client", (route) =>
-    route.fulfill({
-      contentType: "application/javascript",
-      body: `window.google={accounts:{id:{initialize(options){window.googleTest=options},renderButton(el){const button=document.createElement('button');button.textContent='Continue with Google';button.onclick=()=>window.googleTest.callback({credential:'synthetic-google-proof'});el.appendChild(button)},cancel(){}}}};`,
-    }),
-  );
-  await page.goto("/login");
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Enter the organisation ID",
-  );
-  await page
-    .getByLabel("Organisation ID")
-    .fill("11111111-1111-4111-8111-111111111111");
-  await page.route("**/auth/google", (route) => {
-    expect(route.request().postDataJSON()).toEqual({
-      credential: "synthetic-google-proof",
-      organisationId: "11111111-1111-4111-8111-111111111111",
-    });
-    return route.fulfill({ status: 401, json: { code: "UNAUTHENTICATED" } });
-  });
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Your administrator must grant",
-  );
-  await expect(page).toHaveURL("/login");
-  await page.route("**/auth/google", (route) =>
-    route.fulfill({ status: 503, json: { code: "UNAVAILABLE" } }),
-  );
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Sign-in service is unavailable",
-  );
-  await expect(page).toHaveURL("/login");
-  await page.route("**/auth/google", (route) =>
-    route.fulfill({ json: { csrfToken: "a".repeat(64) } }),
-  );
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page).toHaveURL("/workspace/overview");
-});
-
-test("login explains paid access and rejects inactive payment for password and session checks", async ({
-  page,
-}) => {
-  const message =
-    "An active paid subscription is required. Contact your administrator to activate or renew access.";
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({
-      status: 401,
-      json: { code: "PAID_ACCESS_REQUIRED", message },
-    }),
-  );
-  await page.route("**/auth/google/challenge", (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
-  await page.route("**/auth/login", (route) =>
-    route.fulfill({
-      status: 403,
-      json: { code: "PAID_ACCESS_REQUIRED", message },
-    }),
-  );
-  await page.goto("/login");
   await expect(
-    page.getByText("For paid customers with active access.", { exact: false }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveText(message);
-  await page
-    .getByLabel("Email or account name")
-    .fill("unpaid@synthetic.example");
-  await page
-    .getByLabel("Organisation ID")
-    .fill("11111111-1111-4111-8111-111111111111");
-  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("alert")).toHaveText(message);
-  await expect(page).toHaveURL("/login");
-  await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
-  ).toBeEnabled();
+  await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
 });

@@ -36,6 +36,8 @@ import {
 import { Modal } from "../../components/ui";
 import { ProductPreview } from "./ProductPreview";
 import type { PreviewView } from "./content";
+import { DEMO_REQUEST_PATH } from "./demo";
+import { Reveal } from "./motion";
 
 const platform = [
   {
@@ -135,8 +137,8 @@ const platform = [
   },
 ];
 // Public marketing copy only. Every workflow entry on the public site is a
-// sign-in entry: unauthenticated visitors reach the login page first, and the
-// paid workspace opens only after a validated session.
+// demo request: there is no public sign-in, and workspaces are provisioned
+// by the FinAI team after a demo conversation.
 const journeys = [
   {
     title: "Follow a number",
@@ -173,8 +175,8 @@ export function ReferenceWalkthrough({
       onOpenChange={onOpenChange}
     >
       <p className="reference-tour-note">
-        Choose a workflow and sign in to follow its records, reviews, and next
-        steps in your FinAI workspace.
+        Choose a workflow and request a demo to follow its records, reviews,
+        and next steps in your own FinAI workspace.
       </p>
       <div className="reference-tour-tabs">
         {journeys.map((j, i) => (
@@ -193,10 +195,10 @@ export function ReferenceWalkthrough({
         <p>{current.description}</p>
         <Link
           className="button primary"
-          to="/login"
+          to={DEMO_REQUEST_PATH}
           onClick={() => onOpenChange(false)}
         >
-          Sign in to start this walkthrough
+          Request a demo to start this walkthrough
           <ArrowRight size={14} />
         </Link>
       </div>
@@ -208,9 +210,9 @@ function HeroWorkspace() {
     <div className="reference-workspace">
       <aside className="reference-rail">
         <Link
-          to="/login"
+          to={DEMO_REQUEST_PATH}
           className="reference-rail-logo"
-          aria-label="Sign in to FinAI"
+          aria-label="Request a FinAI demo"
         >
           <BrandMark />
         </Link>
@@ -234,24 +236,27 @@ function HeroWorkspace() {
         ].map((l) => (
           <Link
             key={l.to}
-            to="/login"
-            aria-label={`${l.label} — sign in`}
-            title={`${l.label} — sign in`}
+            to={DEMO_REQUEST_PATH}
+            aria-label={`${l.label} — request a demo`}
+            title={`${l.label} — request a demo`}
           >
             <l.icon size={14} />
           </Link>
         ))}
         <div className="reference-rail-bottom">
-          <Link to="/login" aria-label="Audit log — sign in">
+          <Link to={DEMO_REQUEST_PATH} aria-label="Audit log — request a demo">
             <History size={13} />
           </Link>
-          <Link to="/login" aria-label="Notification preferences — sign in">
+          <Link
+            to={DEMO_REQUEST_PATH}
+            aria-label="Notification preferences — request a demo"
+          >
             <Bell size={13} />
           </Link>
           <Link
             className="reference-profile"
-            to="/login"
-            aria-label="Account — sign in"
+            to={DEMO_REQUEST_PATH}
+            aria-label="Account — request a demo"
           >
             AM
           </Link>
@@ -259,15 +264,15 @@ function HeroWorkspace() {
       </aside>
       <div className="reference-dashboard">
         <div className="reference-dashboard-tools">
-          <span>Preview · Sign in to continue</span>
+          <span>Preview · Request a demo to continue</span>
           <span>M</span>
           <span>S</span>
           <span>G</span>
-          <Link to="/login" aria-label="Preferences — sign in">
+          <Link to={DEMO_REQUEST_PATH} aria-label="Preferences — request a demo">
             <Menu size={11} />
           </Link>
         </div>
-        <FinanceSnapshot compact entryPath="/login" />
+        <FinanceSnapshot compact entryPath={DEMO_REQUEST_PATH} />
       </div>
     </div>
   );
@@ -458,8 +463,8 @@ function PlatformArt({ kind }: { kind: string }) {
     </div>
   );
 }
-// The `to` targets of these sections are sign-in entries: no public page may
-// open a workspace function without a validated paid session.
+// The `to` targets of these sections are demo requests: no public page may
+// open a workspace function directly; access is provisioned after a demo.
 const aiSections = [
   {
     id: "assistant",
@@ -608,7 +613,7 @@ function WorkflowStories() {
           <span>{story.tag} · LOCAL DEMO</span>
           <h3>{story.title}</h3>
           <p>{story.description}</p>
-          <Link to="/login">
+          <Link to={DEMO_REQUEST_PATH}>
             {story.label}
             <ArrowUpRight size={15} />
           </Link>
@@ -651,11 +656,11 @@ export function ReferenceHome() {
               </h1>
               <div>
                 <p>
-                  Preview a FinAI workspace with fictional figures. Sign in to
-                  review your own records and bring your close together.
+                  Preview a FinAI workspace with fictional figures. Request a
+                  demo to see it running with your own records and close.
                 </p>
-                <Link to="/login" className="reference-button">
-                  Sign in
+                <Link to={DEMO_REQUEST_PATH} className="reference-button">
+                  Request a demo
                 </Link>
               </div>
             </div>
@@ -673,7 +678,7 @@ export function ReferenceHome() {
         <div className="reference-company-grid">
           {companies.map((c, i) => (
             <Link
-              to="/login"
+              to={DEMO_REQUEST_PATH}
               className={
                 i % 3 === 1
                   ? "company-geometric"
@@ -720,19 +725,21 @@ export function ReferenceHome() {
             </p>
           </div>
           <div className="reference-platform-grid">
-            {platform.map((p) => (
-              <Link to={p.to} className="reference-platform-card" key={p.kind}>
-                <div>
-                  <h3>{p.title}</h3>
-                  <span className="platform-card-arrow">
-                    <ArrowUpRight size={14} />
-                  </span>
-                  <p>{p.description}</p>
-                </div>
-                <div className="platform-art-frame">
-                  <PlatformArt kind={p.kind} />
-                </div>
-              </Link>
+            {platform.map((p, i) => (
+              <Reveal key={p.kind} delay={(i % 4) * 80}>
+                <Link to={p.to} className="reference-platform-card">
+                  <div>
+                    <h3>{p.title}</h3>
+                    <span className="platform-card-arrow">
+                      <ArrowUpRight size={14} />
+                    </span>
+                    <p>{p.description}</p>
+                  </div>
+                  <div className="platform-art-frame">
+                    <PlatformArt kind={p.kind} />
+                  </div>
+                </Link>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -780,8 +787,8 @@ export function ReferenceHome() {
                     <span>{a.label}</span>
                     <h3>{a.title}</h3>
                     <p>{a.description}</p>
-                    <Link to="/login">
-                      Sign in to explore this workflow
+                    <Link to={DEMO_REQUEST_PATH}>
+                      Request a demo to explore this workflow
                       <ArrowUpRight size={13} />
                     </Link>
                   </div>
@@ -822,9 +829,9 @@ export function ReferenceHome() {
             return category ? (
               <Link
                 key={i}
-                to="/login"
+                to={DEMO_REQUEST_PATH}
                 className="integration-tile"
-                aria-label={`Explore ${category.name} integrations — sign in`}
+                aria-label={`Explore ${category.name} integrations — request a demo`}
               >
                 <category.icon size={22} aria-hidden="true" />
               </Link>
@@ -835,8 +842,8 @@ export function ReferenceHome() {
         </div>
         <div className="reference-integrations-more">
           <span>Want to see how connections work?</span>
-          <Link to="/login">
-            Sign in to view the integrations
+          <Link to={DEMO_REQUEST_PATH}>
+            Request a demo to view the integrations
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -858,12 +865,14 @@ export function ReferenceHome() {
           },
           { label: "Reviewable actions", icon: Sparkles },
           { label: "Traceable history", icon: FileCheck2 },
-        ].map((v) => (
-          <Link key={v.label} to="/login">
-            <v.icon size={25} />
-            <span>{v.label}</span>
-            <small>SIGN IN TO EXPLORE</small>
-          </Link>
+        ].map((v, i) => (
+          <Reveal key={v.label} delay={i * 90}>
+            <Link to={DEMO_REQUEST_PATH}>
+              <v.icon size={25} />
+              <span>{v.label}</span>
+              <small>REQUEST A DEMO</small>
+            </Link>
+          </Reveal>
         ))}
       </div>
       <section className="reference-final-cta">
@@ -871,8 +880,8 @@ export function ReferenceHome() {
           <h2>Get one step closer to a clearer close</h2>
           <p>Connected books. Reviewable workflows. Numbers you can trace.</p>
           <div>
-            <Link className="reference-button is-white" to="/login">
-              Sign in
+            <Link className="reference-button is-white" to={DEMO_REQUEST_PATH}>
+              Request a demo
             </Link>
             <button
               className="reference-button is-outline"

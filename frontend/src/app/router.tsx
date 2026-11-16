@@ -1,6 +1,5 @@
 // Public sample/chat routes and authenticated company routes keep separate data authority.
 import { RouteError } from "./RouteError";
-import { SessionGate } from "../components/SessionGate";
 import { OperationalSource } from "../features/assistant/OperationalSource";
 import { LedgerSource } from "../features/assistant/LedgerSource";
 import { Imports } from "../features/workspace/Imports";
@@ -26,6 +25,8 @@ import {
   AboutPage,
   DemoCustomersPage,
 } from "../features/marketing/Marketing";
+import { RequestDemoPage } from "../features/marketing/RequestDemo";
+import { DEMO_REQUEST_PATH } from "../features/marketing/demo";
 import { useAppDispatch, useDemo, command } from "../store";
 import { Overview } from "../features/Overview";
 import {
@@ -72,25 +73,22 @@ import {
 } from "../features/workspace/Workspace";
 import { ReceivablesRegister } from "../features/workspace/ReceivablesRegister";
 function Welcome() {
-  const sample = useLocation().pathname === "/sample";
   useEffect(() => {
-    document.title = sample ? "Welcome · FinAI" : "Sign in · FinAI";
+    document.title = "Welcome · FinAI";
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute(
         "content",
-        sample
-          ? "Explore the FinAI accounting workspace with fictional Northstar Analytics records. No sign-in or credentials required."
-          : "Sign in to your FinAI finance workspace with email and password or Google.",
+        "Explore the FinAI accounting workspace with fictional Northstar Analytics records. No sign-in or credentials required.",
       );
-  }, [sample]);
+  }, []);
   const s = useDemo(),
     dispatch = useAppDispatch(),
     navigate = useNavigate();
   return (
     <div className="welcome">
       <div className="welcome-story">
-        <Link to="/login" className="brand">
+        <Link to="/" className="brand">
           <BrandMark />
           FinAI
         </Link>
@@ -120,72 +118,55 @@ function Welcome() {
             </div>
           </div>
         </div>
-        <p>
-          {sample
-            ? "Synthetic Northstar Analytics data"
-            : "Your finance workspace. One secure sign-in."}
-        </p>
+        <p>Synthetic Northstar Analytics data</p>
       </div>
       <div className="welcome-entry">
-        {sample ? (
-          <>
-            <h2>Make yourself at home.</h2>
+        <>
+          <h2>Make yourself at home.</h2>
+          <p>
+            Explore Northstar Analytics with six months of connected
+            accounting data.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const profile = String(
+                new FormData(e.currentTarget).get("profile"),
+              );
+              dispatch(command({ kind: "enter", profile }));
+              navigate("/overview");
+            }}
+          >
+            <label className="field">
+              <span>Your name (optional)</span>
+              <input
+                name="profile"
+                placeholder="Alex Morgan"
+                defaultValue={s.entered ? s.profile : ""}
+              />
+            </label>
+            <button className="primary" type="submit">
+              Enter workspace
+              <ArrowRight size={16} />
+            </button>
+          </form>
+          <p>
+            <Link to={DEMO_REQUEST_PATH}>
+              Request a demo for your own workspace
+            </Link>
+          </p>
+          <p>
+            <Link to="/demo/payables/invoices">Open supplier invoices</Link>
+          </p>
+          <div className="welcome-note">
+            <ShieldCheck size={20} />
             <p>
-              Explore Northstar Analytics with six months of connected
-              accounting data.
+              No sign-in, credentials, or backend required.
+              <br />
+              Everything stays in this browser.
             </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const profile = String(
-                  new FormData(e.currentTarget).get("profile"),
-                );
-                dispatch(command({ kind: "enter", profile }));
-                navigate("/overview");
-              }}
-            >
-              <label className="field">
-                <span>Your name (optional)</span>
-                <input
-                  name="profile"
-                  placeholder="Alex Morgan"
-                  defaultValue={s.entered ? s.profile : ""}
-                />
-              </label>
-              <button className="primary" type="submit">
-                Enter workspace
-                <ArrowRight size={16} />
-              </button>
-            </form>
-            <p>
-              <Link to="/workspace">Sign in to your finance workspace</Link>
-            </p>
-            <p>
-              <Link to="/demo/payables/invoices">Open supplier invoices</Link>
-            </p>
-            <div className="welcome-note">
-              <ShieldCheck size={20} />
-              <p>
-                No sign-in, credentials, or backend required.
-                <br />
-                Everything stays in this browser.
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <SessionGate title="Sign in to FinAI" headingLevel={2} requireSession>
-              <Navigate to="/workspace/overview" replace />
-            </SessionGate>
-            <div className="welcome-note">
-              <ShieldCheck size={20} />
-              <p>
-                Showing FinAI to a client? Explore a fictional sample workspace
-                without an account. <Link to="/sample">Open sample workspace</Link>
-              </p>
-            </div>
-          </>
-        )}
+          </div>
+        </>
       </div>
     </div>
   );
@@ -256,10 +237,13 @@ const routes: RouteObject[] = [
       { path: "resources", element: <ResourcesPage /> },
       { path: "about", element: <AboutPage /> },
       { path: "customers", element: <DemoCustomersPage /> },
+      { path: "request-demo", element: <RequestDemoPage /> },
     ],
   },
-  { path: "/login", element: <Welcome /> },
-  { path: "/welcome", element: <Navigate to="/login" replace /> },
+  // The public site offers no sign-in: the login page now lands on the demo
+  // request funnel, where the team provisions access after the conversation.
+  { path: "/login", element: <Navigate to={DEMO_REQUEST_PATH} replace /> },
+  { path: "/welcome", element: <Navigate to={DEMO_REQUEST_PATH} replace /> },
   { path: "/sample", element: <Welcome /> },
   ...["/invoices", "/invoice-approvals"].map((path) => ({
     path,
@@ -431,7 +415,7 @@ export class AppBoundary extends Component<
         <button
           onClick={() => {
             localStorage.removeItem("finai-demo-v1");
-            location.assign("/login");
+            location.assign("/");
           }}
         >
           Reset local demo

@@ -82,7 +82,7 @@ export function FinanceSnapshot({
           </span>
           <span>
             {entryPath
-              ? "Sign in to ask FinAI about your workspace"
+              ? "Request a demo to ask FinAI about your workspace"
               : "Ask FinAI a question or explore a local workflow"}
           </span>
           <Paperclip size={12} />

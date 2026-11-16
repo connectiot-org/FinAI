@@ -188,6 +188,18 @@
   grid-template-columns: 1.2fr 1fr;
   gap: 28px;
 }
+/* A third group (Platform products, industries) spans the full width and
+   flows its entries in two internal columns so both menu columns balance. */
+.marketing-mega.has-columns > div:nth-child(3) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+  align-content: start;
+}
+.marketing-mega.has-columns > div:nth-child(3) > .marketing-menu-title {
+  grid-column: 1 / -1;
+}
 .marketing-menu-title {
   font:
     500 13px/1.4 "DM Sans",

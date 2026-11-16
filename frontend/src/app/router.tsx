@@ -26,6 +26,7 @@ import {
   DemoCustomersPage,
 } from "../features/marketing/Marketing";
 import { RequestDemoPage } from "../features/marketing/RequestDemo";
+import { LogInPage } from "../features/marketing/LogIn";
 import { DEMO_REQUEST_PATH } from "../features/marketing/demo";
 import { useAppDispatch, useDemo, command } from "../store";
 import { Overview } from "../features/Overview";
@@ -156,6 +157,9 @@ function Welcome() {
             </Link>
           </p>
           <p>
+            <Link to="/login">Log in with your email</Link>
+          </p>
+          <p>
             <Link to="/demo/payables/invoices">Open supplier invoices</Link>
           </p>
           <div className="welcome-note">
@@ -240,10 +244,12 @@ const routes: RouteObject[] = [
       { path: "request-demo", element: <RequestDemoPage /> },
     ],
   },
-  // The public site offers no sign-in: the login page now lands on the demo
-  // request funnel, where the team provisions access after the conversation.
-  { path: "/login", element: <Navigate to={DEMO_REQUEST_PATH} replace /> },
-  { path: "/welcome", element: <Navigate to={DEMO_REQUEST_PATH} replace /> },
+  // The public log-in entry (founder direction, 16 November 2026): anyone can
+  // log in with an email and use the connected workspace dashboard; the demo
+  // request funnel stays the path for teams wanting their own provisioned
+  // workspace. /welcome is the legacy sign-in path and now lands on /login.
+  { path: "/login", element: <LogInPage /> },
+  { path: "/welcome", element: <Navigate to="/login" replace /> },
   { path: "/sample", element: <Welcome /> },
   ...["/invoices", "/invoice-approvals"].map((path) => ({
     path,

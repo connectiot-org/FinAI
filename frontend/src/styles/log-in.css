@@ -1,0 +1,81 @@
+/* Log-in entry: extends the shared .welcome split-screen (global.css) with
+   login-specific details — the "or" divider, the provisioned-customer
+   section, and an entrance for the entry card. Transform/opacity only and
+   fully disabled under prefers-reduced-motion, matching motion.css. */
+.log-in .welcome-entry {
+  max-width: 420px;
+}
+.log-in .welcome-entry h2 {
+  margin-top: 0;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 26px 0;
+  color: #8a958e;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--border);
+  flex: 1;
+}
+.login-provisioned h3 {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  margin: 0 0 6px;
+}
+.login-provisioned > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.login-provisioned .panel {
+  padding: 18px;
+}
+.login-teams {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #5c6861;
+  border-top: 1px solid var(--border);
+  margin: 26px 0 0;
+  padding-top: 18px;
+}
+.login-teams a {
+  white-space: nowrap;
+}
+
+/* --- Entrance: the entry card settles in on first paint --- */
+@keyframes finai-login-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.log-in .welcome-entry > * {
+  animation: finai-login-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.log-in .welcome-entry > *:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.log-in .welcome-entry > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.log-in .welcome-entry > *:nth-child(n + 4) {
+  animation-delay: 0.18s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .log-in .welcome-entry > * {
+    animation: none;
+  }
+}

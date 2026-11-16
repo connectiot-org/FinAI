@@ -94,21 +94,23 @@ test("homepage dashboard preview routes every entry to a demo request", async ({
     ).toBeVisible();
   }
 });
-test("every public page offers a demo request instead of direct workspace entry", async ({
+test("every public page offers a demo request and the log-in entry beside it", async ({
   page,
 }) => {
-  // Any anchor on a public page must be a demo request, an informational
-  // page, the labelled sample tour, an in-page anchor, the booking form, or
-  // the footer GitHub link. Direct links into workspace functions or a
-  // public sign-in are the bypasses this guards.
+  // Any anchor on a public page must be a demo request, the log-in entry, an
+  // informational page, the labelled sample tour, an in-page anchor, the
+  // booking form, or the footer GitHub link. Direct links into workspace
+  // functions are the bypasses this guards; the log-in page itself is the
+  // single sanctioned entry into the dashboard.
   const allowed =
-    /^(\/request-demo|\/|\/product\/|\/sample|\/customers|\/resources|\/about|#|https:\/\/forms\.gle\/qFhgN6g52xw4P17D7$|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
+    /^(\/request-demo|\/|\/product\/|\/sample|\/customers|\/resources|\/about|\/login|#|https:\/\/forms\.gle\/qFhgN6g52xw4P17D7$|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
   for (const path of [
     "/",
     "/resources",
     "/customers",
     "/about",
     "/request-demo",
+    "/login",
     "/product/assistant",
     "/product/automated-general-ledger",
     "/product/accounts-receivable",
@@ -130,13 +132,14 @@ test("every public page offers a demo request instead of direct workspace entry"
     const hrefs = await page.evaluate(() =>
       Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href")),
     );
-    expect(hrefs.length, `${path} exposes links`).toBeGreaterThan(10);
+    // The log-in page is intentionally a focused entry card, not a content
+    // page; every other public page stays a rich marketing surface.
+    const minimumLinks = path === "/login" ? 2 : 10;
+    expect(hrefs.length, `${path} exposes links`).toBeGreaterThan(
+      minimumLinks - 1,
+    );
     const offenders = hrefs.filter((href) => href && !allowed.test(href));
     expect(offenders, `${path} must not link into the workspace`).toEqual([]);
-    expect(
-      hrefs.filter((href) => href === "/login"),
-      `${path} must not expose a public sign-in`,
-    ).toEqual([]);
     const demoEntries = hrefs.filter((href) => href === "/request-demo");
     expect(
       demoEntries.length,
@@ -531,7 +534,7 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
   ).toBeInViewport();
 });
 
-test("public header offers a demo request and mobile navigation routes to it", async ({
+test("public header offers a demo request with the log-in entry and mobile navigation routes to both", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -546,7 +549,22 @@ test("public header offers a demo request and mobile navigation routes to it", a
       .getByRole("banner")
       .getByRole("link", { name: "Request a demo", exact: true }),
   ).toHaveAttribute("href", "/request-demo");
+  await expect(
+    page
+      .getByRole("banner")
+      .getByRole("link", { name: "Log in", exact: true }),
+  ).toHaveAttribute("href", "/login");
   await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open public navigation" }).click();
+  await page
+    .getByRole("navigation", { name: "Mobile public navigation" })
+    .getByRole("link", { name: "Log in", exact: true })
+    .click();
+  await expect(page).toHaveURL("/login");
+  await expect(
+    page.getByRole("heading", { name: "Welcome back.", exact: true }),
+  ).toBeVisible();
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();
   await page
@@ -590,18 +608,45 @@ test("public header offers a demo request and mobile navigation routes to it", a
   ).toBeVisible();
 });
 
-test("login redirects to the embedded demo request funnel with no public sign-in", async ({
+test("log-in entry opens the workspace dashboard for any visitor", async ({
   page,
 }) => {
-  await page.goto("/welcome");
-  await expect(page).toHaveURL("/request-demo");
-  await page.goto("/login");
-  await expect(page).toHaveURL("/request-demo");
+  await page.goto("/");
+  const headerLogin = page
+    .getByRole("banner")
+    .getByRole("link", { name: "Log in", exact: true });
+  await expect(headerLogin).toHaveAttribute("href", "/login");
+  await headerLogin.click();
+  await expect(page).toHaveURL("/login");
+  await expect(page).toHaveTitle("Log in · FinAI");
   await expect(
-    page.getByRole("heading", {
-      name: "See FinAI work with your own eyes.",
-    }),
+    page.getByRole("heading", { name: "Welcome back.", exact: true }),
   ).toBeVisible();
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("jordan.lee@northstar.example");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL("/overview");
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  // The whole workspace is usable after logging in.
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(nav.getByRole("link", { name: "General ledger" })).toHaveAttribute(
+    "href",
+    "/accounting/ledger",
+  );
+  await expect(nav.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
+  // The legacy sign-in path still lands on the log-in entry.
+  await page.goto("/welcome");
+  await expect(page).toHaveURL("/login");
+});
+
+test("demo request funnel stays intact and separate from the log-in entry", async ({
+  page,
+}) => {
+  await page.goto("/request-demo");
   await expect(page).toHaveTitle("Request a demo · FinAI");
   const frame = page.locator(".request-demo-form-card iframe");
   await expect(frame).toHaveAttribute(
@@ -614,7 +659,7 @@ test("login redirects to the embedded demo request funnel with no public sign-in
       .getByRole("link", { name: /Open the form in a new tab/ })
       .first(),
   ).toHaveAttribute("href", "https://forms.gle/qFhgN6g52xw4P17D7");
-  // No public sign-in remains anywhere on the funnel.
+  // The funnel itself stays a pure booking page: no account controls here.
   await expect(
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toHaveCount(0);
@@ -622,6 +667,11 @@ test("login redirects to the embedded demo request funnel with no public sign-in
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toHaveCount(0);
+  // The log-in page keeps a demo request for teams wanting their own workspace.
+  await page.goto("/login");
+  await expect(
+    page.getByRole("link", { name: "Request access through a demo" }),
+  ).toHaveAttribute("href", "/request-demo");
 });
 
 test("sample workspace stays open without an account and offers a demo for the real thing", async ({

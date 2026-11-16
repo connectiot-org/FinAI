@@ -124,8 +124,18 @@
   gap: 20px;
 }
 .marketing-login {
-  font-size: 12px;
-  line-height: 16px;
+  font:
+    400 14px/20px "DM Sans",
+    sans-serif;
+  color: #18181b;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.marketing-login:hover {
+  color: #582efd;
 }
 .marketing-button {
   display: inline-flex;

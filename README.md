@@ -8,6 +8,7 @@ Start with the [repository and file guide](docs/repository-guide.md) for every f
 
 | Entry | What it does | Requirements |
 | --- | --- | --- |
+| `/login` | Log in with an email and use the connected workspace dashboard and every workflow behind it; provisioned customers sign in to the paid workspace here when session mode is configured | Browser only for the demo session |
 | `/demo/invoices` or `/demo/payables/invoices` | Labelled sample invoices, PDFs, roles, approvals and CSV; separate browser persistence | Browser; no sign-in, API or database |
 | `/development/payables/invoices` | Compatibility redirect to sample invoices | Same sample boundary |
 | `/workspace/payables/invoices` | Real company invoice workflow | Configured API/database, provisioned session/AP grants and private scanner |

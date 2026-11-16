@@ -1,11 +1,8 @@
 import { BrandMark } from "../../components/shared/BrandMark";
-import { SessionGate } from "../../components/SessionGate";
 import { useEffect } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, BookOpen, Check, ShieldCheck } from "lucide-react";
 import { command, useAppDispatch } from "../../store";
-import { sessionEnabled } from "../../lib/api";
-import { DEMO_REQUEST_PATH } from "./demo";
 import "../../styles/log-in.css";
 
 // Derive a workspace persona from the entered email so the dashboard greets a
@@ -24,9 +21,10 @@ function personaFromEmail(email: string) {
 // Public log-in entry. The founder direction (16 November 2026) brings a
 // visible Log in back to the public site: anyone can log in with an email and
 // immediately use the connected workspace dashboard and every workflow behind
-// it. The session is the honest browser-local demo workspace; provisioned
-// customers still reach their real paid workspace through the same page when
-// the authenticated API mode is configured.
+// it. The founder refined the entry the same day: the page shows only the
+// sign-in-to-your-workspace option — no second provisioned-customer section,
+// no divider, no demo paragraph. (Provisioned customers in session mode still
+// reach their own gated workspace directly at /workspace/overview.)
 export function LogInPage() {
   const dispatch = useAppDispatch(),
     navigate = useNavigate();
@@ -111,34 +109,6 @@ export function LogInPage() {
             <ArrowRight size={16} />
           </button>
         </form>
-        {sessionEnabled ? (
-          <>
-            <div className="login-divider">
-              <span>or</span>
-            </div>
-            <section className="login-provisioned">
-              <h3>Provisioned customer?</h3>
-              <p>
-                Sign in with your FinAI account to open your company workspace.
-              </p>
-              <SessionGate
-                title="Sign in to your workspace"
-                headingLevel={2}
-                requireSession
-              >
-                <Navigate to="/workspace/overview" replace />
-              </SessionGate>
-            </section>
-          </>
-        ) : (
-          <p className="login-teams">
-            Part of a provisioned team?{" "}
-            <Link to={DEMO_REQUEST_PATH}>
-              Request access through a demo
-            </Link>
-            . Workspaces are set up by the FinAI team after the conversation.
-          </p>
-        )}
         <div className="welcome-note">
           <ShieldCheck size={20} />
           <p>

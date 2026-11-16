@@ -106,7 +106,8 @@ test("every public page offers a demo request and the log-in entry beside it", a
   // informational page, the labelled sample tour, an in-page anchor, the
   // booking form, or the footer GitHub link. Direct links into workspace
   // functions are the bypasses this guards; the log-in page itself is the
-  // single sanctioned entry into the dashboard.
+  // single sanctioned entry into the dashboard and, per the founder
+  // refinement (16 November 2026), shows only the sign-in option.
   const allowed =
     /^(\/request-demo|\/|\/product\/|\/sample|\/customers|\/resources|\/about|\/login|#|https:\/\/forms\.gle\/qFhgN6g52xw4P17D7$|https:\/\/github\.com\/connectiot-org\/FinAI$)/;
   for (const path of [
@@ -137,19 +138,23 @@ test("every public page offers a demo request and the log-in entry beside it", a
     const hrefs = await page.evaluate(() =>
       Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href")),
     );
-    // The log-in page is intentionally a focused entry card, not a content
-    // page; every other public page stays a rich marketing surface.
-    const minimumLinks = path === "/login" ? 2 : 10;
+    // The log-in page is intentionally a focused entry card (brand link plus
+    // the sign-in form); every other public page stays a rich marketing
+    // surface that must offer the demo funnel.
+    const isLogin = path === "/login";
+    const minimumLinks = isLogin ? 1 : 10;
     expect(hrefs.length, `${path} exposes links`).toBeGreaterThan(
       minimumLinks - 1,
     );
     const offenders = hrefs.filter((href) => href && !allowed.test(href));
     expect(offenders, `${path} must not link into the workspace`).toEqual([]);
-    const demoEntries = hrefs.filter((href) => href === "/request-demo");
-    expect(
-      demoEntries.length,
-      `${path} must offer demo request entries`,
-    ).toBeGreaterThan(0);
+    if (!isLogin) {
+      const demoEntries = hrefs.filter((href) => href === "/request-demo");
+      expect(
+        demoEntries.length,
+        `${path} must offer demo request entries`,
+      ).toBeGreaterThan(0);
+    }
   }
 });
 test("interactive homepage preview uses real records and search links", async ({
@@ -672,11 +677,25 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toHaveCount(0);
-  // The log-in page keeps a demo request for teams wanting their own workspace.
+  // The log-in page shows only the sign-in-to-workspace option (founder
+  // refinement, 16 November 2026): no demo paragraph, no divider, no second
+  // provisioned sign-in section. The demo funnel stays available on every
+  // other public page, the sample tour and the workspace itself.
   await page.goto("/login");
   await expect(
     page.getByRole("link", { name: "Request access through a demo" }),
-  ).toHaveAttribute("href", "/request-demo");
+  ).toHaveCount(0);
+  await expect(page.locator(".login-divider")).toHaveCount(0);
+  await expect(page.locator(".login-provisioned")).toHaveCount(0);
+  await expect(page.locator(".login-teams")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
 });
 
 test("sample workspace stays open without an account and offers a demo for the real thing", async ({

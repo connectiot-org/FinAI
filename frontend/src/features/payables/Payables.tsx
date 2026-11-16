@@ -12,6 +12,7 @@ import {
   useParams,
   useLocation,
   useBlocker,
+  useNavigationType,
   useSearchParams,
 } from "react-router-dom";
 import { z } from "zod";
@@ -290,6 +291,19 @@ function Register({
 }) {
   const { request, basePath } = usePayablesClient();
   const [params, setParams] = useSearchParams();
+  // Filter changes must compose from the latest applied state, not from the
+  // render snapshot: React Router commits location updates in a deferred
+  // transition, so rapid successive changes (typing while picking filters)
+  // would otherwise read a stale base and silently drop the previous change.
+  // The ref keeps the last target this component navigated to.
+  const viewRef = useRef(new URLSearchParams(params));
+  const navigationType = useNavigationType();
+  useEffect(() => {
+    // Back/forward restores a URL this component did not write; adopt it so
+    // the next change composes from the restored state.
+    if (navigationType === "POP")
+      viewRef.current = new URLSearchParams(params);
+  }, [navigationType, params]);
   const month = params.get("month") || "",
     search = params.get("search") || "",
     queue = exportView ? "export" : params.get("queue") || "all",
@@ -301,12 +315,13 @@ function Register({
   const [adding, setAdding] = useState(false);
   const navigate = useNavigate();
   const changeView = (changes: Record<string, string>, replace = false) => {
-    const next = new URLSearchParams(params);
+    const next = new URLSearchParams(viewRef.current);
     for (const [name, value] of Object.entries(changes)) {
       if (value && !(name === "offset" && value === "0")) next.set(name, value);
       else next.delete(name);
     }
     if (!("offset" in changes)) next.delete("offset");
+    viewRef.current = next;
     setParams(next, { replace });
   };
   const load = useCallback(

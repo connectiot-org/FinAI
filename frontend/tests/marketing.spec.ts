@@ -1,8 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  E2E_ACCOUNT_EMAIL,
-  E2E_ACCOUNT_PASSWORD,
-} from "./e2e-account";
+import { E2E_ACCOUNT_EMAIL, E2E_ACCOUNT_PASSWORD } from "./e2e-account";
 
 test("public navigation, product pages and demo entry work on direct refresh", async ({
   page,
@@ -640,7 +637,10 @@ test("log-in entry opens the workspace only for provisioned accounts", async ({
   await expect(page).toHaveTitle("Log in · FinAI");
   // The card is always the provisioned sign-in; no create mode exists.
   await expect(
-    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
+    page.getByRole("heading", {
+      name: "Sign in to your workspace.",
+      exact: true,
+    }),
   ).toBeVisible();
   const email = page.getByLabel("Email", { exact: true });
   const password = page.getByLabel("Password", { exact: true });
@@ -703,9 +703,7 @@ test("repeated wrong passwords lock the log-in entry temporarily", async ({
   page,
 }) => {
   await page.goto("/login");
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill(E2E_ACCOUNT_EMAIL);
+  await page.getByLabel("Email", { exact: true }).fill(E2E_ACCOUNT_EMAIL);
   // Four wrong passwords each earn the same non-committal reply.
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     await page.getByLabel("Password", { exact: true }).fill(`no-${attempt}`);
@@ -750,7 +748,10 @@ test("the log-in card offers no self-registration and points new teams to book a
 }) => {
   await page.goto("/login");
   await expect(
-    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
+    page.getByRole("heading", {
+      name: "Sign in to your workspace.",
+      exact: true,
+    }),
   ).toBeVisible();
   // There is no way to create an account or recover one from the page:
   // credentials exist only when the company owner provisions them.
@@ -777,7 +778,10 @@ test("the log-in card offers no self-registration and points new teams to book a
   // Reloading keeps the same provisioned sign-in — no account was created.
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
+    page.getByRole("heading", {
+      name: "Sign in to your workspace.",
+      exact: true,
+    }),
   ).toBeVisible();
   // Visitors without a sign-in are invited to book a demo through the
   // founder's Google Form funnel.

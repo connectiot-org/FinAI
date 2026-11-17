@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
+import { E2E_ACCOUNT_SPEC } from "./tests/e2e-account";
 export default defineConfig({
   testDir: "./tests",
   testIgnore:
@@ -21,7 +22,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run dev -- --port 5173",
+    // VITE_E2E_ACCOUNT provisions a development-only sign-in (tests/e2e-account.ts)
+    // so the suites can exercise the real provisioned-credential verification.
+    command: `VITE_E2E_ACCOUNT="${E2E_ACCOUNT_SPEC}" npm run dev -- --port 5173`,
     url: "http://127.0.0.1:5173",
     reuseExistingServer: !process.env.CI,
   },

@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+import {
+  E2E_ACCOUNT_EMAIL,
+  E2E_ACCOUNT_PASSWORD,
+} from "./e2e-account";
 
 test("public navigation, product pages and demo entry work on direct refresh", async ({
   page,
@@ -572,10 +576,13 @@ test("public header offers a demo request with the log-in entry and mobile navig
     .getByRole("link", { name: "Log in", exact: true })
     .click();
   await expect(page).toHaveURL("/login");
-  // A fresh browser starts in create mode (the same-day security
-  // refinement); "Welcome back." only appears once a sign-in exists.
+  // The card always shows the provisioned sign-in (17 November 2026 founder
+  // direction): no create mode exists on any browser.
   await expect(
-    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
+    page.getByRole("heading", {
+      name: "Sign in to your workspace.",
+      exact: true,
+    }),
   ).toBeVisible();
   await page.goto("/");
   await page.getByRole("button", { name: "Open public navigation" }).click();
@@ -620,7 +627,7 @@ test("public header offers a demo request with the log-in entry and mobile navig
   ).toBeVisible();
 });
 
-test("log-in entry secures the workspace behind a password", async ({
+test("log-in entry opens the workspace only for provisioned accounts", async ({
   page,
 }) => {
   await page.goto("/");
@@ -631,31 +638,38 @@ test("log-in entry secures the workspace behind a password", async ({
   await headerLogin.click();
   await expect(page).toHaveURL("/login");
   await expect(page).toHaveTitle("Log in · FinAI");
-  // First visit on a fresh browser: the entry asks to create the sign-in.
+  // The card is always the provisioned sign-in; no create mode exists.
   await expect(
-    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
   ).toBeVisible();
   const email = page.getByLabel("Email", { exact: true });
   const password = page.getByLabel("Password", { exact: true });
-  await email.fill("jordan.lee@northstar.example");
+  // An email the company never provisioned is refused: the entry no longer
+  // hands the workspace to any visitor (17 November 2026 founder direction).
+  await email.fill("random.visitor@gmail.com");
+  await password.fill("whatever-123");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Incorrect email or password.",
+  );
+  await expect(page).toHaveURL("/login");
+  // A provisioned email with the wrong password is refused identically, so
+  // the page cannot be used to probe which email is registered.
+  await email.fill(E2E_ACCOUNT_EMAIL);
+  await password.fill("wrong-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Incorrect email or password.",
+  );
+  await expect(page).toHaveURL("/login");
   // The reveal toggle can show the typed password before it is committed.
-  await password.fill("northstar-2026");
+  await password.fill(E2E_ACCOUNT_PASSWORD);
   await page.getByRole("button", { name: "Show password" }).click();
   await expect(password).toHaveAttribute("type", "text");
   await page.getByRole("button", { name: "Hide password" }).click();
   await expect(password).toHaveAttribute("type", "password");
-  // A weak password is refused with actionable guidance and no navigation.
-  await password.fill("short");
-  await page
-    .getByRole("button", { name: "Create sign-in", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText("at least 8 characters");
-  await expect(page).toHaveURL("/login");
-  // A compliant password creates the sign-in and opens the workspace.
-  await password.fill("northstar-2026");
-  await page
-    .getByRole("button", { name: "Create sign-in", exact: true })
-    .click();
+  // The provisioned email with its password opens the workspace.
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL("/overview");
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
@@ -669,26 +683,15 @@ test("log-in entry secures the workspace behind a password", async ({
     nav.getByRole("link", { name: "Reports", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("FinAI · Local demo · USD")).toBeVisible();
-  // The credential is stored salted and stretched: no clear-text password
-  // anywhere in browser storage.
+  // Verification never writes a credential to the browser, and the clear
+  // password appears nowhere in storage.
   const dumped = await page.evaluate(() => JSON.stringify(localStorage));
-  expect(dumped).toContain("finai-access-v1");
-  expect(dumped).not.toContain("northstar-2026");
-  // Returning to the entry now requires the password: a wrong one is
-  // refused without a hint about which part was wrong.
+  expect(dumped).not.toContain("finai-access-v1");
+  expect(dumped).not.toContain(E2E_ACCOUNT_PASSWORD);
+  // The entry keeps working: a returning sign-in re-opens the workspace.
   await page.goto("/login");
-  await expect(
-    page.getByRole("heading", { name: "Welcome back.", exact: true }),
-  ).toBeVisible();
-  await expect(email).toHaveValue("jordan.lee@northstar.example");
-  await password.fill("wrong-password");
-  await page.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Incorrect email or password.",
-  );
-  await expect(page).toHaveURL("/login");
-  // The correct password opens the workspace again.
-  await password.fill("northstar-2026");
+  await email.fill(E2E_ACCOUNT_EMAIL);
+  await password.fill(E2E_ACCOUNT_PASSWORD);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL("/overview");
   // The legacy sign-in path still lands on the log-in entry.
@@ -702,13 +705,7 @@ test("repeated wrong passwords lock the log-in entry temporarily", async ({
   await page.goto("/login");
   await page
     .getByLabel("Email", { exact: true })
-    .fill("dana@northstar.example");
-  await page.getByLabel("Password", { exact: true }).fill("northstar-2026");
-  await page
-    .getByRole("button", { name: "Create sign-in", exact: true })
-    .click();
-  await expect(page).toHaveURL("/overview");
-  await page.goto("/login");
+    .fill(E2E_ACCOUNT_EMAIL);
   // Four wrong passwords each earn the same non-committal reply.
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     await page.getByLabel("Password", { exact: true }).fill(`no-${attempt}`);
@@ -748,41 +745,49 @@ test("repeated wrong passwords lock the log-in entry temporarily", async ({
   ).toBeDisabled();
 });
 
-test("a forgotten password can be reset on this browser only", async ({
+test("the log-in card offers no self-registration and points new teams to book a demo", async ({
   page,
 }) => {
   await page.goto("/login");
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill("dana@northstar.example");
-  await page.getByLabel("Password", { exact: true }).fill("northstar-2026");
-  await page
-    .getByRole("button", { name: "Create sign-in", exact: true })
-    .click();
-  await expect(page).toHaveURL("/overview");
-  await page.goto("/login");
-  // The forgot panel explains the browser-local recovery and clears the
-  // saved credential so a new password can be set.
-  await page.getByRole("button", { name: "Forgot your password?" }).click();
-  await page
-    .getByRole("button", { name: "Reset access on this browser" })
-    .click();
   await expect(
-    page.getByRole("heading", { name: "Set up your sign-in.", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
   ).toBeVisible();
+  // There is no way to create an account or recover one from the page:
+  // credentials exist only when the company owner provisions them.
   await expect(
     page.getByRole("button", { name: "Create sign-in", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Forgot your password?" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Reset access on this browser" }),
+  ).toHaveCount(0);
+  // A refused attempt still writes no credential to the browser.
+  await page.getByLabel("Email", { exact: true }).fill("stranger@gmail.com");
+  await page.getByLabel("Password", { exact: true }).fill("denied-123");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Incorrect email or password.",
+  );
+  const storage = await page.evaluate(() =>
+    Object.keys(localStorage).join(","),
+  );
+  expect(storage).not.toContain("finai-access-v1");
+  // Reloading keeps the same provisioned sign-in — no account was created.
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your workspace.", exact: true }),
   ).toBeVisible();
-  // A different password now guards the workspace, and neither the old nor
-  // the new one is ever stored in clear text.
-  await page.getByLabel("Password", { exact: true }).fill("replacement-2026");
-  await page
-    .getByRole("button", { name: "Create sign-in", exact: true })
-    .click();
-  await expect(page).toHaveURL("/overview");
-  const dumped = await page.evaluate(() => JSON.stringify(localStorage));
-  expect(dumped).not.toContain("northstar-2026");
-  expect(dumped).not.toContain("replacement-2026");
+  // Visitors without a sign-in are invited to book a demo through the
+  // founder's Google Form funnel.
+  const bookDemo = page.getByRole("link", { name: "Book a demo", exact: true });
+  await expect(bookDemo).toHaveAttribute(
+    "href",
+    "https://forms.gle/qFhgN6g52xw4P17D7",
+  );
+  await expect(bookDemo).toHaveAttribute("target", "_blank");
+  await expect(page.getByText("Need an account?")).toBeVisible();
 });
 
 test("demo request funnel stays intact and separate from the log-in entry", async ({
@@ -808,10 +813,11 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
     page.getByRole("button", { name: "Continue with Google" }),
   ).toHaveCount(0);
   // The log-in page shows only the sign-in-to-your-workspace option (founder
-  // refinement, 16 November 2026), and since the same-day security
-  // refinement that option itself asks for a password: create it on first
-  // use, verify it afterwards. Still no third-party or SSO controls, no
-  // divider, no second provisioned sign-in section. The demo funnel stays
+  // refinement, 16 November 2026), and since the 17 November direction that
+  // option accepts only company-owner-provisioned credentials — there is no
+  // create mode, no recovery panel, no third-party or SSO controls, no
+  // divider and no second provisioned sign-in section. Visitors without a
+  // sign-in are offered the book-a-demo link instead. The demo funnel stays
   // available on every other public page, the sample tour and the workspace.
   await page.goto("/login");
   await expect(
@@ -829,8 +835,11 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Create sign-in", exact: true }),
+    page.getByRole("button", { name: "Log in", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Book a demo", exact: true }),
+  ).toHaveAttribute("href", "https://forms.gle/qFhgN6g52xw4P17D7");
 });
 
 test("sample workspace stays open without an account and offers a demo for the real thing", async ({

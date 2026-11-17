@@ -12,13 +12,12 @@ import {
 } from "lucide-react";
 import { command, useAppDispatch } from "../../store";
 import {
-  createWorkspaceAccess,
+  clearLegacyAccountRecord,
   normalizeEmail,
-  passwordProblems,
   readAccessSnapshot,
-  resetWorkspaceAccess,
   verifyWorkspaceAccess,
 } from "../../lib/workspace-access";
+import { DEMO_FORM_URL } from "./demo";
 import "../../styles/log-in.css";
 
 // Derive a workspace persona from the entered email so the dashboard greets a
@@ -34,19 +33,19 @@ function personaFromEmail(email: string) {
   return words.join(" ").slice(0, 40);
 }
 
-// Public log-in entry. The founder direction (16 November 2026) brings a
-// visible Log in back to the public site, refined the same day to show only
-// the sign-in-to-your-workspace option. The security refinement later that
-// day closes the free entry: the workspace sign-in now requires a password.
-// The first visitor on a browser creates the sign-in (the password is salted
-// and stretched with PBKDF2 in this browser — it is never stored or sent in
-// clear text); everyone after that must know it, and repeated wrong passwords
-// lock the entry temporarily. (Provisioned customers in session mode still
-// reach their own gated workspace directly at /workspace/overview.)
+// Public log-in entry. The founder direction (17 November 2026) closes the
+// free entry for good: the workspace opens ONLY for the Gmail sign-ins the
+// company owner provisioned (see src/lib/provisioned-credentials.ts) and
+// handed credentials to — the Rillet-style model. Nobody can create an
+// account here; an unprovisioned visitor is refused and invited to book a
+// demo instead. The entered password is verified in this browser against a
+// salted PBKDF2 hash (never stored or sent in clear text), and repeated
+// wrong passwords lock the entry temporarily. (Provisioned customers in
+// session mode still reach their own gated workspace directly at
+// /workspace/overview.)
 export function LogInPage() {
   const dispatch = useAppDispatch(),
     navigate = useNavigate();
-  const [account, setAccount] = useState(() => readAccessSnapshot().account);
   const [lockedUntil, setLockedUntil] = useState(
     () => readAccessSnapshot().lockedUntil,
   );
@@ -54,8 +53,6 @@ export function LogInPage() {
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [problems, setProblems] = useState<string[]>([]);
-  const [showReset, setShowReset] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     document.title = "Log in · FinAI";
@@ -65,6 +62,8 @@ export function LogInPage() {
         "content",
         "Log in to FinAI and use the connected workspace dashboard: ledger, receivables, payables, banking, close, reports and the FinAI Assistant.",
       );
+    // Drop the superseded browser-local account record from earlier builds.
+    clearLegacyAccountRecord();
   }, []);
   // Live countdown for the wrong-password lockout; disarms itself on expiry.
   useEffect(() => {
@@ -80,8 +79,7 @@ export function LogInPage() {
     const timer = window.setInterval(tick, 250);
     return () => window.clearInterval(timer);
   }, [lockedUntil]);
-  const hasAccount = account !== null,
-    locked = lockedUntil !== null && lockedUntil > now,
+  const locked = lockedUntil !== null && lockedUntil > now,
     secondsLeft = lockedUntil
       ? Math.max(0, Math.ceil((lockedUntil - now) / 1000))
       : 0;
@@ -92,39 +90,6 @@ export function LogInPage() {
     const email = normalizeEmail(String(form.get("email") || "")),
       submitted = String(form.get("password") || "");
     setError(null);
-    setProblems([]);
-    if (!hasAccount) {
-      // First use on this browser: create the workspace sign-in.
-      const found = passwordProblems(submitted);
-      if (found.length > 0) {
-        setProblems(found);
-        return;
-      }
-      setBusy(true);
-      const result = await createWorkspaceAccess(email, submitted);
-      setBusy(false);
-      if (result.ok) {
-        setAccount({ email });
-        dispatch(
-          command({
-            kind: "enter",
-            profile: personaFromEmail(email) || "Alex Morgan",
-          }),
-        );
-        navigate("/overview");
-        return;
-      }
-      if (result.reason === "weak-password") setProblems(result.problems);
-      else if (result.reason === "storage")
-        setError(
-          "Browser storage is unavailable, so the sign-in cannot be saved. Check this site's storage permissions and try again.",
-        );
-      else
-        setError(
-          "This browser context is not secure, so passwords cannot be protected here. Open the site over HTTPS or on localhost.",
-        );
-      return;
-    }
     setBusy(true);
     const result = await verifyWorkspaceAccess(email, submitted);
     setBusy(false);
@@ -140,8 +105,8 @@ export function LogInPage() {
       return;
     }
     if (result.reason === "incorrect") {
-      // Same reply for a wrong email and a wrong password, so the entry
-      // cannot be used to probe which email is registered.
+      // Same reply for an unprovisioned email and a wrong password, so the
+      // entry cannot be used to probe which email is registered.
       setError("Incorrect email or password.");
       if (result.lockedUntil) {
         setLockedUntil(result.lockedUntil);
@@ -160,15 +125,6 @@ export function LogInPage() {
       setError(
         "This browser context is not secure, so passwords cannot be verified here. Open the site over HTTPS or on localhost.",
       );
-  }
-  function handleReset() {
-    resetWorkspaceAccess();
-    setAccount(null);
-    setLockedUntil(null);
-    setPassword("");
-    setShowReset(false);
-    setError(null);
-    setProblems([]);
   }
   return (
     <div className="welcome log-in">
@@ -206,11 +162,11 @@ export function LogInPage() {
         <p>Synthetic Northstar Analytics data</p>
       </div>
       <div className="welcome-entry">
-        <h2>{hasAccount ? "Welcome back." : "Set up your sign-in."}</h2>
+        <h2>Sign in to your workspace.</h2>
         <p>
-          {hasAccount
-            ? "Log in to open your workspace dashboard — the ledger, receivables, payables, banking, close, reports and assistant, all connected."
-            : "Create a password to open your workspace dashboard — the ledger, receivables, payables, banking, close, reports and assistant, all connected."}
+          Use the email and password your FinAI team gave you to open the
+          workspace dashboard — the ledger, receivables, payables, banking,
+          close, reports and assistant, all connected.
         </p>
         <form onSubmit={handleSubmit}>
           <label className="field">
@@ -223,7 +179,6 @@ export function LogInPage() {
               required
               maxLength={100}
               placeholder="you@company.com"
-              defaultValue={account?.email ?? ""}
               disabled={busy || locked}
             />
           </label>
@@ -233,14 +188,10 @@ export function LogInPage() {
               <input
                 name="password"
                 type={reveal ? "text" : "password"}
-                autoComplete={hasAccount ? "current-password" : "new-password"}
+                autoComplete="current-password"
                 required
                 maxLength={128}
-                placeholder={
-                  hasAccount
-                    ? "Your password"
-                    : "At least 8 characters with a number"
-                }
+                placeholder="Your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy || locked}
@@ -257,30 +208,9 @@ export function LogInPage() {
               </button>
             </span>
           </label>
-          {!hasAccount && (
-            <ul
-              className="login-requirements"
-              aria-label="Password requirements"
-            >
-              <li className={password.length >= 8 ? "ok" : undefined}>
-                {password.length >= 8 ? <Check size={13} /> : <span />}8 or more
-                characters
-              </li>
-              <li className={/[a-z]/i.test(password) ? "ok" : undefined}>
-                {/[a-z]/i.test(password) ? <Check size={13} /> : <span />}A
-                letter
-              </li>
-              <li className={/\d/.test(password) ? "ok" : undefined}>
-                {/\d/.test(password) ? <Check size={13} /> : <span />}A number
-              </li>
-            </ul>
-          )}
-          {(error || problems.length > 0) && !locked && (
+          {error && !locked && (
             <p className="login-alert" role="alert">
-              {error ??
-                (problems.length === 1
-                  ? `Please ${problems[0]}.`
-                  : `Please ${problems.slice(0, -1).join(", ")} and ${problems[problems.length - 1]}.`)}
+              {error}
             </p>
           )}
           {locked && (
@@ -290,53 +220,21 @@ export function LogInPage() {
             </p>
           )}
           <button className="primary" type="submit" disabled={busy || locked}>
-            {busy
-              ? hasAccount
-                ? "Verifying…"
-                : "Securing…"
-              : hasAccount
-                ? "Log in"
-                : "Create sign-in"}
+            {busy ? "Verifying…" : "Log in"}
             {!busy && <ArrowRight size={16} />}
           </button>
         </form>
-        {hasAccount &&
-          (showReset ? (
-            <div className="login-reset">
-              <p>
-                The sign-in lives only in this browser — there is no server to
-                email. Resetting clears the saved password so you can set a new
-                one.
-              </p>
-              <div className="login-reset-actions">
-                <button type="button" className="primary" onClick={handleReset}>
-                  Reset access on this browser
-                </button>
-                <button
-                  type="button"
-                  className="login-reset-cancel"
-                  onClick={() => setShowReset(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="login-forgot"
-              onClick={() => {
-                setShowReset(true);
-                setError(null);
-              }}
-            >
-              Forgot your password?
-            </button>
-          ))}
+        <p className="login-account-footer">
+          Need an account?{" "}
+          <a href={DEMO_FORM_URL} target="_blank" rel="noreferrer">
+            Book a demo
+          </a>
+        </p>
         <div className="welcome-note">
           <ShieldCheck size={20} />
           <p>
-            Your password is salted and stretched with PBKDF2 in this browser.
+            Your password is checked in this browser against a salted PBKDF2
+            hash.
             <br />
             Nothing is sent to a server; everything stays local.
           </p>

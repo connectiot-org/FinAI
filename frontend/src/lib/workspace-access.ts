@@ -1,22 +1,20 @@
-// Workspace access credentials for the public demo log-in.
+// Workspace access verification for the public demo log-in.
 //
-// The demo has no backend: the sign-in you create lives only in this browser.
-// That is still no excuse for sloppy credential handling, so the password is
-// never persisted or compared in clear text. It is salted and stretched with
-// PBKDF2-HMAC-SHA256 (Web Crypto) and only the derived key is stored, next to
-// a per-browser attempt ledger that locks the entry temporarily after
-// repeated wrong passwords. There is exactly one account per browser: the
-// first visitor sets the sign-in, everyone after that must know it.
+// The demo has no backend: the only accepted credentials are the ones the
+// company owner provisioned in provisioned-credentials.ts (each stored as
+// a salted PBKDF2 verifier). Nobody creates an account on the page — a
+// visitor without a provisioned sign-in is refused, exactly like a Rillet
+// customer without an invitation. The entered password is still never
+// persisted or compared in clear text: it is stretched with
+// PBKDF2-HMAC-SHA256 (Web Crypto) and checked against the provisioned
+// verifier with a fixed-time compare, next to a per-browser attempt ledger
+// that locks the entry temporarily after repeated wrong passwords.
 
-export type StoredAccess = {
-  v: 1;
-  email: string;
-  /** base64 of the 16-byte random salt */
-  salt: string;
-  /** base64 of the 256-bit PBKDF2 derived key */
-  hash: string;
-  iterations: number;
-};
+import {
+  PROVISIONED_ACCOUNTS,
+  devE2eAccountSpec,
+  type ProvisionedAccount,
+} from "./provisioned-credentials";
 
 type AttemptLedger = {
   fails: number;
@@ -25,15 +23,9 @@ type AttemptLedger = {
 };
 
 export type AccessSnapshot = {
-  account: { email: string } | null;
   fails: number;
   lockedUntil: number | null;
 };
-
-export type CreateAccessResult =
-  | { ok: true }
-  | { ok: false; reason: "weak-password"; problems: string[] }
-  | { ok: false; reason: "storage" | "secure-context" };
 
 export type VerifyAccessResult =
   | { ok: true }
@@ -41,60 +33,24 @@ export type VerifyAccessResult =
   | { ok: false; reason: "locked"; lockedUntil: number }
   | { ok: false; reason: "storage" | "secure-context" };
 
-const ACCESS_KEY = "finai-access-v1";
 const ATTEMPTS_KEY = "finai-access-attempts-v1";
+// Superseded by provisioned credentials (17 November 2026): the sign-in a
+// visitor used to create on first use. Cleaned up so no dead verifier
+// lingers in an existing browser.
+const LEGACY_ACCOUNT_KEY = "finai-access-v1";
 
 // OWASP guidance for PBKDF2-HMAC-SHA256 keeps moving up; 310k iterations
 // stays comfortably above the legacy 100k floor while keeping an interactive
-// log-in under a second on a modest laptop. The value is stored with the
-// credential so it can be raised later without invalidating existing ones.
+// log-in under a second on a modest laptop. Every provisioned record carries
+// its own value so it can be raised without invalidating existing ones.
 export const PBKDF2_ITERATIONS = 310_000;
-const SALT_BYTES = 16;
 const KEY_BITS = 256;
 const LOCK_AFTER_FAILS = 5;
 const BASE_LOCK_SECONDS = 30;
 const MAX_LOCK_SECONDS = 900;
 
-const COMMON_PASSWORDS = new Set([
-  "password",
-  "password1",
-  "password123",
-  "passw0rd",
-  "123456",
-  "1234567",
-  "12345678",
-  "123456789",
-  "1234567890",
-  "qwerty123",
-  "qwertyuiop",
-  "letmein1",
-  "welcome1",
-  "admin123",
-  "iloveyou1",
-  "sunshine1",
-  "princess1",
-  "football1",
-  "dragon123",
-  "northstar",
-  "northstar1",
-  "finai123",
-  "workspace1",
-  "accounting1",
-]);
-
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
-}
-
-/** Human-readable, ordered reasons why a password cannot be used. */
-export function passwordProblems(password: string): string[] {
-  const problems: string[] = [];
-  if (password.length < 8) problems.push("use at least 8 characters");
-  if (!/[a-z]/i.test(password)) problems.push("include a letter");
-  if (!/\d/.test(password)) problems.push("include a number");
-  if (COMMON_PASSWORDS.has(password.toLowerCase()))
-    problems.push("choose a less common password");
-  return problems;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -158,11 +114,10 @@ function writeJSON(key: string, value: unknown): boolean {
   }
 }
 
-function isStoredAccess(value: unknown): value is StoredAccess {
+function isProvisionedAccount(value: unknown): value is ProvisionedAccount {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    v.v === 1 &&
     typeof v.email === "string" &&
     v.email.length > 0 &&
     typeof v.salt === "string" &&
@@ -174,6 +129,42 @@ function isStoredAccess(value: unknown): value is StoredAccess {
     v.iterations >= 100_000 &&
     v.iterations <= 2_000_000
   );
+}
+
+// Development-only credential registration (see provisioned-credentials.ts):
+// the Playwright web server hands the dev build an email:password pair,
+// which is salted and stretched once with the same PBKDF2 path as the
+// production verifiers. Production builds keep this null forever.
+let devE2eRecord: Promise<ProvisionedAccount | null> | null = null;
+function registerDevE2eAccount(): Promise<ProvisionedAccount | null> {
+  if (!devE2eAccountSpec) return Promise.resolve(null);
+  return (async () => {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const hash = await deriveBits(
+      devE2eAccountSpec.password,
+      salt,
+      PBKDF2_ITERATIONS,
+    );
+    return {
+      email: devE2eAccountSpec.email,
+      salt: toBase64(salt),
+      hash,
+      iterations: PBKDF2_ITERATIONS,
+    };
+  })().catch(() => null);
+}
+
+/**
+ * The full list of sign-ins this deployment accepts: the owner-provisioned
+ * accounts, plus (in a dev build only) the test credential above.
+ */
+export async function resolveProvisionedAccounts(): Promise<
+  readonly ProvisionedAccount[]
+> {
+  devE2eRecord ??= registerDevE2eAccount();
+  const extra = await devE2eRecord;
+  const accounts = PROVISIONED_ACCOUNTS.filter(isProvisionedAccount);
+  return extra ? [...accounts, extra] : accounts;
 }
 
 function readLedger(): AttemptLedger {
@@ -226,12 +217,8 @@ function registerFailure(): number | null {
 }
 
 export function readAccessSnapshot(): AccessSnapshot {
-  const record = readJSON(ACCESS_KEY);
   const ledger = readLedger();
   return {
-    account: isStoredAccess(record)
-      ? { email: normalizeEmail(record.email) }
-      : null,
     fails: ledger.fails,
     lockedUntil:
       ledger.lockedUntil && ledger.lockedUntil > Date.now()
@@ -241,39 +228,11 @@ export function readAccessSnapshot(): AccessSnapshot {
 }
 
 /**
- * First-use sign-in creation. The password is validated, salted and stretched
- * before anything is written; the clear password never touches storage.
- */
-export async function createWorkspaceAccess(
-  email: string,
-  password: string,
-): Promise<CreateAccessResult> {
-  const problems = passwordProblems(password);
-  if (problems.length > 0)
-    return { ok: false, reason: "weak-password", problems };
-  try {
-    const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-    const hash = await deriveBits(password, salt, PBKDF2_ITERATIONS);
-    const record: StoredAccess = {
-      v: 1,
-      email: normalizeEmail(email),
-      salt: toBase64(salt),
-      hash,
-      iterations: PBKDF2_ITERATIONS,
-    };
-    if (!writeJSON(ACCESS_KEY, record)) return { ok: false, reason: "storage" };
-    clearLedger();
-    return { ok: true };
-  } catch {
-    return { ok: false, reason: "secure-context" };
-  }
-}
-
-/**
- * Sign-in verification for an existing account. Replies with the same
- * "incorrect" outcome for a wrong email and a wrong password so the page
- * cannot be used to probe which email is registered, and one PBKDF2 pass is
- * always run even when no record exists to keep the reply time flat.
+ * Sign-in verification against the provisioned accounts. Replies with the
+ * same "incorrect" outcome for an unprovisioned email and a wrong password
+ * so the page cannot be used to probe which email is registered, and one
+ * PBKDF2 pass is always run even when the email is unknown to keep the
+ * reply time flat.
  */
 export async function verifyWorkspaceAccess(
   email: string,
@@ -282,10 +241,13 @@ export async function verifyWorkspaceAccess(
   const ledger = readLedger();
   if (ledger.lockedUntil && ledger.lockedUntil > Date.now())
     return { ok: false, reason: "locked", lockedUntil: ledger.lockedUntil };
-  const record = readJSON(ACCESS_KEY);
-  if (!isStoredAccess(record)) {
-    // No account on this browser: burn one identical hash pass so a caller
-    // cannot learn "nothing is stored" from the response time.
+  const accounts = await resolveProvisionedAccounts();
+  const record = accounts.find(
+    (account) => account.email === normalizeEmail(email),
+  );
+  if (!record) {
+    // Unknown email: burn one identical hash pass so a caller cannot learn
+    // "this email is not provisioned" from the response time.
     await deriveBits(
       password,
       base64ToBytes("AAAAAAAAAAAAAAAAAAAAAA=="),
@@ -299,10 +261,7 @@ export async function verifyWorkspaceAccess(
       base64ToBytes(record.salt),
       record.iterations,
     );
-    if (
-      fixedTimeEqual(normalizeEmail(email), record.email) &&
-      fixedTimeEqual(hash, record.hash)
-    ) {
+    if (fixedTimeEqual(hash, record.hash)) {
       clearLedger();
       return { ok: true };
     }
@@ -312,17 +271,11 @@ export async function verifyWorkspaceAccess(
   }
 }
 
-/**
- * The "forgot password" path for a browser-local account: there is no server
- * to email, so recovery means deliberately clearing the saved sign-in on this
- * browser so a new one can be created. It also disarms any active lockout.
- */
-export function resetWorkspaceAccess(): boolean {
+/** Remove the superseded browser-local account record, if any. */
+export function clearLegacyAccountRecord(): void {
   try {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(ATTEMPTS_KEY);
-    return true;
+    localStorage.removeItem(LEGACY_ACCOUNT_KEY);
   } catch {
-    return false;
+    // Storage unavailable: nothing to clean up.
   }
 }

@@ -49,6 +49,9 @@ test("HTTPS production sign-in, copy, refresh, CSRF denial, cookie flags and log
     .getByLabel("Password", { exact: true })
     .fill(E2E_ACCOUNT_PASSWORD);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
+  // Wait for the in-browser verification and its navigation before moving
+  // on; navigating away mid-derivation would lose the session.
+  await expect(page).toHaveURL(/\/overview/);
   await page.goto(`${info.origin}/close/checklist?month=2060-09`);
   await expect(
     page.getByRole("heading", { name: "Sign in to your checklist" }),
@@ -204,6 +207,7 @@ test("HTTPS paid-only sign-in rejects unpaid accounts and expired existing sessi
     .getByLabel("Password", { exact: true })
     .fill(E2E_ACCOUNT_PASSWORD);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/\/overview/);
   await page.goto(`${info.origin}/close/checklist?month=2060-10`);
   await page.getByLabel("Email or account name").fill("browser-test");
   await page.getByLabel("Organisation ID").fill(info.organisationId);

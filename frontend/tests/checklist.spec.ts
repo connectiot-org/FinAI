@@ -292,6 +292,7 @@ for (const status of [401, 403, 503])
   test(`HTTP ${status} stays visible with no fixture fallback`, async ({
     page,
   }) => {
+    await signIn(page);
     await page.route(api + "/checklist-tasks?*", (route) =>
       route.fulfill({
         status,
@@ -558,6 +559,7 @@ test("copy empty source, occupied conflict, uncertain persisted response, pendin
 test("copy response after browser-back cannot overwrite a different month", async ({
   page,
 }) => {
+  await signIn(page);
   const year = 8200 + Math.floor(Math.random() * 500),
     source = `${year}-07`,
     destination = `${year}-08`;

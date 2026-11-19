@@ -1,11 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
+import { expectLoginRedirect, signIn } from "./sign-in";
 const state = async (page: Page) =>
   page.evaluate(() =>
     JSON.parse(localStorage.getItem("finai-demo-v1") || "null"),
   );
+// The workspace opens only after a provisioned sign-in (19 November 2026);
+// every suite enters through the real /login verification path.
 async function enter(page: Page) {
-  await page.goto("/sample");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
@@ -66,6 +68,9 @@ test("all route deep links render and refresh without runtime or backend request
     )
       remote.push(r.url());
   });
+  // The dashboard is behind the provisioned sign-in (19 November 2026), so
+  // open the workspace once before walking the deep links.
+  await enter(page);
   for (const route of routes) {
     await page.goto(route);
     await expect(page.locator("main h1")).toBeVisible();
@@ -350,10 +355,48 @@ test("roles disable mutations and reset restores consistent seed", async ({
     ),
   ).toBe(true);
 });
+test("anonymous deep links redirect to the log-in entry and return after sign-in", async ({
+  page,
+}) => {
+  // The reported security bug (19 November 2026): /overview,
+  // /demo/payables/invoices and friends used to open for anyone with the
+  // URL. They must land on /login first, keep the attempted location, and
+  // the legacy /sample free entry must be closed for good.
+  for (const route of [
+    "/overview",
+    "/demo/payables/invoices",
+    "/accounting/ledger",
+    "/close",
+    "/settings/workspace",
+  ])
+    await expectLoginRedirect(page, route);
+  await page.goto("/sample");
+  await expect(page).toHaveURL("/login");
+  // Sign in from a guarded deep link and land back on the requested page.
+  await page.goto("/accounting/trial-balance");
+  await expect(page).toHaveURL("/login");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("e2e.checks@northstar.example");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("correct-battery-42");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL("/accounting/trial-balance");
+  await expect(
+    page.getByRole("heading", { name: "Trial balance", exact: true }),
+  ).toBeVisible();
+  // Sign out closes the session and re-arms the guard for the next visit.
+  await page.getByRole("button", { name: "Profile and demo role" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL("/login");
+  await page.goto("/overview");
+  await expect(page).toHaveURL("/login");
+});
 test("invalid durable state falls back safely and error retry is functional", async ({
   page,
 }) => {
-  await page.goto("/sample");
+  await signIn(page);
   await page.evaluate(() =>
     localStorage.setItem(
       "finai-demo-v1",

@@ -13,6 +13,7 @@
 import {
   PROVISIONED_ACCOUNTS,
   devE2eAccountSpec,
+  publishedDemoAccountSpec,
   type ProvisionedAccount,
 } from "./provisioned-credentials";
 
@@ -136,35 +137,40 @@ function isProvisionedAccount(value: unknown): value is ProvisionedAccount {
 // which is salted and stretched once with the same PBKDF2 path as the
 // production verifiers. Production builds keep this null forever.
 let devE2eRecord: Promise<ProvisionedAccount | null> | null = null;
-function registerDevE2eAccount(): Promise<ProvisionedAccount | null> {
-  if (!devE2eAccountSpec) return Promise.resolve(null);
+function registerE2eAccount(
+  spec: { email: string; password: string } | null,
+): Promise<ProvisionedAccount | null> {
+  if (!spec) return Promise.resolve(null);
   return (async () => {
     const salt = crypto.getRandomValues(new Uint8Array(16));
-    const hash = await deriveBits(
-      devE2eAccountSpec.password,
-      salt,
-      PBKDF2_ITERATIONS,
-    );
+    const hash = await deriveBits(spec.password, salt, PBKDF2_ITERATIONS);
     return {
-      email: devE2eAccountSpec.email,
+      email: spec.email,
       salt: toBase64(salt),
       hash,
       iterations: PBKDF2_ITERATIONS,
     };
   })().catch(() => null);
 }
+let publishedDemoRecord: Promise<ProvisionedAccount | null> | null = null;
 
 /**
  * The full list of sign-ins this deployment accepts: the owner-provisioned
- * accounts, plus (in a dev build only) the test credential above.
+ * accounts, plus (in a dev build only) the Playwright test credential, plus
+ * (only in artifact builds that explicitly publish one) the printed demo
+ * sign-in from VITE_PUBLISHED_DEMO_ACCOUNT.
  */
 export async function resolveProvisionedAccounts(): Promise<
   readonly ProvisionedAccount[]
 > {
-  devE2eRecord ??= registerDevE2eAccount();
-  const extra = await devE2eRecord;
+  devE2eRecord ??= registerE2eAccount(devE2eAccountSpec);
+  publishedDemoRecord ??= registerE2eAccount(publishedDemoAccountSpec);
+  const [dev, published] = await Promise.all([devE2eRecord, publishedDemoRecord]);
   const accounts = PROVISIONED_ACCOUNTS.filter(isProvisionedAccount);
-  return extra ? [...accounts, extra] : accounts;
+  for (const extra of [dev, published])
+    if (extra && !accounts.some((account) => account.email === extra.email))
+      accounts.push(extra);
+  return accounts;
 }
 
 function readLedger(): AttemptLedger {

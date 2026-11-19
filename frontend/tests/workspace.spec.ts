@@ -115,9 +115,12 @@ test("private entry has one gate, no synthetic body/requests before login; publi
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Clearer books",
   );
+  // The legacy /sample free entry is closed (19 November 2026): the demo
+  // dashboard opens only through the provisioned log-in.
   await page.goto("/sample");
+  await expect(page).toHaveURL("/login");
   await expect(
-    page.getByRole("button", { name: "Enter workspace" }),
+    page.getByRole("heading", { name: "Sign in to your workspace." }),
   ).toBeVisible();
 });
 test("invalid session/login JSON or service failure never authenticates", async ({

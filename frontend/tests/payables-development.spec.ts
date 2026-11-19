@@ -1,6 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signIn } from "./sign-in";
 const root = "/demo/payables/invoices";
 const open = async (page: Page) => {
+  // The invoice workspace is behind the provisioned sign-in since
+  // 19 November 2026; both the dev server and the built artifact
+  // provision the test credential for exactly this path.
+  await signIn(page);
   await page.goto("/demo/invoices");
   await expect(page).toHaveURL(root);
   await expect(
@@ -22,7 +27,7 @@ const role = async (page: Page, label: string) => {
     page.getByRole("heading", { name: "Invoices", exact: true }),
   ).toBeVisible();
 };
-test("development invoices open without sign-in or API, render PDF, approve, balance CSV and survive refresh", async ({
+test("development invoices open for a signed-in workspace without API, render PDF, approve, balance CSV and survive refresh", async ({
   page,
 }) => {
   const requests: string[] = [];
@@ -239,6 +244,7 @@ test("development policies save/publish and reasoned correction/rejection remain
 test("demo aliases refresh directly and every workflow stage has a ready sample", async ({
   page,
 }) => {
+  await signIn(page);
   for (const alias of ["/demo/invoices", "/demo/payables/invoices"]) {
     await page.goto(alias);
     await page.reload();
@@ -327,9 +333,10 @@ test("new stage samples are added without overwriting an older browser's invoice
   await expect(page.getByRole("link", { name: /DEV-1002/ })).toBeVisible();
 });
 
-test("legacy invoice routes open samples directly without sign-in or private company identity", async ({
+test("legacy invoice routes redirect into samples for a signed-in workspace without private company identity", async ({
   page,
 }) => {
+  await signIn(page);
   const requests: string[] = [];
   page.on("request", (r) => {
     if (/^\/(api|auth)\//.test(new URL(r.url()).pathname))
@@ -695,10 +702,7 @@ test("a duplicate sample invoice can be corrected and saved without discarding e
 test("missing invoice chunk recovers without a reload loop or clearing saved records", async ({
   page,
 }) => {
-  await page.goto("/sample");
-  await page
-    .getByRole("button", { name: "Enter workspace", exact: true })
-    .click();
+  await signIn(page);
   const saved = await page.evaluate(() =>
     localStorage.getItem("finai-demo-v1"),
   );
@@ -752,10 +756,7 @@ test("missing invoice chunk recovers without a reload loop or clearing saved rec
 test("Vite preload failure refreshes the current entry once and preserves sample storage", async ({
   page,
 }) => {
-  await page.goto("/sample");
-  await page
-    .getByRole("button", { name: "Enter workspace", exact: true })
-    .click();
+  await signIn(page);
   const saved = await page.evaluate(() =>
     localStorage.getItem("finai-demo-v1"),
   );

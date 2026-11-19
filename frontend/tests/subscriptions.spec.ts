@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
+import { signIn } from "./sign-in";
 let fixture: ChildProcess;
 const api = "http://127.0.0.1:3002/api/v1",
   entity = "22222222-2222-4222-8222-222222222222";
@@ -33,6 +34,9 @@ test.afterAll(async () => {
   }
 });
 async function open(page: Page, search = "") {
+  // The subscriptions route sits behind the provisioned sign-in guard
+  // (19 November 2026); the config's web server provisions the credential.
+  await signIn(page);
   await page.goto(
     `/tools/subscriptions?entity=${entity}&search=${encodeURIComponent(search)}`,
   );
@@ -239,6 +243,7 @@ test("search, status filters, server indicators, pagination and entity isolation
 test("a delayed earlier entity response cannot replace the selected entity", async ({
   page,
 }) => {
+  await signIn(page);
   const created = await fetch(`${api}/subscription-renewals`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { seed } from "../src/demo/seed";
 import type { DemoState, Invoice } from "../src/types/domain";
 import { outstandingCustomers } from "../src/features/receivables/outstandingCustomers";
+import { signIn } from "./sign-in";
 
 function invoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -243,7 +244,7 @@ async function openState(
   page: import("@playwright/test").Page,
   state = seed(),
 ) {
-  await page.goto("/sample");
+  await signIn(page);
   await page.evaluate(
     (value) => localStorage.setItem("finai-demo-v1", JSON.stringify(value)),
     state,

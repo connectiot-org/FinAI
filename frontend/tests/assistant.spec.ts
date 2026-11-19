@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signIn } from "./sign-in";
 const entityId = "22222222-2222-4222-8222-222222222222",
   conversationId = "33333333-3333-4333-8333-333333333333",
   turnId = "44444444-4444-4444-8444-444444444444",
@@ -699,7 +700,8 @@ test("Ask FinAI opens the working chat in the existing Assistant page without a 
   page,
 }) => {
   await routes(page, false);
-  await page.goto("/overview");
+  // /overview is behind the provisioned sign-in (19 November 2026).
+  await signIn(page);
   await page.getByRole("button", { name: "Ask FinAI", exact: true }).click();
   await expect(page).toHaveURL(/\/demo\/assistant$/);
   await expect(

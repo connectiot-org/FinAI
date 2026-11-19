@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { E2E_ACCOUNT_EMAIL, E2E_ACCOUNT_PASSWORD } from "./e2e-account";
+import {
+  E2E_ACCOUNT_EMAIL,
+  E2E_ACCOUNT_PASSWORD,
+} from "./e2e-account";
+import { signIn } from "./sign-in";
 
 test("public navigation, product pages and demo entry work on direct refresh", async ({
   page,
@@ -57,8 +61,10 @@ test("public navigation, product pages and demo entry work on direct refresh", a
     await expect(page.locator("main h1")).toBeVisible();
   }
   await page.getByRole("link", { name: "See the idea in action" }).click();
-  await expect(page).toHaveURL("/sample");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await expect(page).toHaveURL("/login");
+  // The dashboard opens only after the provisioned sign-in (19 November
+  // 2026 founder direction): the CTA lands on the log-in entry.
+  await signIn(page);
   await expect(page.locator("main h1")).toHaveText("Overview");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
@@ -333,6 +339,7 @@ test("public workflow carousel, local guide bookmark and workspace navigation ra
   await expect(
     page.getByRole("link", { name: "Workflow guide saved" }),
   ).toBeVisible();
+  await signIn(page);
   await page.goto("/overview");
   await expect(
     page.getByRole("button", { name: "Expand navigation" }),
@@ -476,8 +483,7 @@ test("FinAI identity, fictional companies and owned artwork replace endorsement 
   await expect(
     page.getByRole("link", { name: "Explore sample workspace" }),
   ).toHaveCount(0);
-  await page.goto("/sample");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await signIn(page);
   await expect(page).toHaveTitle("Overview · FinAI");
 });
 
@@ -536,6 +542,9 @@ test("small-screen navigation exposes solution links and the workspace fits at 3
     }),
   ).toBeVisible();
   await expect(dialog).toHaveCount(0);
+  // /overview is behind the provisioned sign-in (19 November 2026), so open
+  // the workspace before checking the 320px layout of the dashboard.
+  await signIn(page);
   for (const route of ["/", "/resources", "/overview"]) {
     await page.goto(route);
     expect(
@@ -595,20 +604,7 @@ test("public header offers a demo request with the log-in entry and mobile navig
     }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/sample");
-  const entry = page.getByRole("link", {
-    name: "Open supplier invoices",
-    exact: true,
-  });
-  await expect(entry).toHaveAttribute("href", "/demo/payables/invoices");
-  await entry.click();
-  await expect(page).toHaveURL("/demo/payables/invoices");
-  await expect(
-    page.getByRole("heading", {
-      name: "Invoices",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await signIn(page);
   await page.goto("/overview");
   const sidebarEntry = page
     .getByRole("navigation", { name: "Main navigation" })
@@ -846,22 +842,35 @@ test("demo request funnel stays intact and separate from the log-in entry", asyn
   ).toHaveAttribute("href", "https://forms.gle/qFhgN6g52xw4P17D7");
 });
 
-test("sample workspace stays open without an account and offers a demo for the real thing", async ({
+test("workspace deep links require the provisioned sign-in and the legacy free entry is closed", async ({
   page,
 }) => {
+  // Founder direction (19 November 2026): the dashboard is no longer open
+  // without an account. /sample (and /welcome) used to offer a free
+  // "Enter workspace" button and every workspace deep link opened directly;
+  // both must now land on the provisioned log-in entry, which keeps the
+  // book-a-demo funnel for visitors without credentials.
   await page.goto("/request-demo");
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.getByRole("link", { name: "Explore the product first" }).click();
   await expect(page).toHaveURL("/product/assistant");
-  await page.goto("/sample");
-  await expect(
-    page.getByText("Synthetic Northstar Analytics data"),
-  ).toBeVisible();
-  const demoEntry = page.getByRole("link", {
-    name: "Request a demo for your own workspace",
-  });
-  await expect(demoEntry).toHaveAttribute("href", "/request-demo");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  for (const route of ["/sample", "/welcome", "/overview", "/demo/payables/invoices"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL("/login");
+    await expect(
+      page.getByRole("heading", { name: "Sign in to your workspace." }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Enter workspace" }),
+    ).toHaveCount(0);
+  }
+  const demoFooter = page.getByRole("link", { name: "Book a demo" });
+  await expect(demoFooter).toHaveAttribute(
+    "href",
+    "https://forms.gle/qFhgN6g52xw4P17D7",
+  );
+  // A provisioned sign-in still opens the full workspace dashboard.
+  await signIn(page);
   await expect(page).toHaveURL("/overview");
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),

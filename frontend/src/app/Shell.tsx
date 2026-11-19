@@ -14,12 +14,17 @@ import {
   ChevronDown,
   ChevronsUpDown,
   CircleHelp,
+  LogOut,
   Menu,
   Search,
   Sparkles,
 } from "lucide-react";
 import { navigation, routeTitles } from "./navigation";
 import { command, recoveredStorage, useAppDispatch, useDemo } from "../store";
+import {
+  closeWorkspaceSession,
+  readWorkspaceSession,
+} from "../lib/workspace-session";
 import { Modal, StatusControl, useToast } from "../components/ui";
 import { Help, PeriodSelector } from "../components/shared/Common";
 import type { Role } from "../types/domain";
@@ -34,6 +39,14 @@ export function Shell() {
     [search, setSearch] = useState(""),
     [collapsed, setCollapsed] = useState<string[]>([]),
     [notice, setNotice] = useState(false);
+  // The dashboard opens only after a provisioned sign-in (19 November 2026);
+  // show the matching Sign out entry whenever that workspace session exists.
+  const [signedIn, setSignedIn] = useState(() => !!readWorkspaceSession());
+  useEffect(() => {
+    const refresh = () => setSignedIn(!!readWorkspaceSession());
+    window.addEventListener("finai-workspace-session", refresh);
+    return () => window.removeEventListener("finai-workspace-session", refresh);
+  }, []);
   useEffect(() => {
     setMobile(false);
     const title =
@@ -237,6 +250,24 @@ export function Shell() {
                   >
                     Preferences
                   </Dropdown.Item>
+                  {signedIn && (
+                    <>
+                      <Dropdown.Separator />
+                      <Dropdown.Item
+                        onSelect={() => {
+                          // Close the provisioned workspace session; guarded
+                          // routes redirect back to /login immediately.
+                          closeWorkspaceSession();
+                          navigate("/login");
+                        }}
+                      >
+                        <span className="dropdown-signout">
+                          <LogOut size={14} />
+                          Sign out
+                        </span>
+                      </Dropdown.Item>
+                    </>
+                  )}
                 </Dropdown.Content>
               </Dropdown.Portal>
             </Dropdown.Root>

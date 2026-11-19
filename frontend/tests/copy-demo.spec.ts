@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { signIn } from "./sign-in";
 test("copy demo remains session-only and makes no checklist API calls", async ({
   page,
 }) => {
@@ -6,6 +7,7 @@ test("copy demo remains session-only and makes no checklist API calls", async ({
   page.on("request", (request) => {
     if (request.url().includes("/api/v1/")) calls.push(request.url());
   });
+  await signIn(page);
   await page.goto("/close/checklist?month=2026-09");
   await page.getByLabel("Task title").fill("Demo carry title");
   await page.getByRole("button", { name: "Add task", exact: true }).click();

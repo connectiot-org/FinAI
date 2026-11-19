@@ -30,6 +30,12 @@ const result = spawnSync(
       VITE_API_BASE_URL: "/api/v1",
       VITE_CHECKLIST_MODE: "demo",
       VITE_RECEIVABLES_MODE: "demo",
+      // The dashboard routes require a provisioned sign-in (19 November
+      // 2026). This artifact exists to be freely explorable, so it publishes
+      // the printed demo credential below — the same pair the Playwright
+      // suites use (tests/e2e-account.ts). Real deployments never set this.
+      VITE_PUBLISHED_DEMO_ACCOUNT:
+        "e2e.checks@northstar.example:correct-battery-42",
     },
   },
 );
@@ -41,7 +47,7 @@ cpSync(
 );
 writeFileSync(
   resolve(output, "README.md"),
-  `# FinAI supplier invoice demo\n\nRequires Node 24 and a current browser. No npm install, account, database, API key or backend is needed to run this built demo.\n\n1. Unzip this folder.\n2. Run: node serve.mjs\n3. Open: http://127.0.0.1:4173/demo/invoices\n\nTry Review as Reviewer, Verify as Verifier, Approve as First/Second approver, and Accounting export as Reviewer. Six samples include every workflow stage and a total mismatch. You can add suppliers, create invoices, attach sample PDFs, edit coding, publish policies, challenge/reject and download balanced CSV. Changes and files stay in this browser; Reset preview restores the samples. No real payments, OCR, accounting posting or malware scanning occurs. Use sample documents only.\n\nStatic hosting: publish the contents of dist with a fallback to index.html for browser routes. Never upload the repository .env, backend or .finai-server directories. The existing Vercel project still needs the reviewed code merged and deployed before its URL includes this demo.\n`,
+  `# FinAI supplier invoice demo\n\nRequires Node 24 and a current browser. No npm install, database, API key or backend is needed to run this built demo.\n\n1. Unzip this folder.\n2. Run: node serve.mjs\n3. Open: http://127.0.0.1:4173/demo/invoices\n4. Sign in with the published demo credential — Email: e2e.checks@northstar.example, Password: correct-battery-42 (the workspace opens only after a provisioned sign-in; the pair above is deliberately public for this artifact).\n\nTry Review as Reviewer, Verify as Verifier, Approve as First/Second approver, and Accounting export as Reviewer. Six samples include every workflow stage and a total mismatch. You can add suppliers, create invoices, attach sample PDFs, edit coding, publish policies, challenge/reject and download balanced CSV. Changes and files stay in this browser; Reset preview restores the samples. No real payments, OCR, accounting posting or malware scanning occurs. Use sample documents only.\n\nStatic hosting: publish the contents of dist with a fallback to index.html for browser routes. Never upload the repository .env, backend or .finai-server directories. The existing Vercel project still needs the reviewed code merged and deployed before its URL includes this demo.\n`,
 );
 writeFileSync(
   resolve(output, "build.json"),

@@ -4,19 +4,17 @@ import { OperationalSource } from "../features/assistant/OperationalSource";
 import { LedgerSource } from "../features/assistant/LedgerSource";
 import { Imports } from "../features/workspace/Imports";
 import { Administration as WorkspaceAdministration } from "../features/workspace/Administration";
-import { BrandMark } from "../components/shared/BrandMark";
-import { Component, Suspense, lazy, useEffect, type ReactNode } from "react";
+import { Component, Suspense, lazy, type ReactNode } from "react";
 import {
   createBrowserRouter,
   type RouteObject,
   Navigate,
   RouterProvider,
-  useNavigate,
   useLocation,
   Link,
 } from "react-router-dom";
-import { ArrowRight, BookOpen, Check, ShieldCheck } from "lucide-react";
 import { Shell } from "./Shell";
+import { RequireWorkspaceSession } from "../components/RequireWorkspaceSession";
 import {
   MarketingLayout,
   HomePage,
@@ -27,8 +25,6 @@ import {
 } from "../features/marketing/Marketing";
 import { RequestDemoPage } from "../features/marketing/RequestDemo";
 import { LogInPage } from "../features/marketing/LogIn";
-import { DEMO_REQUEST_PATH } from "../features/marketing/demo";
-import { useAppDispatch, useDemo, command } from "../store";
 import { Overview } from "../features/Overview";
 import {
   Accounts,
@@ -73,108 +69,6 @@ import {
   WorkspaceMissing,
 } from "../features/workspace/Workspace";
 import { ReceivablesRegister } from "../features/workspace/ReceivablesRegister";
-function Welcome() {
-  useEffect(() => {
-    document.title = "Welcome · FinAI";
-    document
-      .querySelector('meta[name="description"]')
-      ?.setAttribute(
-        "content",
-        "Explore the FinAI accounting workspace with fictional Northstar Analytics records. No sign-in or credentials required.",
-      );
-  }, []);
-  const s = useDemo(),
-    dispatch = useAppDispatch(),
-    navigate = useNavigate();
-  return (
-    <div className="welcome">
-      <div className="welcome-story">
-        <Link to="/" className="brand">
-          <BrandMark />
-          FinAI
-        </Link>
-        <div>
-          <span className="eyebrow">THE BIG PICTURE. THE SMALL DETAILS.</span>
-          <h1>
-            Your books.
-            <br />A clearer perspective.
-          </h1>
-          <p>
-            A connected accounting workspace for the people moving business
-            forward.
-          </p>
-          <div className="welcome-art">
-            <div>
-              <BookOpen size={24} />
-              <span>One source of truth</span>
-              <strong>Balanced by design</strong>
-            </div>
-            <div>
-              <Check size={18} />
-              Revenue recognized
-            </div>
-            <div>
-              <Check size={18} />
-              Close with confidence
-            </div>
-          </div>
-        </div>
-        <p>Synthetic Northstar Analytics data</p>
-      </div>
-      <div className="welcome-entry">
-        <>
-          <h2>Make yourself at home.</h2>
-          <p>
-            Explore Northstar Analytics with six months of connected
-            accounting data.
-          </p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const profile = String(
-                new FormData(e.currentTarget).get("profile"),
-              );
-              dispatch(command({ kind: "enter", profile }));
-              navigate("/overview");
-            }}
-          >
-            <label className="field">
-              <span>Your name (optional)</span>
-              <input
-                name="profile"
-                placeholder="Alex Morgan"
-                defaultValue={s.entered ? s.profile : ""}
-              />
-            </label>
-            <button className="primary" type="submit">
-              Enter workspace
-              <ArrowRight size={16} />
-            </button>
-          </form>
-          <p>
-            <Link to={DEMO_REQUEST_PATH}>
-              Request a demo for your own workspace
-            </Link>
-          </p>
-          <p>
-            <Link to="/login">Log in with your email</Link>
-          </p>
-          <p>
-            <Link to="/demo/payables/invoices">Open supplier invoices</Link>
-          </p>
-          <div className="welcome-note">
-            <ShieldCheck size={20} />
-            <p>
-              No sign-in, credentials, or backend required.
-              <br />
-              Everything stays in this browser.
-            </p>
-          </div>
-        </>
-      </div>
-    </div>
-  );
-}
 function NotFound() {
   return (
     <div className="empty">
@@ -244,13 +138,14 @@ const routes: RouteObject[] = [
       { path: "request-demo", element: <RequestDemoPage /> },
     ],
   },
-  // The public log-in entry (founder direction, 16 November 2026): anyone can
-  // log in with an email and use the connected workspace dashboard; the demo
-  // request funnel stays the path for teams wanting their own provisioned
-  // workspace. /welcome is the legacy sign-in path and now lands on /login.
+  // The public log-in entry (founder direction, 16 November 2026): the only
+  // way into the workspace dashboard is a provisioned sign-in (17 November
+  // 2026) — see src/lib/provisioned-credentials.ts. /welcome and /sample are
+  // the legacy no-credential entries and now land on /login, so no visitor
+  // can reach the dashboard without the owner-provisioned credentials.
   { path: "/login", element: <LogInPage /> },
   { path: "/welcome", element: <Navigate to="/login" replace /> },
-  { path: "/sample", element: <Welcome /> },
+  { path: "/sample", element: <Navigate to="/login" replace /> },
   ...["/invoices", "/invoice-approvals"].map((path) => ({
     path,
     element: <Navigate to="/demo/payables/invoices" replace />,
@@ -269,9 +164,11 @@ const routes: RouteObject[] = [
   ].map((path) => ({
     path: "/demo/payables/" + path,
     element: (
-      <Suspense fallback={<p role="status">Opening invoices…</p>}>
-        <DevelopmentPayables />
-      </Suspense>
+      <RequireWorkspaceSession>
+        <Suspense fallback={<p role="status">Opening invoices…</p>}>
+          <DevelopmentPayables />
+        </Suspense>
+      </RequireWorkspaceSession>
     ),
   })),
   {
@@ -340,8 +237,20 @@ const routes: RouteObject[] = [
       { path: "*", element: <WorkspaceMissing /> },
     ],
   },
+  // Workspace dashboard routes (founder direction, 19 November 2026): every
+  // data route — overview, accounting, receivables, revenue, payables,
+  // banking, close, tools, reports, entities, automations, integrations,
+  // audit and settings — sits behind RequireWorkspaceSession, so a deep link
+  // like /overview or /demo/payables/invoices redirects an anonymous visitor
+  // to /login instead of opening the dashboard. The public stateless chat
+  // (/demo/assistant, a deliberate marketing surface with its own anonymous
+  // integration suite) and the not-found page stay in the open Shell block.
   {
-    element: <Shell />,
+    element: (
+      <RequireWorkspaceSession>
+        <Shell />
+      </RequireWorkspaceSession>
+    ),
     children: [
       { path: "overview", element: <Overview /> },
       { path: "accounting/ledger", element: <Ledger /> },
@@ -377,15 +286,6 @@ const routes: RouteObject[] = [
       { path: "reports/cash-flow", element: <Statement kind="cash-flow" /> },
       { path: "entities", element: <Entities /> },
       { path: "entities/consolidation", element: <Consolidation /> },
-      { path: "demo/assistant", element: <Assistant /> },
-      {
-        path: "demo/assistant/offline",
-        element: (
-          <Suspense fallback={<p role="status">Opening example…</p>}>
-            <LegacyAssistant />
-          </Suspense>
-        ),
-      },
       { path: "automations", element: <Automations /> },
       { path: "automations/:id", element: <AutomationDetail /> },
       { path: "integrations", element: <Integrations /> },
@@ -395,6 +295,20 @@ const routes: RouteObject[] = [
         element: <Navigate to="/settings/workspace" replace />,
       },
       { path: "settings/:section", element: <Settings /> },
+    ],
+  },
+  {
+    element: <Shell />,
+    children: [
+      { path: "demo/assistant", element: <Assistant /> },
+      {
+        path: "demo/assistant/offline",
+        element: (
+          <Suspense fallback={<p role="status">Opening example…</p>}>
+            <LegacyAssistant />
+          </Suspense>
+        ),
+      },
       { path: "*", element: <NotFound /> },
     ],
   },

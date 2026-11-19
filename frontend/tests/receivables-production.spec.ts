@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
+import {
+  E2E_ACCOUNT_EMAIL,
+  E2E_ACCOUNT_PASSWORD,
+} from "./e2e-account";
 let fixture: ChildProcess,
   info: {
     origin: string;
@@ -57,8 +61,18 @@ test("built HTTPS frontend -> actual proxy/session backend/DB: persisted imports
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(info.origin + "/sample");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  // The dashboard is behind the provisioned sign-in (19 November 2026);
+  // this built session-mode artifact publishes the demo credential, so the
+  // imported-card page is reachable exactly like on the public site.
+  await page.goto(info.origin + "/login");
+  await page.getByLabel("Email", { exact: true }).fill(E2E_ACCOUNT_EMAIL);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_ACCOUNT_PASSWORD);
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Recent activity", exact: true }),
+  ).toBeVisible();
   const card = page.getByRole("region", {
     name: "Outstanding by customer",
     exact: true,

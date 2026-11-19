@@ -1,6 +1,6 @@
 import { BrandMark } from "../../components/shared/BrandMark";
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -17,6 +17,7 @@ import {
   readAccessSnapshot,
   verifyWorkspaceAccess,
 } from "../../lib/workspace-access";
+import { openWorkspaceSession } from "../../lib/workspace-session";
 import { DEMO_FORM_URL } from "./demo";
 import "../../styles/log-in.css";
 
@@ -40,12 +41,23 @@ function personaFromEmail(email: string) {
 // account here; an unprovisioned visitor is refused and invited to book a
 // demo instead. The entered password is verified in this browser against a
 // salted PBKDF2 hash (never stored or sent in clear text), and repeated
-// wrong passwords lock the entry temporarily. (Provisioned customers in
-// session mode still reach their own gated workspace directly at
-// /workspace/overview.)
+// wrong passwords lock the entry temporarily. A successful verification
+// opens the browser-local workspace session (19 November 2026) that the
+// dashboard routes require — deep links to /overview and /demo/payables/*
+// redirect here first — and returns the visitor to the page they asked for.
+// (Provisioned customers in session mode still reach their own gated
+// workspace directly at /workspace/overview.)
 export function LogInPage() {
   const dispatch = useAppDispatch(),
-    navigate = useNavigate();
+    navigate = useNavigate(),
+    location = useLocation();
+  // Where a guarded deep link wanted to send the visitor before sign-in.
+  const from = (location.state as { from?: { pathname?: string; search?: string } } | null)
+    ?.from;
+  const returnTo =
+    from?.pathname && from.pathname.startsWith("/")
+      ? from.pathname + (from.search || "")
+      : "/overview";
   const [lockedUntil, setLockedUntil] = useState(
     () => readAccessSnapshot().lockedUntil,
   );
@@ -95,13 +107,16 @@ export function LogInPage() {
     setBusy(false);
     setPassword("");
     if (result.ok) {
+      // Open the browser-local workspace session BEFORE navigating so the
+      // guarded dashboard routes accept the visitor on arrival.
+      openWorkspaceSession(email);
       dispatch(
         command({
           kind: "enter",
           profile: personaFromEmail(email) || "Alex Morgan",
         }),
       );
-      navigate("/overview");
+      navigate(returnTo);
       return;
     }
     if (result.reason === "incorrect") {

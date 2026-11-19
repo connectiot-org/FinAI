@@ -63,18 +63,18 @@ Each row below describes one exact file. Test source describes intended verifica
 | `frontend/playwright.config.ts` | Base Chromium/browser setup for public and local demo tests; explicitly excludes suites that require their own authenticated or API setup. |
 | `frontend/playwright.assistant-production.config.ts` | Selects the built private Assistant test and inherits the HTTPS/session test environment with a longer test timeout. |
 | `frontend/playwright.assistant.config.ts` | Selects controlled private Assistant UI tests using the authenticated Vite configuration. |
-| `frontend/playwright.checklist.config.ts` | Runs checklist tests serially against the dedicated local API on port 3001 and a fresh API-mode Vite server. |
+| `frontend/playwright.checklist.config.ts` | Runs checklist tests serially against the dedicated local API on port 3001 and a fresh API-mode Vite server provisioned with the test sign-in. |
 | `frontend/playwright.invoice-demo.config.ts` | Runs no-login invoice tests against the independently built static demo server on port 4173. |
 | `frontend/playwright.payables-integration.config.ts` | Selects serial real-database invoice journeys; each test group manages its own remote, embedded or packaged HTTPS fixture. |
 | `frontend/playwright.payables.config.ts` | Selects controlled payables UI tests using the private workspace configuration. |
 | `frontend/playwright.public-chat.config.ts` | Selects built public model-chat tests; controlled provider fixtures manage their own HTTPS service. |
 | `frontend/playwright.receivables-production.config.ts` | Selects the built authenticated imported-receivables browser test. |
-| `frontend/playwright.receivables.config.ts` | Starts a fresh session/API-mode Vite server for controlled imported-receivables tests. |
+| `frontend/playwright.receivables.config.ts` | Starts a fresh session/API-mode Vite server (with the provisioned test sign-in for guarded dashboard routes) for controlled imported-receivables tests. |
 | `frontend/playwright.session.config.ts` | Base for built HTTPS/session tests that start their own fixture server instead of the Vite development server. |
-| `frontend/playwright.subscriptions.config.ts` | Runs subscription tests serially against their isolated local API on port 3002. |
+| `frontend/playwright.subscriptions.config.ts` | Runs subscription tests serially against their isolated local API on port 3002 and a Vite server provisioned with the test sign-in. |
 | `frontend/playwright.vercel.config.ts` | Selects private packaged-backend tests with listener-free startup and session/database assertions. |
 | `frontend/playwright.workspace-production.config.ts` | Selects built private workspace and import-comparison tests using the HTTPS/session base. |
-| `frontend/playwright.workspace.config.ts` | Starts a fresh fully configured private Vite workspace and selects controlled workspace/register/comparison tests. |
+| `frontend/playwright.workspace.config.ts` | Starts a fresh fully configured private Vite workspace (with the provisioned test sign-in for guarded dashboard routes) and selects controlled workspace/register/comparison tests. |
 
 ### Deployed server entry and private/public transport boundaries
 
@@ -113,14 +113,15 @@ Each row below describes one exact file. Test source describes intended verifica
 | --- | --- |
 | `frontend/src/main.tsx` | Mounts React with the demo Redux store, toast provider, global styling and application router. |
 | `frontend/src/app/RouteError.tsx` | Recoverable route error screen for failed page loads, with guarded asset refresh and data-preserving manual reload. |
-| `frontend/src/app/router.tsx` | Defines public/demo/private routes, compatibility redirects, lazy feature loading, entry screens and not-found handling. |
-| `frontend/src/app/Shell.tsx` | Renders the original demo’s sidebar, global entity/period controls, search, Assistant panel and routed content. |
+| `frontend/src/app/router.tsx` | Defines public/demo/private routes, compatibility redirects, lazy feature loading, the provisioned-sign-in guard around every dashboard route and not-found handling. |
+| `frontend/src/app/Shell.tsx` | Renders the original demo’s sidebar, global entity/period controls, search, Assistant panel, workspace sign-out and routed content. |
 | `frontend/src/app/navigation.ts` | Declares demo navigation groups, routes/icons and page-title metadata used by the shell. |
 | `frontend/src/lib/api.ts` | Shared typed private JSON client with same-origin configuration checks, CSRF, bounded requests and identity-epoch result fencing. |
 | `frontend/src/lib/asset-recovery.ts` | Handles stale Vite chunk failures with one guarded reload per tab per minute, without clearing application data. |
 | `frontend/src/lib/session.ts` | Validates session responses, deduplicates concurrent checks and invalidates private views across identity changes and browser tabs. |
-| `frontend/src/lib/provisioned-credentials.ts` | Owner-provisioned sign-in list for the public entry (salted PBKDF2 verifiers, never clear passwords) plus the dev-only Playwright credential gate. |
+| `frontend/src/lib/provisioned-credentials.ts` | Owner-provisioned sign-in list for the public entry (salted PBKDF2 verifiers, never clear passwords) plus the dev-only Playwright credential and the artifact-only published demo sign-in gates. |
 | `frontend/src/lib/workspace-access.ts` | Public-entry credential verification: PBKDF2-HMAC-SHA256 salted stretching against the provisioned list, fixed-time comparison, timing-flat refusals and an escalating persisted lockout ledger. |
+| `frontend/src/lib/workspace-session.ts` | Browser-local workspace session (sessionStorage, 12h cap) opened only by a verified provisioned sign-in; the marker the dashboard route guard requires, closed by the shell sign-out. |
 
 ### Shared browser controls
 
@@ -128,6 +129,7 @@ Each row below describes one exact file. Test source describes intended verifica
 | --- | --- |
 | `frontend/src/components/GoogleSignIn.tsx` | Loads the official Google Identity Services button with a server-bound nonce; unavailable providers remain explicit. |
 | `frontend/src/components/SessionGate.tsx` | Owns password/Google sign-in, session checking and logout around private screens; nested consumers inherit the existing gate. |
+| `frontend/src/components/RequireWorkspaceSession.tsx` | Route guard for every dashboard route: accepts the browser-local provisioned-workspace session or, on session deployments, a live backend session, and otherwise redirects to /login with the attempted location. |
 | `frontend/src/components/shared/BrandMark.tsx` | Reusable original FinAI mark used across public pages, welcome, previews and workspace headers. |
 | `frontend/src/components/shared/Common.tsx` | Shared demo page headers, tabs, periods, metric cells, back/missing states and bounded document/help presentation. |
 | `frontend/src/components/shared/FinanceSnapshot.tsx` | Shows the original demo’s scoped posted-ledger metrics and approved close progress without implying private live financial data. |
@@ -340,9 +342,10 @@ Each row below describes one exact file. Test source describes intended verifica
 | `frontend/tests/copy-demo.spec.ts` | Checks that standalone checklist copying stays session-only, resets copied completion and makes no checklist API requests. |
 | `frontend/tests/fixtures/close-evidence.pdf` | Synthetic small evidence attachment for original demo close-task upload/persistence/browser checks. |
 | `frontend/tests/e2e-account.ts` | Development-only sign-in credential shared by the Playwright web server and suites; registered through the real provisioned-verification path and absent from production builds. |
-| `frontend/tests/marketing.spec.ts` | Checks public navigation, product content/previews, demo entry, mobile behavior, the provisioned-only log-in entry and public invoice entry without private API calls. |
+| `frontend/tests/sign-in.ts` | Shared browser helper that signs a test in through the real /login verification path and asserts the anonymous deep-link redirect to the log-in entry. |
+| `frontend/tests/marketing.spec.ts` | Checks public navigation, product content/previews, mobile behavior, the provisioned-only log-in entry, the closed free entry and the signed-in public invoice entry without private API calls. |
 | `frontend/tests/outstanding-customers.spec.ts` | Checks demo outstanding arithmetic, complete totals/top-five ordering, invalid/unavailable sources, links and responsive card behavior. |
-| `frontend/tests/payables-development.spec.ts` | Exercises no-login invoice sample storage, roles, original PDF rendering, approval/export, migration/reset, route aliases and PDF worker lifecycle. |
+| `frontend/tests/payables-development.spec.ts` | Exercises signed-in invoice sample storage, roles, original PDF rendering, approval/export, migration/reset, route aliases and PDF worker lifecycle. |
 | `frontend/tests/payables-integration.spec.ts` | Runs real invoice and confirmed-FinAI company journeys through remote, embedded and packaged HTTPS/session/database runtimes. |
 | `frontend/tests/payables-ui.spec.ts` | Checks controlled private invoice/policy/supplier presentation, scope/permission errors, keyboard/mobile layout and targeted UI regressions. |
 | `frontend/tests/public-chat.spec.ts` | Checks anonymous catalog/completion HTTP and built chat UI with controlled providers, deadlines, errors, retries, cancellation and safe bounds. |
@@ -352,7 +355,7 @@ Each row below describes one exact file. Test source describes intended verifica
 | `frontend/tests/session-production.spec.ts` | Checks the built HTTPS sign-in/copy/subscription flow, cookies, CSRF rejection, refresh and logout against real session persistence. |
 | `frontend/tests/subscriptions.spec.ts` | Runs saved-renewal API/database CRUD/archive, validation/conflicts, filters/pagination, date indicators, restart and stale-company checks. |
 | `frontend/tests/vercel-backend.spec.ts` | Checks the real private backend package’s configuration errors, listener-free lifecycle, authentication, bounded bodies, retained jobs and instance replacement. |
-| `frontend/tests/workflows.spec.ts` | Exercises original demo deep links, keyboard/responsive states, journal/invoice/bill/bank/close/report/automation workflows and local persistence. |
+| `frontend/tests/workflows.spec.ts` | Exercises signed-in demo deep links, the anonymous deep-link login redirect, keyboard/responsive states, journal/invoice/bill/bank/close/report/automation workflows and local persistence. |
 | `frontend/tests/workspace-changes-production.spec.ts` | Checks built authenticated import comparison against actual immutable snapshots, later imports/restart and private-session clearing. |
 | `frontend/tests/workspace-changes.spec.ts` | Checks controlled import comparison validation, exact money/bridge, pinned scope, source history, pagination, errors and stale response handling. |
 | `frontend/tests/workspace-detail.spec.ts` | Checks controlled pinned receivables invoice/customer/issue-period register details, filters, source provenance, export and long/mobile content. |
@@ -656,6 +659,7 @@ Current source, versioned contracts and executable runbooks determine behavior. 
 | [context/login-entry.md](../context/login-entry.md) | Public log-in entry on branch `feat/login-entry`: header/mobile/footer Log in, email session into the workspace dashboard, conditional provisioned-customer gate; demo funnel unchanged. | Supersedes the funnel release for the public entry itself; funnel and paid workspace boundaries stay as recorded. |
 | [context/login-password-security.md](../context/login-password-security.md) | Password security refinement of the public log-in entry: PBKDF2 browser-local credentials, create/verify modes, escalating lockout and browser-local reset; sample tour and session mode unchanged. | Superseded for the entry model by the provisioned-credential direction below; the PBKDF2 derivation and lockout mechanics it describes remain the implementation. |
 | [context/provisioned-login.md](../context/provisioned-login.md) | Owner-provisioned sign-ins for the public log-in entry: only selected emails with given credentials can enter, no self-registration, book-a-demo footer and the owner provisioning workflow. | Current entry model for the public site; supersedes the create-on-first-use account model while keeping the same PBKDF2 verification and lockout. |
+| [context/workspace-route-protection.md](../context/workspace-route-protection.md) | Closing the open-dashboard bypass: every workspace deep link requires the provisioned sign-in, the browser-local session model, the session-mode backend acceptance and the updated suites. | Current route-access authority for the demo dashboard; supersedes the freely explorable /sample entry. |
 
 ### Architecture and navigation documents
 

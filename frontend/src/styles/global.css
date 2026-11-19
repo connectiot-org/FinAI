@@ -1898,6 +1898,16 @@ hr {
   background: var(--border);
   margin: 4px;
 }
+/* Sign out entry in the workspace avatar menu; icon keeps label alignment. */
+.dropdown-signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #a33d2f;
+}
+.dropdown-signout svg {
+  flex: none;
+}
 .toasts {
   position: fixed;
   bottom: 24px;

@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
+import {
+  E2E_ACCOUNT_EMAIL,
+  E2E_ACCOUNT_PASSWORD,
+} from "./e2e-account";
 let fixture: ChildProcess;
 let info: { origin: string; organisationId: string; entityId: string };
 test.beforeAll(async () => {
@@ -35,6 +39,19 @@ test("HTTPS production sign-in, copy, refresh, CSRF denial, cookie flags and log
   page,
   context,
 }) => {
+  // The dashboard routes sit behind the provisioned-sign-in guard
+  // (19 November 2026), so open the workspace first through the public
+  // log-in (this built artifact publishes the demo credential); the
+  // checklist page then presents its own private-session gate as before.
+  await page.goto(`${info.origin}/login`);
+  await page.getByLabel("Email", { exact: true }).fill(E2E_ACCOUNT_EMAIL);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_ACCOUNT_PASSWORD);
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  // Wait for the in-browser verification and its navigation before moving
+  // on; navigating away mid-derivation would lose the session.
+  await expect(page).toHaveURL(/\/overview/);
   await page.goto(`${info.origin}/close/checklist?month=2060-09`);
   await expect(
     page.getByRole("heading", { name: "Sign in to your checklist" }),
@@ -182,6 +199,15 @@ test("HTTPS paid-only sign-in rejects unpaid accounts and expired existing sessi
   page,
 }) => {
   await paidCommand("paidOff");
+  // Open the workspace through the public provisioned log-in first; the
+  // checklist gate then exercises the paid-access backend path as before.
+  await page.goto(`${info.origin}/login`);
+  await page.getByLabel("Email", { exact: true }).fill(E2E_ACCOUNT_EMAIL);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_ACCOUNT_PASSWORD);
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/\/overview/);
   await page.goto(`${info.origin}/close/checklist?month=2060-10`);
   await page.getByLabel("Email or account name").fill("browser-test");
   await page.getByLabel("Organisation ID").fill(info.organisationId);

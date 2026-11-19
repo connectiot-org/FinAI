@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { E2E_ACCOUNT_SPEC } from "./tests/e2e-account";
 import base from "./playwright.config";
 export default defineConfig({
   ...base,
@@ -8,8 +9,9 @@ export default defineConfig({
   workers: 1,
   timeout: 45000,
   webServer: {
-    command:
-      "VITE_CHECKLIST_MODE=api VITE_API_BASE_URL=http://127.0.0.1:3001/api/v1 npm run dev -- --port 5173 --strictPort",
+    // VITE_E2E_ACCOUNT provisions a sign-in (tests/e2e-account.ts) because
+    // the checklist and settings routes now sit behind the workspace guard.
+    command: `VITE_E2E_ACCOUNT="${E2E_ACCOUNT_SPEC}" VITE_CHECKLIST_MODE=api VITE_API_BASE_URL=http://127.0.0.1:3001/api/v1 npm run dev -- --port 5173 --strictPort`,
     url: "http://127.0.0.1:5173",
     reuseExistingServer: false,
   },

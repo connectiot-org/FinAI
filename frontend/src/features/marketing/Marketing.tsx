@@ -375,8 +375,7 @@ export function MarketingLayout() {
             <Link to="/resources">Workflow guides</Link>
             <Link to="/resources#interactive-preview">Interactive preview</Link>
             <Link to="/resources#questions">Questions answered</Link>
-            <Link to="/sample">Public demo</Link>
-            <Link to="/login">Log in</Link>
+            <Link to="/login">Workspace log in</Link>
           </div>
           <div>
             <h3>COMPANY</h3>
@@ -641,7 +640,7 @@ export function AboutPage() {
           A connected workspace for understanding how financial records,
           decisions, and workflows fit together.
         </p>
-        <Link className="marketing-button dark" to="/sample">
+        <Link className="marketing-button dark" to="/login">
           See the idea in action
           <ArrowRight size={15} />
         </Link>

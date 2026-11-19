@@ -49,6 +49,19 @@ export const devE2eAccountSpec: { email: string; password: string } | null =
     ? parseE2eSpec(import.meta.env.VITE_E2E_ACCOUNT)
     : null;
 
+// Published sign-in for build artifacts whose whole purpose is to be freely
+// explorable: the standalone invoice demo (scripts/build-invoice-demo.mjs)
+// and the CI-only integration builds. Those are production builds, so the
+// dev-only variable above cannot reach them; instead the build scripts set
+// VITE_PUBLISHED_DEMO_ACCOUNT="email:password" and the credential is printed
+// in the artifact README for anyone opening it. Real deployments (the Vercel
+// build in scripts/vercel-build.mjs) never set this variable — on the public
+// site the only accepted sign-ins stay the owner-provisioned records above.
+export const publishedDemoAccountSpec: { email: string; password: string } | null =
+  typeof import.meta.env.VITE_PUBLISHED_DEMO_ACCOUNT === "string"
+    ? parseE2eSpec(import.meta.env.VITE_PUBLISHED_DEMO_ACCOUNT)
+    : null;
+
 function parseE2eSpec(
   spec: string,
 ): { email: string; password: string } | null {

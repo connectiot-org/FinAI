@@ -87,7 +87,7 @@ export function Workspace() {
           FinAI
         </Link>
         <span>Finance workspace</span>
-        <Link to="/sample">Explore the separate demo</Link>
+        <Link to="/login">Demo workspace log in</Link>
       </header>
       <main>
         <WorkspaceBoundary>

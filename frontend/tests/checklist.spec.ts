@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
+import { signIn } from "./sign-in";
 
 const api = "http://127.0.0.1:3001/api/v1";
 let server: ChildProcess;
@@ -36,6 +37,9 @@ async function stop() {
   }
 }
 async function open(page: Page, selectedMonth = month) {
+  // The checklist route sits behind the provisioned sign-in guard
+  // (19 November 2026); the config's web server provisions the credential.
+  await signIn(page);
   await page.goto(
     `/close/checklist?entity=${entities[0].id}&month=${selectedMonth}`,
   );
@@ -254,6 +258,7 @@ test("delayed old-month responses cannot overwrite the selected month", async ({
   const waiting = new Promise<void>((resolve) => {
     started = resolve;
   });
+  await signIn(page);
   await page.route(api + "/checklist-tasks?*", async (route) => {
     if (new URL(route.request().url()).searchParams.get("month") === month) {
       started();
@@ -287,6 +292,7 @@ for (const status of [401, 403, 503])
   test(`HTTP ${status} stays visible with no fixture fallback`, async ({
     page,
   }) => {
+    await signIn(page);
     await page.route(api + "/checklist-tasks?*", (route) =>
       route.fulfill({
         status,
@@ -312,6 +318,7 @@ for (const status of [401, 403, 503])
 test("invalid response shape and failed entity discovery remain visible", async ({
   page,
 }) => {
+  await signIn(page);
   await page.route(api + "/checklist-tasks?*", (route) =>
     route.fulfill({
       json: { items: [], summary: { total: 20, completed: 0, percent: 0 } },
@@ -552,6 +559,7 @@ test("copy empty source, occupied conflict, uncertain persisted response, pendin
 test("copy response after browser-back cannot overwrite a different month", async ({
   page,
 }) => {
+  await signIn(page);
   const year = 8200 + Math.floor(Math.random() * 500),
     source = `${year}-07`,
     destination = `${year}-08`;

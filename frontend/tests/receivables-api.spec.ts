@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signIn } from "./sign-in";
 const A = "22222222-2222-4222-8222-222222222222",
   B = "22222222-2222-4222-8222-222222222223";
 const ready = (entityId = A, period = "all", totalCents = 75000) => ({
@@ -45,8 +46,7 @@ async function setup(page: Page) {
     const q = new URL(r.request().url()).searchParams;
     return r.fulfill({ json: ready(q.get("entityId")!, q.get("period")!) });
   });
-  await page.goto("/sample");
-  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await signIn(page);
   await expect(card(page).locator("dd")).toHaveText(["$750.00", "1", "1"]);
 }
 test("API discovers UUID scope independently, source labels, no demo links/storage, keyboard and mobile", async ({

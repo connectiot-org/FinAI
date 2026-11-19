@@ -129,7 +129,7 @@ jobs:
       - name: Demo browser tests
         working-directory: frontend
         run: npm run test
-      - name: Standalone invoice demo without database or sign-in
+      - name: Standalone invoice demo without database
         working-directory: frontend
         run: npm run test:invoice-demo
       - name: Supplier invoice UI tests
